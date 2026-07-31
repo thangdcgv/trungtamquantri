@@ -1,0 +1,528 @@
+{% extends "base.html" %}
+
+{% block title %}Quản lý Tài khoản & Phân quyền - Máy In Đại Thành{% endblock %}
+
+{% block head %}
+<style>
+    .admin-header {
+        display: flex;
+        justify-content: space-between;
+        align-items: center;
+        margin-bottom: 1.5rem;
+        flex-wrap: wrap;
+        gap: 1rem;
+    }
+    .admin-title {
+        font-size: 1.35rem;
+        font-weight: 700;
+        color: var(--text-main);
+        letter-spacing: -0.02em;
+    }
+    .btn-primary {
+        background: linear-gradient(135deg, var(--primary), #4f46e5);
+        color: white;
+        border: none;
+        padding: 0.6rem 1.2rem;
+        border-radius: 10px;
+        font-size: 0.85rem;
+        font-weight: 600;
+        cursor: pointer;
+        text-decoration: none;
+        display: inline-flex;
+        align-items: center;
+        gap: 0.5rem;
+        box-shadow: 0 4px 12px rgba(99, 102, 241, 0.25);
+        transition: all 0.2s ease;
+    }
+    .btn-primary:hover {
+        transform: translateY(-1px);
+        opacity: 0.95;
+    }
+
+    /* Toolbar & Search */
+    .toolbar-card {
+        display: flex;
+        justify-content: space-between;
+        align-items: center;
+        gap: 1rem;
+        margin-bottom: 1.25rem;
+        flex-wrap: wrap;
+    }
+    .search-box {
+        position: relative;
+        flex: 1;
+        min-width: 260px;
+    }
+    .search-input {
+        width: 100%;
+        background: rgba(255, 255, 255, 0.04);
+        border: 1px solid var(--border-color);
+        padding: 0.6rem 0.9rem 0.6rem 2.4rem;
+        border-radius: 10px;
+        color: var(--text-main);
+        font-size: 0.85rem;
+        transition: border-color 0.2s;
+    }
+    .search-input:focus {
+        border-color: var(--primary);
+        outline: none;
+        background: rgba(255, 255, 255, 0.07);
+    }
+    .search-icon {
+        position: absolute;
+        left: 0.8rem;
+        top: 50%;
+        transform: translateY(-50%);
+        color: var(--text-muted);
+        font-size: 0.85rem;
+    }
+
+    /* Table styling */
+    .table-container {
+        overflow-x: auto;
+    }
+    .data-table {
+        width: 100%;
+        border-collapse: collapse;
+        text-align: left;
+        font-size: 0.85rem;
+    }
+    .data-table th, .data-table td {
+        padding: 1rem 1.25rem;
+        border-bottom: 1px solid var(--border-color);
+        vertical-align: middle;
+    }
+    .data-table th {
+        color: var(--text-muted);
+        font-weight: 600;
+        text-transform: uppercase;
+        font-size: 0.72rem;
+        letter-spacing: 0.06em;
+        background: rgba(255, 255, 255, 0.01);
+    }
+    .data-table tr {
+        transition: background 0.15s;
+    }
+    .data-table tr:hover {
+        background: rgba(255, 255, 255, 0.025);
+    }
+
+    /* User Profile Cell */
+    .user-cell {
+        display: flex;
+        align-items: center;
+        gap: 0.85rem;
+    }
+    .user-avatar {
+        width: 38px;
+        height: 38px;
+        border-radius: 50%;
+        background: linear-gradient(135deg, var(--primary), #8b5cf6);
+        color: white;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        font-weight: 700;
+        font-size: 0.9rem;
+        flex-shrink: 0;
+        box-shadow: 0 2px 6px rgba(0,0,0,0.2);
+    }
+
+    /* Role Badges */
+    .badge-role {
+        padding: 0.3rem 0.75rem;
+        border-radius: 20px;
+        font-size: 0.72rem;
+        font-weight: 600;
+        display: inline-flex;
+        align-items: center;
+        gap: 0.3rem;
+    }
+    .badge-admin { background: rgba(168, 85, 247, 0.15); color: #c084fc; border: 1px solid rgba(168, 85, 247, 0.3); }
+    .badge-user { background: rgba(56, 189, 248, 0.15); color: #38bdf8; border: 1px solid rgba(56, 189, 248, 0.3); }
+
+    /* Action Buttons */
+    .action-group {
+        display: flex;
+        gap: 0.5rem;
+        justify-content: flex-end;
+    }
+    .btn-action {
+        padding: 0.35rem 0.75rem;
+        border-radius: 7px;
+        font-size: 0.78rem;
+        font-weight: 600;
+        cursor: pointer;
+        border: 1px solid transparent;
+        transition: all 0.2s;
+        display: inline-flex;
+        align-items: center;
+        gap: 0.3rem;
+    }
+    .btn-edit {
+        background: rgba(59, 130, 246, 0.12);
+        color: #60a5fa;
+        border-color: rgba(59, 130, 246, 0.25);
+    }
+    .btn-edit:hover {
+        background: rgba(59, 130, 246, 0.25);
+    }
+    .btn-delete {
+        background: rgba(239, 68, 68, 0.12);
+        color: #f87171;
+        border-color: rgba(239, 68, 68, 0.25);
+    }
+    .btn-delete:hover {
+        background: rgba(239, 68, 68, 0.25);
+    }
+
+    /* Modal Popup Styling */
+    .modal-overlay {
+        position: fixed;
+        top: 0; left: 0; width: 100%; height: 100%;
+        background: rgba(0, 0, 0, 0.65);
+        backdrop-filter: blur(4px);
+        display: none;
+        align-items: center;
+        justify-content: center;
+        z-index: 1000;
+        padding: 1rem;
+    }
+    .modal-overlay.active {
+        display: flex;
+    }
+    .modal-card {
+        background: #1e1e2d;
+        border: 1px solid var(--border-color);
+        border-radius: 16px;
+        width: 100%;
+        max-width: 550px;
+        box-shadow: 0 20px 40px rgba(0,0,0,0.5);
+        animation: modalFadeIn 0.25s cubic-bezier(0.16, 1, 0.3, 1);
+        overflow: hidden;
+    }
+    @keyframes modalFadeIn {
+        from { opacity: 0; transform: translateY(15px) scale(0.98); }
+        to { opacity: 1; transform: translateY(0) scale(1); }
+    }
+    .modal-header {
+        padding: 1.25rem 1.5rem;
+        border-bottom: 1px solid var(--border-color);
+        display: flex;
+        justify-content: space-between;
+        align-items: center;
+    }
+    .modal-title {
+        font-weight: 700;
+        font-size: 1.05rem;
+        color: var(--text-main);
+    }
+    .modal-close {
+        background: none;
+        border: none;
+        color: var(--text-muted);
+        font-size: 1.25rem;
+        cursor: pointer;
+        padding: 0.2rem;
+    }
+    .modal-close:hover { color: var(--text-main); }
+    .modal-body {
+        padding: 1.5rem;
+        max-height: 75vh;
+        overflow-y: auto;
+    }
+
+    /* Form Controls */
+    .form-grid {
+        display: grid;
+        grid-template-columns: repeat(2, 1fr);
+        gap: 1rem;
+    }
+    .form-group {
+        display: flex;
+        flex-direction: column;
+        gap: 0.35rem;
+        grid-column: span 2;
+    }
+    .form-group.half {
+        grid-column: span 1;
+    }
+    @media (max-width: 600px) {
+        .form-group.half { grid-column: span 2; }
+    }
+    .form-group label {
+        font-size: 0.78rem;
+        color: var(--text-muted);
+        font-weight: 600;
+    }
+    .form-control {
+        background: rgba(255, 255, 255, 0.05);
+        border: 1px solid var(--border-color);
+        padding: 0.6rem 0.85rem;
+        border-radius: 8px;
+        color: var(--text-main);
+        font-size: 0.85rem;
+    }
+    .form-control:focus {
+        border-color: var(--primary);
+        outline: none;
+        background: rgba(255, 255, 255, 0.08);
+    }
+    select.form-control option {
+        background: #1e1e2d;
+        color: var(--text-main);
+    }
+    .modal-footer {
+        padding: 1rem 1.5rem;
+        border-top: 1px solid var(--border-color);
+        display: flex;
+        justify-content: flex-end;
+        gap: 0.75rem;
+        background: rgba(0,0,0,0.1);
+    }
+    .btn-secondary {
+        background: rgba(255, 255, 255, 0.06);
+        color: var(--text-main);
+        border: 1px solid var(--border-color);
+        padding: 0.6rem 1rem;
+        border-radius: 8px;
+        font-size: 0.82rem;
+        font-weight: 600;
+        cursor: pointer;
+    }
+    .btn-secondary:hover { background: rgba(255, 255, 255, 0.1); }
+</style>
+{% endblock %}
+
+{% block content %}
+<div class="admin-header">
+    <div>
+        <div class="admin-title">Quản Lý Tài Khoản & Phân Quyền</div>
+        <div style="font-size: 0.8rem; color: var(--text-muted); margin-top: 0.2rem;">Hệ thống nhân sự và phân quyền kiểm soát vận hành nội bộ</div>
+    </div>
+    <div style="display: flex; gap: 0.75rem;">
+        <button onclick="openModal('addModal')" class="btn-primary">
+            <span>➕ Thêm Tài Khoản Mới</span>
+        </button>
+        <a href="/" class="btn-secondary" style="text-decoration: none; display: inline-flex; align-items: center; gap: 0.4rem;">← Về Trang Chủ</a>
+    </div>
+</div>
+
+<!-- Toolbar & Search Bar -->
+<div class="toolbar-card card" style="padding: 1rem 1.25rem;">
+    <div class="search-box">
+        <span class="search-icon">🔍</span>
+        <input type="text" id="userSearchInput" class="search-input" placeholder="Tìm kiếm theo họ tên, tên đăng nhập hoặc email..." onkeyup="filterUsers()">
+    </div>
+    <div style="font-size: 0.8rem; color: var(--text-muted);">
+        Tổng số nhân sự: <strong id="totalCount" style="color: var(--text-main);">{{ users | length }}</strong>
+    </div>
+</div>
+
+<!-- Danh Sách Tài Khoản Bảng Chuyên Nghiệp -->
+<div class="card" style="padding: 0; overflow: hidden;">
+    <div class="table-container">
+        <table class="data-table" id="usersTable">
+            <thead>
+                <tr>
+                    <th>Nhân sự</th>
+                    <th>Chức danh</th>
+                    <th>Email</th>
+                    <th>Quyền hạn</th>
+                    <th style="text-align: right;">Thao tác</th>
+                </tr>
+            </thead>
+            <tbody>
+                {% if users %}
+                    {% for u in users %}
+                    <tr class="user-row" data-search="{{ u.ho_ten | lower }} {{ u.username | lower }} {{ u.email | lower }}">
+                        <td>
+                            <div class="user-cell">
+                                <div class="user-avatar">
+                                    {{ u.ho_ten[:1] | upper if u.ho_ten else 'U' }}
+                                </div>
+                                <div>
+                                    <div style="font-weight: 600; color: var(--text-main);">{{ u.ho_ten | default('Chưa cập nhật') }}</div>
+                                    <div style="font-size: 0.75rem; color: var(--text-muted);">@{{ u.username }}</div>
+                                </div>
+                            </div>
+                        </td>
+                        <td>
+                            <div style="font-weight: 500; color: var(--text-main);">{{ u.chuc_danh | default('Nhân viên kỹ thuật') }}</div>
+                            <div style="font-size: 0.75rem; color: var(--text-muted);">{{ u.so_dien_thoai | default('Chưa có SĐT') }}</div>
+                        </td>
+                        <td style="color: var(--text-muted); font-size: 0.82rem;">{{ u.email | default('N/A') }}</td>
+                        <td>
+                            <form action="/admin/users/update-role/{{ u.id }}" method="POST" style="display: inline;">
+                                <select name="role" class="form-control" style="padding: 0.3rem 0.6rem; font-size: 0.78rem; width: auto;" onchange="this.form.submit()">
+                                    <option value="User" {% if u.role == 'User' %}selected{% endif %}>User (Thường)</option>
+                                    <option value="Admin" {% if u.role == 'Admin' %}selected{% endif %}>Admin (Quản trị)</option>
+                                </select>
+                            </form>
+                        </td>
+                        <td style="text-align: right;">
+                            <div class="action-group">
+                                <button type="button" class="btn-action btn-edit" data-user='{{ u | tojson | safe }}' onclick='openEditModalFromBtn(this)'>
+                                    ✏️ Sửa
+                                </button>
+                                <form action="/admin/users/delete/{{ u.id }}" method="POST" onsubmit="return confirm('Cảnh báo: Bạn có chắc chắn muốn xóa tài khoản này khỏi hệ thống không?');" style="display: inline;">
+                                    <button type="submit" class="btn-action btn-delete">🗑️ Xóa</button>
+                                </form>
+                            </div>
+                        </td>
+                    </tr>
+                    {% endfor %}
+                {% else %}
+                    <tr>
+                        <td colspan="5" class="feed-empty" style="text-align: center; padding: 3rem; color: var(--text-muted);">Chưa có tài khoản nào được khởi tạo trong cơ sở dữ liệu.</td>
+                    </tr>
+                {% endif %}
+            </tbody>
+        </table>
+    </div>
+</div>
+
+<!-- MODAL: Thêm tài khoản mới -->
+<div class="modal-overlay" id="addModal">
+    <div class="modal-card">
+        <div class="modal-header">
+            <div class="modal-title">➕ Khởi Tạo Tài Khoản Mới</div>
+            <button class="modal-close" onclick="closeModal('addModal')">&times;</button>
+        </div>
+        <form action="/admin/users/add" method="POST">
+            <div class="modal-body">
+                <div class="form-grid">
+                    <div class="form-group half">
+                        <label>Họ và tên nhân sự</label>
+                        <input type="text" name="ho_ten" class="form-control" required placeholder="Ví dụ: Nguyễn Văn Thắng">
+                    </div>
+                    <div class="form-group half">
+                        <label>Tên đăng nhập (Username)</label>
+                        <input type="text" name="username" class="form-control" required placeholder="thangnv">
+                    </div>
+                    <div class="form-group half">
+                        <label>Email đăng nhập Supabase</label>
+                        <input type="email" name="email" class="form-control" required placeholder="thang@daithanh.vn">
+                    </div>
+                    <div class="form-group half">
+                        <label>Mật khẩu ban đầu</label>
+                        <input type="password" name="password" class="form-control" required placeholder="Ít nhất 6 ký tự">
+                    </div>
+                    <div class="form-group half">
+                        <label>Chức danh công việc</label>
+                        <input type="text" name="chuc_danh" class="form-control" placeholder="Kỹ thuật viên / Quản lý">
+                    </div>
+                    <div class="form-group half">
+                        <label>Số điện thoại liên hệ</label>
+                        <input type="text" name="so_dien_thoai" class="form-control" placeholder="0909xxxxxx">
+                    </div>
+                    <div class="form-group">
+                        <label>Phân quyền hệ thống</label>
+                        <select name="role" class="form-control">
+                            <option value="User">User (Kỹ thuật viên - Quyền hạn tiêu chuẩn)</option>
+                            <option value="Admin">Admin (Quản trị viên - Toàn quyền hệ thống)</option>
+                        </select>
+                    </div>
+                </div>
+            </div>
+            <div class="modal-footer">
+                <button type="button" class="btn-secondary" onclick="closeModal('addModal')">Hủy bỏ</button>
+                <button type="submit" class="btn-primary">Tạo tài khoản</button>
+            </div>
+        </form>
+    </div>
+</div>
+
+<!-- MODAL: Chỉnh sửa tài khoản -->
+<div class="modal-overlay" id="editModal">
+    <div class="modal-card">
+        <div class="modal-header">
+            <div class="modal-title">✏️ Chỉnh Sửa Thông Tin Nhân Sự</div>
+            <button class="modal-close" onclick="closeModal('editModal')">&times;</button>
+        </div>
+        <form id="editForm" method="POST">
+            <div class="modal-body">
+                <div class="form-grid">
+                    <div class="form-group">
+                        <label>Họ và tên nhân sự</label>
+                        <input type="text" id="edit_ho_ten" name="ho_ten" class="form-control" required>
+                    </div>
+                    <div class="form-group half">
+                        <label>Chức danh công việc</label>
+                        <input type="text" id="edit_chuc_danh" name="chuc_danh" class="form-control">
+                    </div>
+                    <div class="form-group half">
+                        <label>Số điện thoại liên hệ</label>
+                        <input type="text" id="edit_so_dien_thoai" name="so_dien_thoai" class="form-control">
+                    </div>
+                    <div class="form-group">
+                        <label>Phân quyền hệ thống</label>
+                        <select id="edit_role" name="role" class="form-control">
+                            <option value="User">User (Kỹ thuật viên)</option>
+                            <option value="Admin">Admin (Quản trị viên)</option>
+                        </select>
+                    </div>
+                </div>
+            </div>
+            <div class="modal-footer">
+                <button type="button" class="btn-secondary" onclick="closeModal('editModal')">Hủy bỏ</button>
+                <button type="submit" class="btn-primary">Lưu thay đổi</button>
+            </div>
+        </form>
+    </div>
+</div>
+
+<script>
+    function openModal(modalId) {
+        document.getElementById(modalId).classList.add('active');
+    }
+    
+    function closeModal(modalId) {
+        document.getElementById(modalId).classList.remove('active');
+    }
+
+    function openEditModal(user) {
+        document.getElementById('editForm').action = '/admin/users/edit/' + user.id;
+        document.getElementById('edit_ho_ten').value = user.ho_ten || '';
+        document.getElementById('edit_chuc_danh').value = user.chuc_danh || '';
+        document.getElementById('edit_so_dien_thoai').value = user.so_dien_thoai || '';
+        document.getElementById('edit_role').value = user.role || 'User';
+        openModal('editModal');
+    }
+
+    // Đóng modal khi bấm ra ngoài vùng nội dung
+    window.onclick = function(event) {
+        if (event.target.classList.contains('modal-overlay')) {
+            event.target.classList.remove('active');
+        }
+    }
+
+    // Tính năng Live Search lọc bảng trực tiếp
+    function filterUsers() {
+        let input = document.getElementById('userSearchInput').value.toLowerCase();
+        let rows = document.getElementsByClassName('user-row');
+        let visibleCount = 0;
+
+        for (let i = 0; i < rows.length; i++) {
+            let searchData = rows[i].getAttribute('data-search');
+            if (searchData.includes(input)) {
+                rows[i].style.display = "";
+                visibleCount++;
+            } else {
+                rows[i].style.display = "none";
+            }
+        }
+        document.getElementById('totalCount').innerText = visibleCount;
+    }
+    function openEditModalFromBtn(button) {
+        try {
+            // Lấy chuỗi JSON từ thuộc tính data-user và chuyển đổi thành Object
+            const userJson = button.getAttribute('data-user');
+            const user = JSON.parse(userJson);
+            openEditModal(user);
+        } catch (e) {
+            console.error("Lỗi đọc dữ liệu tài khoản:", e);
+        }
+    }
+</script>
+{% endblock %}

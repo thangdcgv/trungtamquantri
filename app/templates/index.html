@@ -1,0 +1,316 @@
+{% extends "base.html" %}
+
+{% block title %}Trang chủ - Máy In Đại Thành Center Hub{% endblock %}
+
+{% block head %}
+<style>
+    /* Hero Welcome Banner */
+    .welcome-card {
+        background: linear-gradient(135deg, #1e293b 0%, #0f172a 100%);
+        border: 1px solid var(--border-color);
+        position: relative;
+        overflow: hidden;
+        padding: 1.25rem;
+    }
+
+    .welcome-card::after {
+        content: '';
+        position: absolute;
+        top: -50%;
+        right: -20%;
+        width: 180px;
+        height: 180px;
+        background: radial-gradient(circle, rgba(56, 189, 248, 0.12) 0%, transparent 70%);
+        pointer-events: none;
+    }
+
+    .user-greeting {
+        font-size: 1.1rem;
+        font-weight: 700;
+        color: var(--text-main);
+        margin-bottom: 0.25rem;
+    }
+
+    .user-subtitle {
+        font-size: 0.8rem;
+        color: var(--text-muted);
+    }
+
+    /* Section Title */
+    .section-title {
+        font-size: 0.85rem;
+        font-weight: 700;
+        color: var(--text-muted);
+        text-transform: uppercase;
+        letter-spacing: 0.05em;
+        margin-top: 1.5rem;
+        margin-bottom: 0.85rem;
+    }
+
+    /* Distinct Feed Cards Header */
+    .feed-card-header {
+        display: flex;
+        align-items: center;
+        justify-content: space-between;
+        margin-bottom: 0.85rem;
+        padding-bottom: 0.65rem;
+        border-bottom: 1px solid var(--border-color);
+    }
+
+    .feed-card-title-group {
+        display: flex;
+        align-items: center;
+        gap: 0.65rem;
+    }
+
+    .feed-icon-box {
+        width: 32px;
+        height: 32px;
+        border-radius: 8px;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+    }
+
+    .feed-icon-box svg {
+        width: 18px;
+        height: 18px;
+        stroke-width: 2;
+        stroke-linecap: round;
+        stroke-linejoin: round;
+    }
+
+    .feed-card-name {
+        font-size: 0.85rem;
+        font-weight: 700;
+        color: var(--text-main);
+    }
+
+    .feed-card-action {
+        font-size: 0.72rem;
+        font-weight: 600;
+        color: var(--primary);
+        text-decoration: none;
+    }
+    .feed-card-action:hover {
+        text-decoration: underline;
+    }
+
+    /* Color Accents for Cards */
+    .accent-blue .feed-icon-box { background: rgba(2, 132, 199, 0.15); color: #38bdf8; }
+    .accent-green .feed-icon-box { background: rgba(16, 185, 129, 0.15); color: #34d399; }
+    .accent-orange .feed-icon-box { background: rgba(245, 158, 11, 0.15); color: #fbbf24; }
+    .accent-purple .feed-icon-box { background: rgba(168, 85, 247, 0.15); color: #c084fc; }
+
+    /* Feed List Styles */
+    .feed-list {
+        display: flex;
+        flex-direction: column;
+        gap: 0.6rem;
+    }
+
+    .feed-item {
+        display: flex;
+        align-items: center;
+        justify-content: space-between;
+        padding: 0.65rem 0.75rem;
+        background: rgba(255, 255, 255, 0.02);
+        border: 1px solid var(--border-color);
+        border-radius: 10px;
+        text-decoration: none;
+        color: var(--text-main);
+        transition: background 0.15s ease;
+    }
+
+    .feed-item:hover {
+        background: var(--bg-card-hover);
+    }
+
+    .feed-info {
+        display: flex;
+        flex-direction: column;
+        gap: 0.15rem;
+        overflow: hidden;
+    }
+
+    .feed-title {
+        font-size: 0.82rem;
+        font-weight: 600;
+        white-space: nowrap;
+        overflow: hidden;
+        text-overflow: ellipsis;
+    }
+
+    .feed-meta {
+        font-size: 0.7rem;
+        color: var(--text-muted);
+    }
+
+    .feed-empty {
+        font-size: 0.78rem;
+        color: var(--text-muted);
+        text-align: center;
+        padding: 0.75rem;
+    }
+</style>
+{% endblock %}
+
+{% block content %}
+<!-- Welcome Banner -->
+<div class="card welcome-card">
+    <div class="user-greeting">Xin chào, {% if current_user and current_user.is_authenticated %}{{ current_user.name }}{% else %}Quản trị viên{% endif %}! 👋</div>
+    <div class="user-subtitle">Trung tâm điều hành ứng dụng nội bộ Máy In Đại Thành</div>
+</div>
+
+<!-- Section: Hoạt động gần đây -->
+<div class="section-title">Hoạt động gần đây</div>
+
+<!-- 1. Card Bảo Hành Điện Tử -->
+<div class="card accent-green" style="padding: 0.85rem;">
+    <div class="feed-card-header">
+        <div class="feed-card-title-group">
+            <div class="feed-icon-box">
+                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor">
+                    <path d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10z"></path>
+                </svg>
+            </div>
+            <div class="feed-card-name">Phiếu Bảo Hành Mới Tạo</div>
+        </div>
+        <a href="https://mayindaithanh-baohanh.hf.space" target="_blank" rel="noopener noreferrer" class="feed-card-action">Mở App ➔</a>
+    </div>
+    <div class="feed-list">
+        {% if recent_warranties %}
+            {% for item in recent_warranties %}
+            <a href="https://mayindaithanh-baohanh.hf.space" target="_blank" rel="noopener noreferrer" class="feed-item">
+                <div class="feed-info">
+                    <span class="feed-title">
+                        {{ item.customer_name | default('Khách hàng') }} - {{ item.category | default('Máy in') }} 
+                        <span style="color: var(--primary-light);">||</span> 
+                        {{ item.model_name | default('N/A') }}
+                    </span>
+                    <span class="feed-meta">
+                        Thời gian: 
+                        {% if item.created_at %}
+                            {{ item.created_at[8:10] }}/{{ item.created_at[5:7] }}/{{ item.created_at[0:4] }} {{ item.created_at[11:16] }}
+                        {% else %}
+                            N/A
+                        {% endif %}
+                    </span>
+                </div>
+                <span style="font-size: 0.75rem; color: var(--text-muted);">➔</span>
+            </a>
+            {% endfor %}
+        {% else %}
+            <div class="feed-empty">Chưa có phiếu bảo hành nào gần đây.</div>
+        {% endif %}
+    </div>
+</div>
+
+<!-- 2. Card Chấm Công Lắp Đặt -->
+<div class="card accent-blue" style="padding: 0.85rem; margin-top: 1rem;">
+    <div class="feed-card-header">
+        <div class="feed-card-title-group">
+            <div class="feed-icon-box">
+                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor">
+                    <circle cx="12" cy="12" r="10"></circle>
+                    <polyline points="12 6 12 12 16 14"></polyline>
+                </svg>
+            </div>
+            <div class="feed-card-name">Đơn Chấm Công Gần Nhất</div>
+        </div>
+        <a href="https://mayindaithanh-lapdat.hf.space" target="_blank" rel="noopener noreferrer" class="feed-card-action">Mở App ➔</a>
+    </div>
+    <div class="feed-list">
+        {% if recent_installations %}
+            {% for item in recent_installations %}
+            <a href="https://mayindaithanh-lapdat.hf.space" target="_blank" rel="noopener noreferrer" class="feed-item">
+                <div class="feed-info">
+                    <span class="feed-title">
+                        {{ item.ten | default('KTV') }} - {{ item.trang_thai | default('Chờ duyệt') }} 
+                        <span style="color: var(--primary-light);">||</span> 
+                        HĐ: {{ item.so_hoa_don | default('N/A') }}
+                    </span>
+                    <span class="feed-meta">
+                        Thời gian: 
+                        {% if item.thoi_gian %}
+                            {{ item.thoi_gian[8:10] }}/{{ item.thoi_gian[5:7] }}/{{ item.thoi_gian[0:4] }} {{ item.thoi_gian[11:16] }}
+                        {% else %}
+                            N/A
+                        {% endif %}
+                    </span>
+                </div>
+                <span style="font-size: 0.75rem; color: var(--text-muted);">➔</span>
+            </a>
+            {% endfor %}
+        {% else %}
+            <div class="feed-empty">Chưa có đơn chấm công nào gần đây.</div>
+        {% endif %}
+    </div>
+</div>
+
+<!-- 3. Card Thư Viện Máy In -->
+<div class="card accent-orange" style="padding: 0.85rem; margin-top: 1rem;">
+    <div class="feed-card-header">
+        <div class="feed-card-title-group">
+            <div class="feed-icon-box">
+                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor">
+                    <path d="M4 19.5A2.5 2.5 0 0 1 6.5 17H20"></path>
+                    <path d="M6.5 2H20v20H6.5A2.5 2.5 0 0 1 4 19.5v-15A2.5 2.5 0 0 1 6.5 2z"></path>
+                </svg>
+            </div>
+            <div class="feed-card-name">Bài Viết Thư Viện Gần Nhất</div>
+        </div>
+        <a href="https://printer-guide.onrender.com" target="_blank" rel="noopener noreferrer" class="feed-card-action">Mở App ➔</a>
+    </div>
+    <div class="feed-list">
+        {% if recent_library %}
+            {% for item in recent_library %}
+            <a href="https://printer-guide.onrender.com" target="_blank" rel="noopener noreferrer" class="feed-item">
+                <div class="feed-info">
+                    <span class="feed-title">{{ item.title | default('Tiêu đề tài liệu') }}</span>
+                    <span class="feed-meta">
+                        Thời gian: 
+                        {% if item.created_at %}
+                            {{ item.created_at[8:10] }}/{{ item.created_at[5:7] }}/{{ item.created_at[0:4] }} {{ item.created_at[11:16] }}
+                        {% else %}
+                            N/A
+                        {% endif %}
+                    </span>
+                </div>
+                <span style="font-size: 0.75rem; color: var(--text-muted);">➔</span>
+            </a>
+            {% endfor %}
+        {% else %}
+            <div class="feed-empty">Chưa có bài viết nào trên thư viện.</div>
+        {% endif %}
+    </div>
+</div>
+
+{% if request.session.get('role') == 'Admin' %}
+<div class="card accent-purple" style="padding: 0.85rem; margin-top: 1rem;">
+    <div class="feed-card-header">
+        <div class="feed-card-title-group">
+            <div class="feed-icon-box">
+                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor">
+                    <path d="M17 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2"></path>
+                    <circle cx="9" cy="7" r="4"></circle>
+                    <path d="M23 21v-2a4 4 0 0 0-3-3.87"></path>
+                    <path d="M16 3.13a4 4 0 0 1 0 7.75"></path>
+                </svg>
+            </div>
+            <div class="feed-card-name">Quản lý Tài khoản & Phân quyền</div>
+        </div>
+        <a href="/admin/users" class="feed-card-action">Mở Quản Trị ➔</a>
+    </div>
+    <div class="feed-list">
+        <a href="/admin/users" class="feed-item">
+            <div class="feed-info">
+                <span class="feed-title">Danh sách Quản trị viên & Kỹ thuật viên</span>
+                <span class="feed-meta">Xem, thêm mới hoặc phân quyền tài khoản hệ thống</span>
+            </div>
+            <span style="font-size: 0.75rem; color: var(--text-muted);">➔</span>
+        </a>
+    </div>
+</div>
+{% endif %}
+{% endblock %}

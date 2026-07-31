@@ -1,0 +1,267 @@
+<!DOCTYPE html>
+<html lang="vi">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, viewport-fit=cover">
+    <title>{% block title %}Center Hub - Máy In Đại Thành{% endblock %}</title>
+
+    <style>
+        :root {
+            --bg-main: #0f172a;
+            --bg-card: #1e293b;
+            --bg-card-hover: #334155;
+            --border-color: rgba(255, 255, 255, 0.08);
+            --primary: #0284c7;
+            --primary-light: #38bdf8;
+            --accent-green: #10b981;
+            --accent-orange: #f59e0b;
+            --text-main: #f8fafc;
+            --text-muted: #94a3b8;
+            --top-header-height: 58px;
+            --bottom-nav-height: 64px;
+        }
+
+        * {
+            box-sizing: border-box;
+            margin: 0;
+            padding: 0;
+            -webkit-tap-highlight-color: transparent;
+        }
+
+        body {
+            font-family: system-ui, -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+            background-color: var(--bg-main);
+            color: var(--text-main);
+            min-height: 100vh;
+            display: flex;
+            flex-direction: column;
+            -webkit-font-smoothing: antialiased;
+            overflow-x: hidden;
+        }
+
+        /* Top Header Fixed */
+        .app-header {
+            position: fixed;
+            top: 0;
+            left: 0;
+            right: 0;
+            height: calc(var(--top-header-height) + env(safe-area-inset-top));
+            padding-top: env(safe-area-inset-top);
+            background-color: rgba(15, 23, 42, 0.88);
+            backdrop-filter: blur(16px);
+            -webkit-backdrop-filter: blur(16px);
+            border-bottom: 1px solid var(--border-color);
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            padding-left: 1rem;
+            padding-right: 1rem;
+            z-index: 100;
+        }
+
+        .header-brand {
+            display: flex;
+            align-items: center;
+            gap: 0.75rem;
+            text-decoration: none;
+        }
+
+        .header-logo {
+            height: 30px;
+            width: auto;
+            object-fit: contain;
+        }
+
+        .header-title-box {
+            display: flex;
+            flex-direction: column;
+        }
+
+        .header-title {
+            font-size: 0.95rem;
+            font-weight: 700;
+            color: var(--text-main);
+            letter-spacing: 0.05em;
+            line-height: 1.1;
+        }
+
+        .header-subtitle {
+            font-size: 0.68rem;
+            color: var(--primary-light);
+            font-weight: 600;
+            letter-spacing: 0.03em;
+        }
+
+        .logout-btn {
+            min-width: 44px;
+            min-height: 44px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            background: transparent;
+            border: none;
+            color: var(--text-muted);
+            border-radius: 12px;
+            text-decoration: none;
+            transition: background 0.2s, color 0.2s;
+        }
+
+        .logout-btn:active {
+            background-color: rgba(255, 255, 255, 0.1);
+            color: #ef4444;
+        }
+
+        /* Container Nội Dung */
+        .app-content {
+            flex: 1;
+            padding-top: calc(var(--top-header-height) + env(safe-area-inset-top) + 1rem);
+            padding-bottom: calc(var(--bottom-nav-height) + env(safe-area-inset-bottom) + 1.25rem);
+            padding-left: 1rem;
+            padding-right: 1rem;
+            max-width: 600px;
+            width: 100%;
+            margin: 0 auto;
+        }
+
+        /* Bottom Navigation Bar (Thumb-Zone Tối Ưu) */
+        .bottom-nav {
+            position: fixed;
+            bottom: 0;
+            left: 0;
+            right: 0;
+            height: calc(var(--bottom-nav-height) + env(safe-area-inset-bottom));
+            padding-bottom: env(safe-area-inset-bottom);
+            background-color: rgba(15, 23, 42, 0.92);
+            backdrop-filter: blur(16px);
+            -webkit-backdrop-filter: blur(16px);
+            border-top: 1px solid var(--border-color);
+            display: flex;
+            align-items: center;
+            justify-content: space-around;
+            z-index: 100;
+        }
+
+        .nav-item {
+            flex: 1;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            justify-content: center;
+            height: var(--bottom-nav-height);
+            color: var(--text-muted);
+            text-decoration: none;
+            font-size: 0.7rem;
+            font-weight: 500;
+            gap: 4px;
+            transition: color 0.15s ease, transform 0.1s ease;
+        }
+
+        .nav-item svg {
+            width: 22px;
+            height: 22px;
+            fill: none;
+            stroke: currentColor;
+            stroke-width: 2;
+            stroke-linecap: round;
+            stroke-linejoin: round;
+        }
+
+        .nav-item:active {
+            transform: scale(0.92);
+        }
+
+        .nav-item.active {
+            color: var(--primary-light);
+            font-weight: 600;
+        }
+
+        .nav-item.active svg {
+            stroke: var(--primary-light);
+        }
+
+        /* Core Component Style */
+        .card {
+            background-color: var(--bg-card);
+            border: 1px solid var(--border-color);
+            border-radius: 18px;
+            padding: 1.25rem;
+            margin-bottom: 1rem;
+            box-shadow: 0 10px 25px -5px rgba(0, 0, 0, 0.3);
+        }
+
+        input, select, textarea, button {
+            -webkit-appearance: none;
+            -moz-appearance: none;
+            appearance: none;
+            font-family: inherit;
+        }
+    </style>
+
+    {% block head %}{% endblock %}
+</head>
+<body>
+
+    <!-- Header Trực quan -->
+    <header class="app-header">
+        <a href="/" class="header-brand">
+            <img src="https://ejbillnpxxiubbiyyaxn.supabase.co/storage/v1/object/public/publicLogo/LOGO.png" alt="Logo Máy In Đại Thành" class="header-logo">
+            <div class="header-title-box">
+                <span class="header-title">TRUNG TÂM QUẢN TRỊ</span>
+                <span class="header-subtitle">MÁY IN ĐẠI THÀNH</span>
+            </div>
+        </a>
+        <a href="/auth/logout" class="logout-btn" title="Đăng xuất">
+            <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                <path d="M9 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h4"></path>
+                <polyline points="16 17 21 12 16 7"></polyline>
+                <line x1="21" y1="12" x2="9" y2="12"></line>
+            </svg>
+        </a>
+    </header>
+
+    <!-- Khu vực nội dung chính -->
+    <main class="app-content">
+        {% block content %}{% endblock %}
+    </main>
+
+    <!-- Bottom Navigation Bar -->
+    <nav class="bottom-nav">
+        <!-- 1. Trang chủ Hub -->
+        <a href="/" class="nav-item {% if request.url.path == '/' %}active{% endif %}">
+            <svg viewBox="0 0 24 24">
+                <path d="M3 9l9-7 9 7v11a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2z"></path>
+                <polyline points="9 22 9 12 15 12 15 22"></polyline>
+            </svg>
+            <span>Trang chủ</span>
+        </a>
+
+        <!-- 2. App Chấm Công (HuggingFace) -->
+        <a href="https://mayindaithanh-lapdat.hf.space" target="_blank" rel="noopener noreferrer" class="nav-item">
+            <svg viewBox="0 0 24 24">
+                <circle cx="12" cy="12" r="10"></circle>
+                <polyline points="12 6 12 12 16 14"></polyline>
+            </svg>
+            <span>Chấm công</span>
+        </a>
+
+        <!-- 3. App Bảo Hành (HuggingFace) -->
+        <a href="https://mayindaithanh-baohanh.hf.space" target="_blank" rel="noopener noreferrer" class="nav-item">
+            <svg viewBox="0 0 24 24">
+                <path d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10z"></path>
+            </svg>
+            <span>Bảo hành</span>
+        </a>
+
+        <!-- 4. Thư Viện Máy In (Render) -->
+        <a href="https://printer-guide.onrender.com" target="_blank" rel="noopener noreferrer" class="nav-item">
+            <svg viewBox="0 0 24 24">
+                <path d="M4 19.5A2.5 2.5 0 0 1 6.5 17H20"></path>
+                <path d="M6.5 2H20v20H6.5A2.5 2.5 0 0 1 4 19.5v-15A2.5 2.5 0 0 1 6.5 2z"></path>
+            </svg>
+            <span>Thư viện</span>
+        </a>
+    </nav>
+
+    {% block scripts %}{% endblock %}
+</body>
+</html>
