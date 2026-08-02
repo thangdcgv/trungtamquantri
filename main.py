@@ -6,9 +6,10 @@ from app.warranty import router as warranty_router
 from app.auth import router as auth_router
 from app.admin_routes import router as admin_router
 from app.cham_cong import router as cham_cong_router
+import os
 
 app = FastAPI(title="Máy In Đại Thành Center Hub")
-
+os.makedirs("app/static", exist_ok=True)
 # Mount static files từ thư mục app/static
 app.mount("/static", StaticFiles(directory="app/static"), name="static")
 
