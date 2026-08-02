@@ -1,0 +1,376 @@
+{% extends "base.html" %}
+
+{% block title %}Chi Tiết Chấm Công - {{ item.so_hoa_don }}{% endblock %}
+
+{% block head %}
+<style>
+    /* Card Container */
+    .detail-card {
+        max-width: 850px;
+        margin: 0 auto;
+        background: #0f172a;
+        border: 1px solid rgba(255, 255, 255, 0.1);
+        border-radius: 18px;
+        padding: 1.25rem;
+        box-shadow: 0 25px 50px -12px rgba(0, 0, 0, 0.6);
+    }
+
+    @media (min-width: 640px) {
+        .detail-card { padding: 2rem; }
+    }
+
+    /* Top Navigation & Header */
+    .header-bar {
+        display: flex;
+        align-items: center;
+        justify-content: space-between;
+        margin-bottom: 1.5rem;
+        padding-bottom: 1rem;
+        border-bottom: 1px solid rgba(255, 255, 255, 0.08);
+        gap: 0.75rem;
+    }
+
+    .btn-back {
+        display: inline-flex;
+        align-items: center;
+        gap: 0.4rem;
+        background: rgba(255, 255, 255, 0.05);
+        color: #94a3b8;
+        border: 1px solid rgba(255, 255, 255, 0.1);
+        padding: 0.5rem 0.85rem;
+        border-radius: 10px;
+        font-size: 0.85rem;
+        font-weight: 600;
+        text-decoration: none;
+        transition: all 0.2s ease;
+        white-space: nowrap;
+    }
+
+    .btn-back:hover {
+        background: rgba(255, 255, 255, 0.12);
+        color: #f8fafc;
+        border-color: rgba(255, 255, 255, 0.2);
+    }
+
+    .header-title {
+        font-size: 1.15rem;
+        font-weight: 800;
+        color: #f8fafc;
+        margin: 0;
+        letter-spacing: 0.02em;
+        text-align: center;
+        flex-grow: 1;
+    }
+
+    /* Status Badges */
+    .badge-status-box {
+        display: inline-flex;
+        align-items: center;
+        gap: 0.5rem;
+        padding: 0.45rem 0.9rem;
+        border-radius: 20px;
+        font-size: 0.82rem;
+        font-weight: 700;
+        letter-spacing: 0.03em;
+    }
+
+    .status-pending {
+        background: rgba(245, 158, 11, 0.15);
+        color: #fbbf24;
+        border: 1px solid rgba(245, 158, 11, 0.3);
+    }
+
+    .status-approved {
+        background: rgba(34, 197, 94, 0.15);
+        color: #4ade80;
+        border: 1px solid rgba(34, 197, 94, 0.3);
+    }
+
+    .status-rejected {
+        background: rgba(239, 68, 68, 0.15);
+        color: #f87171;
+        border: 1px solid rgba(239, 68, 68, 0.3);
+    }
+
+    /* Section Boxes */
+    .section-box {
+        background: rgba(30, 41, 59, 0.25);
+        border: 1px solid rgba(255, 255, 255, 0.07);
+        border-radius: 14px;
+        padding: 1.15rem;
+        margin-bottom: 1.25rem;
+    }
+
+    .group-title {
+        font-size: 0.82rem;
+        font-weight: 800;
+        color: #38bdf8;
+        margin-bottom: 1rem;
+        display: flex;
+        align-items: center;
+        gap: 0.5rem;
+        letter-spacing: 0.04em;
+        text-transform: uppercase;
+    }
+
+    /* Data Display Grid */
+    .info-grid {
+        display: grid;
+        grid-template-columns: 1fr;
+        gap: 0.85rem;
+    }
+
+    @media (min-width: 640px) {
+        .info-grid-2 { grid-template-columns: repeat(2, 1fr); }
+        .info-grid-3 { grid-template-columns: repeat(3, 1fr); }
+    }
+
+    .info-item {
+        background: #090d16;
+        border: 1px solid rgba(255, 255, 255, 0.06);
+        border-radius: 10px;
+        padding: 0.75rem 0.9rem;
+    }
+
+    .info-label {
+        font-size: 0.72rem;
+        color: #94a3b8;
+        font-weight: 600;
+        text-transform: uppercase;
+        margin-bottom: 0.25rem;
+    }
+
+    .info-value {
+        font-size: 0.95rem;
+        font-weight: 700;
+        color: #f8fafc;
+        word-break: break-word;
+    }
+
+    .info-value-highlight {
+        color: #38bdf8;
+        font-size: 1.1rem;
+    }
+
+    .info-value-money {
+        color: #4ade80;
+        font-size: 1.15rem;
+        font-weight: 800;
+    }
+
+    /* Approval Note Box */
+    .note-box {
+        background: rgba(15, 23, 42, 0.6);
+        border-left: 4px solid #38bdf8;
+        border-radius: 6px;
+        padding: 0.85rem 1rem;
+        color: #cbd5e1;
+        font-size: 0.88rem;
+        line-height: 1.5;
+    }
+
+    .note-box.rejected {
+        border-left-color: #ef4444;
+        background: rgba(239, 68, 68, 0.08);
+    }
+
+    /* Image Gallery Grid */
+    .image-gallery {
+        display: grid;
+        grid-template-columns: repeat(auto-fill, minmax(130px, 1fr));
+        gap: 0.75rem;
+        margin-top: 0.5rem;
+    }
+
+    .gallery-img-thumb {
+        width: 100%;
+        height: 110px;
+        object-fit: cover;
+        border-radius: 10px;
+        border: 1px solid rgba(255, 255, 255, 0.12);
+        cursor: pointer;
+        transition: transform 0.2s, border-color 0.2s;
+    }
+
+    .gallery-img-thumb:hover {
+        transform: scale(1.03);
+        border-color: #38bdf8;
+    }
+
+    /* Lightbox Modal */
+    .modal-overlay {
+        display: none;
+        position: fixed;
+        inset: 0;
+        background: rgba(0, 0, 0, 0.85);
+        backdrop-filter: blur(5px);
+        z-index: 9999;
+        align-items: center;
+        justify-content: center;
+        padding: 1rem;
+    }
+
+    .modal-overlay.active { display: flex; }
+
+    .modal-img-preview {
+        max-width: 95%;
+        max-height: 85vh;
+        border-radius: 12px;
+        box-shadow: 0 20px 25px -5px rgba(0, 0, 0, 0.8);
+    }
+
+    .modal-close-btn {
+        position: absolute;
+        top: 20px;
+        right: 20px;
+        background: rgba(255, 255, 255, 0.2);
+        color: #fff;
+        border: none;
+        font-size: 1.5rem;
+        width: 40px;
+        height: 40px;
+        border-radius: 50%;
+        cursor: pointer;
+    }
+</style>
+{% endblock %}
+
+{% block content %}
+<div class="detail-card">
+    <!-- Header Bar -->
+    <div class="header-bar">
+        <a href="javascript:history.back()" class="btn-back">
+            <span>←</span> Quay lại
+        </a>
+        <h1 class="header-title">📋 CHI TIẾT CÔNG LẮP ĐẶT</h1>
+        <div style="width: 80px;" class="d-none d-sm-block"></div>
+    </div>
+
+    <!-- Status Banner -->
+    <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 1.25rem;">
+        <span style="font-size: 0.85rem; color: #94a3b8; font-weight: 600;">Trạng thái phiếu:</span>
+        <div class="badge-status-box 
+            {% if item.trang_thai == 'Đã duyệt' %}status-approved
+            {% elif item.trang_thai == 'Từ chối' %}status-rejected
+            {% else %}status-pending{% endif %}">
+            {% if item.trang_thai == 'Đã duyệt' %}✅ Đã duyệt
+            {% elif item.trang_thai == 'Từ chối' %}❌ Từ chối
+            {% else %}⏳ Chờ duyệt{% endif %}
+        </div>
+    </div>
+
+    <!-- 1. Thông tin chung -->
+    <div class="section-box">
+        <div class="group-title">👤 THÔNG TIN KỸ THUẬT & HÓA ĐƠN</div>
+        <div class="info-grid info-grid-2">
+            <div class="info-item">
+                <div class="info-label">Kỹ thuật viên</div>
+                <div class="info-value">{{ item.ten or item.username }}</div>
+            </div>
+            <div class="info-item">
+                <div class="info-label">Số Hóa Đơn / Mã Đơn</div>
+                <div class="info-value info-value-highlight">🧾 {{ item.so_hoa_don }}</div>
+            </div>
+            <div class="info-item">
+    <div class="info-label">Tài khoản (Username)</div>
+        <div class="info-value" style="color: #94a3b8;">
+            @{{ item.username.split('@')[0] if item.username else '' }}
+        </div>
+    </div>
+            <div class="info-item">
+                <div class="info-label">Thời gian chấm công</div>
+                <div class="info-value">🕒 {{ item.thoi_gian.strftime('%d/%m/%Y - %H:%M') if item.thoi_gian else 'N/A' }}</div>
+            </div>
+        </div>
+    </div>
+
+    <!-- 2. Chi tiết Lộ trình & Thành tiền -->
+    <div class="section-box">
+        <div class="group-title">🚗 LỘ TRÌNH & CHI PHÍ LẮP ĐẶT</div>
+        <div class="info-grid info-grid-3">
+            <div class="info-item">
+                <div class="info-label">Quãng đường (KM)</div>
+                <div class="info-value info-value-highlight">
+                    {{ "%.1f"|format(item.quang_duong or 0) }} km
+                </div>
+            </div>
+            <div class="info-item">
+                <div class="info-label">Gói Combo</div>
+                <div class="info-value">
+                    {% if item.combo %}Số máy {{ item.combo }}{% else %}Lắp đặt thường{% endif %}
+                </div>
+            </div>
+            <div class="info-item">
+                <div class="info-label">Thành tiền</div>
+                <div class="info-value info-value-money">
+                    {{ "{:,.0f}".format(item.thanh_tien or 0) }} đ
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- 3. Nội dung công việc -->
+    <div class="section-box">
+        <div class="group-title">📝 NỘI DUNG THỰC HIỆN</div>
+        <div class="info-item">
+            <div class="info-value" style="font-weight: 500; line-height: 1.6; white-space: pre-line;">
+                {{ item.noi_dung or 'Không có nội dung chi tiết.' }}
+            </div>
+        </div>
+    </div>
+
+    <!-- 4. Ghi chú duyệt của Quản trị viên -->
+    {% if item.ghi_chu_duyet or item.trang_thai != 'Chờ duyệt' %}
+    <div class="section-box">
+        <div class="group-title">💬 GHI CHÚ TỪ QUẢN TRỊ VIÊN</div>
+        <div class="note-box {% if item.trang_thai == 'Từ chối' %}rejected{% endif %}">
+            {{ item.ghi_chu_duyet or 'Chưa có ghi chú duyệt.' }}
+        </div>
+    </div>
+    {% endif %}
+
+    <!-- 5. Hình ảnh nghiệm thu -->
+    <div class="section-box" style="margin-bottom: 0;">
+        <div class="group-title">🖼️ HÌNH ẢNH NGHIỆM THU / CHẤM CÔNG</div>
+        {% set img_list = item.hinh_anh.split(',') if item.hinh_anh and ',' in item.hinh_anh else ([item.hinh_anh] if item.hinh_anh else []) %}
+        
+        {% if img_list and img_list|length > 0 %}
+            <div class="image-gallery">
+                {% for img in img_list %}
+                    {% set img_url = img.strip() %}
+                    {% if img_url %}
+                        <img src="{{ img_url }}" class="gallery-img-thumb" onclick="openLightbox('{{ img_url }}')" alt="Ảnh nghiệm thu">
+                    {% endif %}
+                {% endfor %}
+            </div>
+        {% else %}
+            <div style="font-size: 0.85rem; color: #64748b; font-style: italic; padding: 0.5rem 0;">
+                📷 Không có hình ảnh đính kèm.
+            </div>
+        {% endif %}
+    </div>
+</div>
+
+<!-- Lightbox Xem Ảnh Phóng To -->
+<div id="lightboxModal" class="modal-overlay" onclick="closeLightbox()">
+    <button type="button" class="modal-close-btn" onclick="closeLightbox()">&times;</button>
+    <img id="lightboxImg" class="modal-img-preview" src="" alt="Ảnh phóng to" onclick="event.stopPropagation()">
+</div>
+
+<script>
+    function openLightbox(url) {
+        document.getElementById('lightboxImg').src = url;
+        document.getElementById('lightboxModal').classList.add('active');
+    }
+
+    function closeLightbox() {
+        document.getElementById('lightboxModal').classList.remove('active');
+        document.getElementById('lightboxImg').src = '';
+    }
+
+    // Đóng Lightbox khi bấm phím ESC
+    document.addEventListener('keydown', function(e) {
+        if (e.key === 'Escape') closeLightbox();
+    });
+</script>
+{% endblock %}

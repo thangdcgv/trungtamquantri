@@ -1,0 +1,650 @@
+{% extends "base.html" %}
+
+{% block title %}Tạo Phiếu Bảo Hành - Máy In Đại Thành{% endblock %}
+
+{% block head %}
+<style>
+    /* Reset & Card Container */
+    .warranty-card {
+        max-width: 900px;
+        margin: 0 auto;
+        background: #0f172a;
+        border: 1px solid rgba(255, 255, 255, 0.1);
+        border-radius: 18px;
+        padding: 1.25rem;
+        box-shadow: 0 25px 50px -12px rgba(0, 0, 0, 0.6);
+    }
+
+    @media (min-width: 640px) {
+        .warranty-card {
+            padding: 2rem;
+        }
+    }
+
+    /* Top Navigation & Header */
+    .header-bar {
+        display: flex;
+        align-items: center;
+        justify-content: space-between;
+        margin-bottom: 1.5rem;
+        padding-bottom: 1rem;
+        border-bottom: 1px solid rgba(255, 255, 255, 0.08);
+        gap: 0.75rem;
+    }
+
+    .btn-back {
+        display: inline-flex;
+        align-items: center;
+        gap: 0.4rem;
+        background: rgba(255, 255, 255, 0.05);
+        color: #94a3b8;
+        border: 1px solid rgba(255, 255, 255, 0.1);
+        padding: 0.5rem 0.85rem;
+        border-radius: 10px;
+        font-size: 0.85rem;
+        font-weight: 600;
+        text-decoration: none;
+        transition: all 0.2s ease;
+        white-space: nowrap;
+    }
+
+    .btn-back:hover {
+        background: rgba(255, 255, 255, 0.12);
+        color: #f8fafc;
+        border-color: rgba(255, 255, 255, 0.2);
+    }
+
+    .form-header-title {
+        font-size: 1.15rem;
+        font-weight: 800;
+        color: #f8fafc;
+        margin: 0;
+        letter-spacing: 0.02em;
+        text-align: center;
+        flex-grow: 1;
+    }
+
+    @media (min-width: 640px) {
+        .form-header-title { font-size: 1.35rem; }
+    }
+
+    /* Accordion Nhập Excel */
+    .excel-accordion {
+        background: rgba(30, 41, 59, 0.3);
+        border: 1px dashed rgba(56, 189, 248, 0.35);
+        border-radius: 12px;
+        margin-bottom: 1.5rem;
+        overflow: hidden;
+        transition: border-color 0.2s ease;
+    }
+
+    .excel-accordion:hover {
+        border-color: rgba(56, 189, 248, 0.7);
+    }
+
+    .excel-header {
+        padding: 0.85rem 1rem;
+        font-size: 0.85rem;
+        font-weight: 700;
+        color: #38bdf8;
+        cursor: pointer;
+        display: flex;
+        align-items: center;
+        gap: 0.5rem;
+        user-select: none;
+    }
+
+    /* Policy Selection Box */
+    .policy-box {
+        display: grid;
+        grid-template-columns: 1fr;
+        gap: 1rem;
+        background: linear-gradient(145deg, rgba(30, 41, 59, 0.7), rgba(15, 23, 42, 0.8));
+        border: 1px solid rgba(56, 189, 248, 0.2);
+        border-radius: 14px;
+        padding: 1.15rem;
+        margin-bottom: 1.5rem;
+    }
+
+    @media (min-width: 640px) {
+        .policy-box {
+            grid-template-columns: 1.4fr 1fr;
+            align-items: center;
+        }
+    }
+
+    .badge-status {
+        display: flex;
+        align-items: center;
+        justify-content: space-around;
+        background: #090d16;
+        border: 1px solid rgba(255, 255, 255, 0.08);
+        border-radius: 10px;
+        padding: 0.75rem 0.5rem;
+    }
+
+    /* Section Boxes */
+    .section-box {
+        background: rgba(30, 41, 59, 0.25);
+        border: 1px solid rgba(255, 255, 255, 0.07);
+        border-radius: 14px;
+        padding: 1.15rem;
+        margin-bottom: 1.5rem;
+    }
+
+    @media (min-width: 640px) {
+        .section-box { padding: 1.35rem; }
+    }
+
+    .group-title {
+        font-size: 0.85rem;
+        font-weight: 800;
+        color: #38bdf8;
+        margin-bottom: 1rem;
+        display: flex;
+        align-items: center;
+        gap: 0.5rem;
+        letter-spacing: 0.04em;
+        text-transform: uppercase;
+    }
+
+    /* Highlight Card for Warranty Details */
+    .warranty-highlight-card {
+        background: rgba(15, 23, 42, 0.5);
+        border: 1px solid rgba(255, 255, 255, 0.06);
+        border-radius: 12px;
+        padding: 1rem;
+        margin-bottom: 1rem;
+    }
+
+    .sub-group-title {
+        font-size: 0.75rem;
+        font-weight: 700;
+        color: #94a3b8;
+        text-transform: uppercase;
+        letter-spacing: 0.05em;
+        margin-bottom: 0.75rem;
+        display: flex;
+        align-items: center;
+        gap: 0.35rem;
+    }
+
+    /* Responsive Grids */
+    .form-grid-2 {
+        display: grid;
+        grid-template-columns: 1fr;
+        gap: 1rem;
+    }
+
+    .form-grid-3 {
+        display: grid;
+        grid-template-columns: 1fr;
+        gap: 1rem;
+    }
+
+    @media (min-width: 640px) {
+        .form-grid-2 { grid-template-columns: repeat(2, 1fr); }
+        .form-grid-3 { grid-template-columns: repeat(3, 1fr); }
+    }
+
+    /* Field Controls */
+    .field-group { margin-bottom: 0.25rem; }
+    
+    .field-label {
+        display: block;
+        font-size: 0.8rem;
+        font-weight: 600;
+        color: #cbd5e1;
+        margin-bottom: 0.4rem;
+    }
+
+    .form-control-custom {
+        width: 100%;
+        background: #090d16;
+        border: 1px solid rgba(255, 255, 255, 0.12);
+        border-radius: 8px;
+        padding: 0.65rem 0.85rem;
+        color: #f8fafc;
+        font-size: 16px;
+        box-sizing: border-box;
+        transition: all 0.15s ease;
+    }
+
+    @media (min-width: 640px) {
+        .form-control-custom { font-size: 0.88rem; }
+    }
+
+    .form-control-custom:focus {
+        outline: none;
+        border-color: #38bdf8;
+        box-shadow: 0 0 0 3px rgba(56, 189, 248, 0.15);
+    }
+
+    .form-control-custom:disabled, .form-control-custom[readonly] {
+        background: rgba(255, 255, 255, 0.03);
+        color: #64748b;
+        cursor: not-allowed;
+    }
+
+    /* Modern Integrated Input Spinner */
+    .input-spinner-group {
+        display: flex;
+        align-items: center;
+        background: #090d16;
+        border: 1px solid rgba(255, 255, 255, 0.12);
+        border-radius: 8px;
+        overflow: hidden;
+        transition: border-color 0.15s ease;
+    }
+
+    .input-spinner-group:focus-within {
+        border-color: #38bdf8;
+        box-shadow: 0 0 0 3px rgba(56, 189, 248, 0.15);
+    }
+
+    .input-spinner-group input {
+        border: none !important;
+        background: transparent !important;
+        box-shadow: none !important;
+        text-align: center;
+        font-weight: 700;
+        color: #38bdf8;
+    }
+
+    .btn-spin {
+        background: rgba(255, 255, 255, 0.05);
+        color: #f8fafc;
+        border: none;
+        min-width: 38px;
+        height: 38px;
+        font-size: 1.1rem;
+        font-weight: 700;
+        cursor: pointer;
+        user-select: none;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        transition: background 0.15s;
+    }
+
+    .btn-spin:active { background: #0284c7; color: #fff; }
+    
+    @media (min-width: 640px) {
+        .btn-spin:hover { background: #0284c7; color: #fff; }
+    }
+
+    /* Action Buttons Row */
+    .action-row {
+        display: flex;
+        gap: 0.75rem;
+        margin-top: 1.5rem;
+    }
+
+    .btn-submit {
+        flex: 2;
+        padding: 0.95rem;
+        background: linear-gradient(135deg, #0284c7 0%, #0369a1 100%);
+        color: #ffffff;
+        font-weight: 700;
+        font-size: 0.95rem;
+        border: none;
+        border-radius: 10px;
+        cursor: pointer;
+        box-shadow: 0 4px 12px rgba(2, 132, 199, 0.3);
+        transition: all 0.2s ease;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        gap: 0.5rem;
+        text-decoration: none;
+    }
+
+    .btn-submit:active { transform: scale(0.99); }
+
+    @media (min-width: 640px) {
+        .btn-submit:hover {
+            background: linear-gradient(135deg, #0369a1 0%, #075985 100%);
+            box-shadow: 0 6px 16px rgba(2, 132, 199, 0.4);
+        }
+    }
+
+    .btn-cancel-action {
+        flex: 1;
+        padding: 0.95rem;
+        background: rgba(255, 255, 255, 0.05);
+        border: 1px solid rgba(255, 255, 255, 0.1);
+        color: #94a3b8;
+        font-weight: 600;
+        font-size: 0.9rem;
+        border-radius: 10px;
+        text-align: center;
+        text-decoration: none;
+        transition: all 0.2s;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+    }
+
+    .btn-cancel-action:hover {
+        background: rgba(255, 255, 255, 0.1);
+        color: #f8fafc;
+    }
+
+    .btn-download-template {
+        background: #1e293b;
+        border: 1px solid #38bdf8;
+        color: #38bdf8;
+        margin-bottom: 0.75rem;
+    }
+
+    .btn-download-template:hover {
+        background: #0284c7;
+        color: #ffffff;
+    }
+
+    .badge-new { color: #22c55e !important; }
+    .badge-used { color: #f59e0b !important; }
+</style>
+{% endblock %}
+
+{% block content %}
+<div class="warranty-card">
+    <!-- Top Navigation & Header Bar -->
+    <div class="header-bar">
+        <a href="javascript:history.back()" class="btn-back">
+            <span>←</span> Quay lại
+        </a>
+        <h1 class="form-header-title">➕ THÊM THÔNG TIN BẢO HÀNH</h1>
+        <div style="width: 80px;" class="d-none d-sm-block"></div>
+    </div>
+
+    <!-- 1. Import Excel Collapsible -->
+    <details class="excel-accordion">
+        <summary class="excel-header">
+            <span>❯</span> 📥 NHẬP PHIẾU HÀNG LOẠT TỪ EXCEL
+        </summary>
+        <div style="padding: 1rem; border-top: 1px solid rgba(255,255,255,0.08);">
+            <p style="font-size: 0.8rem; color: #94a3b8; margin-top: 0; margin-bottom: 0.75rem;">
+                Tải file Excel mẫu chuẩn đã được tích hợp danh sách chọn tự động để điền dữ liệu.
+            </p>
+            <a href="/warranty/api/download-template" class="btn-submit btn-download-template" style="font-size: 0.85rem; padding: 0.6rem;">
+                📄 Tải File Mẫu Chuẩn (.xlsx)
+            </a>
+            
+            <label class="field-label" style="margin-top: 0.5rem;">Chọn file Excel đã điền thông tin:</label>
+            <input type="file" id="excel_file_input" accept=".xlsx, .xls" class="form-control-custom" style="font-size: 0.85rem;">
+            <button type="button" onclick="uploadExcel()" class="btn-submit" style="font-size: 0.85rem; padding: 0.65rem; margin-top: 0.75rem;">
+                🚀 Tải lên & Nhập dữ liệu
+            </button>
+        </div>
+    </details>
+
+    <form id="createWarrantyForm" action="/warranty/api/create" method="POST">
+        <!-- Hidden inputs cho các thuộc tính phân loại DB -->
+        <input type="hidden" name="category" id="db_category" value="Máy In Phun">
+        <input type="hidden" name="condition" id="db_condition" value="Mới">
+        <input type="hidden" name="no_page_limit" id="db_no_page_limit" value="false">
+        <input type="hidden" name="cartridge_warranty_months" id="cartridge_warranty_months" value="0">
+
+        <!-- 2. Chọn chính sách áp dụng -->
+        <div class="policy-box">
+            <div>
+                <label class="field-label">📋 Chọn chính sách bảo hành áp dụng *</label>
+                <select name="applied_policy_name" id="applied_policy_name" class="form-control-custom" onchange="applyPolicyPreset(this.value)">
+                    {% if policies %}
+                        {% for p in policies %}
+                            <option value="{{ p.policy_name }}">{{ p.policy_name }}</option>
+                        {% endfor %}
+                    {% else %}
+                        <option value="">-- Chưa có chính sách nào --</option>
+                    {% endif %}
+                </select>
+            </div>
+            <div class="badge-status">
+                <div style="text-align: center;">
+                    <div style="font-size: 0.65rem; color: #94a3b8; text-transform: uppercase; letter-spacing: 0.05em;">PHÂN LOẠI</div>
+                    <div id="txt_category" style="font-size: 0.85rem; font-weight: 700; color: #38bdf8; margin-top: 2px;">📦 Máy In Phun</div>
+                </div>
+                <div style="border-left: 1px solid rgba(255,255,255,0.12); height: 28px;"></div>
+                <div style="text-align: center;">
+                    <div style="font-size: 0.65rem; color: #94a3b8; text-transform: uppercase; letter-spacing: 0.05em;">TÌNH TRẠNG</div>
+                    <div id="txt_condition" class="badge-new" style="font-size: 0.85rem; font-weight: 700; margin-top: 2px;">✨ Mới</div>
+                </div>
+            </div>
+        </div>
+
+        <!-- 3. Thông tin khách hàng -->
+        <div class="section-box">
+            <div class="group-title">👤 THÔNG TIN KHÁCH HÀNG</div>
+            <div class="form-grid-2">
+                <div class="field-group">
+                    <label class="field-label">Tên khách hàng *</label>
+                    <input type="text" name="customer_name" class="form-control-custom" required placeholder="Nhập tên khách hàng">
+                </div>
+                <div class="field-group">
+                    <label class="field-label">Ngày mua máy</label>
+                    <input type="date" name="purchase_date" id="purchase_date" class="form-control-custom">
+                </div>
+                <div class="field-group">
+                    <label class="field-label">Số điện thoại *</label>
+                    <input type="tel" name="phone_number" class="form-control-custom" required placeholder="Nhập số điện thoại">
+                </div>
+                <div class="field-group">
+                    <label class="field-label">Người tạo phiếu</label>
+                    <input type="text" name="staff_name" class="form-control-custom" value="{{ current_user.ho_ten if current_user and current_user.ho_ten else 'Nguyễn Thắng' }}" readonly>
+                </div>
+            </div>
+        </div>
+
+        <!-- 4. Chi tiết bảo hành (Đã tối ưu layout) -->
+        <div class="section-box">
+            <div class="group-title" id="warranty_detail_title">⚙️ CHI TIẾT BẢO HÀNH (MÁY IN PHUN - MỚI)</div>
+            
+            <!-- Thẻ con 1: Định danh thiết bị & Thời gian bảo hành -->
+            <div class="warranty-highlight-card">
+                <div class="sub-group-title">📌 CẤU HÌNH MÁY & THỜI HẠN</div>
+                <div class="form-grid-2">
+                    <div class="field-group">
+                        <label class="field-label">Model máy *</label>
+                        <input type="text" name="model_name" class="form-control-custom" required placeholder="VD: Canon IX6770 / Epson L805">
+                    </div>
+                    <div class="field-group">
+                        <label class="field-label">Số Serial (S/N) *</label>
+                        <input type="text" name="serial_number" class="form-control-custom" required placeholder="Nhập mã S/N duy nhất">
+                    </div>
+                    <div class="field-group">
+                        <label class="field-label">BH Cơ máy (Tháng)</label>
+                        <div class="input-spinner-group">
+                            <button type="button" class="btn-spin" onclick="spin('warranty_months', -1)">-</button>
+                            <input type="number" name="warranty_months" id="warranty_months" class="form-control-custom" value="12" readonly>
+                            <button type="button" class="btn-spin" onclick="spin('warranty_months', 1)">+</button>
+                        </div>
+                    </div>
+                    <div class="field-group">
+                        <label class="field-label" id="head_warranty_label">BH Đầu phun (Tháng)</label>
+                        <div class="input-spinner-group">
+                            <button type="button" class="btn-spin" onclick="spin('head_warranty_months', -1)">-</button>
+                            <input type="number" name="head_warranty_months" id="head_warranty_months" class="form-control-custom" value="1" readonly>
+                            <button type="button" class="btn-spin" onclick="spin('head_warranty_months', 1)">+</button>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Thẻ con 2: Định mức số trang -->
+            <div class="warranty-highlight-card" style="margin-bottom: 0;">
+                <div class="sub-group-title">📊 ĐỊNH MỨC SỐ TRANG IN</div>
+                <div class="form-grid-3">
+                    <div class="field-group">
+                        <label class="field-label">Số trang ban đầu (Trang)</label>
+                        <div class="input-spinner-group">
+                            <button type="button" class="btn-spin" onclick="spin('initial_counter', -100)">-</button>
+                            <input type="number" name="initial_counter" id="initial_counter" class="form-control-custom" value="0">
+                            <button type="button" class="btn-spin" onclick="spin('initial_counter', 100)">+</button>
+                        </div>
+                    </div>
+                    <div class="field-group">
+                        <label class="field-label">Định mức Cơ máy (Trang)</label>
+                        <div class="input-spinner-group">
+                            <button type="button" class="btn-spin" onclick="spin('page_limit_body', -1000)">-</button>
+                            <input type="number" name="page_limit_body" id="page_limit_body" class="form-control-custom" value="10000" readonly>
+                            <button type="button" class="btn-spin" onclick="spin('page_limit_body', 1000)">+</button>
+                        </div>
+                    </div>
+                    <div class="field-group">
+                        <label class="field-label">Định mức Đầu/Mực (Trang)</label>
+                        <div class="input-spinner-group">
+                            <button type="button" class="btn-spin" onclick="spin('page_limit_head', -500)">-</button>
+                            <input type="number" name="page_limit_head" id="page_limit_head" class="form-control-custom" value="3000" readonly>
+                            <button type="button" class="btn-spin" onclick="spin('page_limit_head', 500)">+</button>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <!-- Action Row -->
+        <div class="action-row">
+            <a href="javascript:history.back()" class="btn-cancel-action">
+                Hủy bỏ
+            </a>
+            <button type="submit" class="btn-submit">
+                <span>🚀</span> LƯU PHIẾU BẢO HÀNH
+            </button>
+        </div>
+    </form>
+</div>
+
+<!-- 1. Thẻ chứa dữ liệu JSON từ Backend (Tránh lỗi syntax Linter) -->
+<script id="policies-data" type="application/json">
+    {{ (policies or []) | tojson | safe }}
+</script>
+
+<script>
+    // 2. Parse dữ liệu JSON chính sách
+    const rawPoliciesText = document.getElementById('policies-data').textContent;
+    let DB_POLICIES = [];
+    try {
+        DB_POLICIES = JSON.parse(rawPoliciesText || '[]');
+    } catch (e) {
+        console.error("Lỗi đọc dữ liệu chính sách:", e);
+    }
+    
+    const POLICIES_MAP = {};
+    if (Array.isArray(DB_POLICIES)) {
+        DB_POLICIES.forEach(p => {
+            if (p.policy_name) {
+                POLICIES_MAP[p.policy_name] = p;
+            }
+        });
+    }
+
+    // 3. Logic cập nhật thông số theo gói đã chọn
+    function applyPolicyPreset(policyKey) {
+        const p = POLICIES_MAP[policyKey];
+        if (!p) return;
+
+        const category = p.category || "Máy In Phun";
+        const condition = p.condition || "Mới";
+        const noLimit = Boolean(p.no_page_limit);
+
+        // Đổ dữ liệu vào hidden inputs
+        document.getElementById('db_category').value = category;
+        document.getElementById('db_condition').value = condition;
+        document.getElementById('db_no_page_limit').value = noLimit;
+
+        // Cập nhật giao diện Thẻ trạng thái
+        document.getElementById('txt_category').innerText = "📦 " + category;
+        
+        const condElem = document.getElementById('txt_condition');
+        if (condition === "Mới") {
+            condElem.innerText = "✨ Mới";
+            condElem.className = "badge-new";
+        } else {
+            condElem.innerText = "🛠️ " + condition;
+            condElem.className = "badge-used";
+        }
+
+        document.getElementById('warranty_detail_title').innerText = 
+            `⚙️ CHI TIẾT BẢO HÀNH (${category.toUpperCase()} - ${condition.toUpperCase()})`;
+
+        // Cập nhật Nhãn & Giá trị Bảo hành
+        const isLaser = (category.toLowerCase().includes("laser"));
+        const headLabel = document.getElementById('head_warranty_label');
+        if (headLabel) {
+            headLabel.innerText = isLaser ? "BH Hộp mực (Tháng)" : "BH Đầu phun (Tháng)";
+        }
+
+        const headMonths = isLaser ? (p.cartridge_warranty_months || 0) : (p.head_warranty_months || 0);
+        document.getElementById('warranty_months').value = p.warranty_months || 0;
+        document.getElementById('head_warranty_months').value = headMonths;
+        document.getElementById('cartridge_warranty_months').value = p.cartridge_warranty_months || 0;
+
+        document.getElementById('page_limit_body').value = p.page_limit_body || 0;
+        document.getElementById('page_limit_head').value = p.page_limit_head || 0;
+
+        // Vô hiệu hóa Số trang ban đầu nếu là Máy Laser hoặc Không giới hạn trang
+        const initCounterInput = document.getElementById('initial_counter');
+        if (initCounterInput) {
+            if (isLaser || noLimit) {
+                initCounterInput.value = 0;
+                initCounterInput.disabled = true;
+            } else {
+                initCounterInput.disabled = false;
+            }
+        }
+    }
+
+    function spin(fieldId, delta) {
+        const field = document.getElementById(fieldId);
+        if (!field || field.disabled) return;
+        let val = parseInt(field.value) || 0;
+        field.value = Math.max(0, val + delta);
+    }
+
+    // 4. Hàm upload File Excel
+    async function uploadExcel() {
+        const fileInput = document.getElementById('excel_file_input');
+        if (!fileInput || !fileInput.files.length) {
+            alert("⚠️ Vui lòng chọn file Excel trước khi tải lên!");
+            return;
+        }
+
+        const formData = new FormData();
+        formData.append("file", fileInput.files[0]);
+
+        try {
+            const response = await fetch('/warranty/api/import-excel', {
+                method: 'POST',
+                body: formData
+            });
+            const result = await response.json();
+            if (response.ok) {
+                alert(`🎉 Thành công: Đã nhập ${result.imported_count} phiếu bảo hành vào hệ thống!`);
+                window.location.href = "/";
+            } else {
+                alert(`🚫 Lỗi: ${result.detail || 'Không thể nhập file Excel'}`);
+            }
+        } catch (error) {
+            alert("📡 Lỗi kết nối tới server khi tải file!");
+        }
+    }
+
+    // 5. Khởi tạo mặc định
+    document.addEventListener("DOMContentLoaded", function() {
+        const today = new Date();
+        const yyyy = today.getFullYear();
+        const mm = String(today.getMonth() + 1).padStart(2, '0');
+        const dd = String(today.getDate()).padStart(2, '0');
+        const dateInput = document.getElementById('purchase_date');
+        if (dateInput) {
+            dateInput.value = `${yyyy}-${mm}-${dd}`;
+        }
+
+        const selectElem = document.getElementById('applied_policy_name');
+        if (selectElem && selectElem.value) {
+            applyPolicyPreset(selectElem.value);
+        }
+    });
+</script>
+{% endblock %}

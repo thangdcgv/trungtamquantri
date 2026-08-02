@@ -91,9 +91,17 @@
         font-weight: 600;
         color: var(--primary);
         text-decoration: none;
+        display: inline-flex;
+        align-items: center;
+        gap: 0.25rem;
+        padding: 0.25rem 0.5rem;
+        border-radius: 6px;
+        background: rgba(56, 189, 248, 0.1);
+        transition: background 0.15s ease;
     }
     .feed-card-action:hover {
-        text-decoration: underline;
+        background: rgba(56, 189, 248, 0.2);
+        text-decoration: none;
     }
 
     /* Color Accents for Cards */
@@ -119,11 +127,12 @@
         border-radius: 10px;
         text-decoration: none;
         color: var(--text-main);
-        transition: background 0.15s ease;
+        transition: background 0.15s ease, border-color 0.15s ease;
     }
 
     .feed-item:hover {
         background: var(--bg-card-hover);
+        border-color: rgba(255, 255, 255, 0.15);
     }
 
     .feed-info {
@@ -152,6 +161,13 @@
         text-align: center;
         padding: 0.75rem;
     }
+
+    .action-tag {
+        font-size: 0.7rem;
+        font-weight: 600;
+        color: var(--text-muted);
+        white-space: nowrap;
+    }
 </style>
 {% endblock %}
 
@@ -176,12 +192,16 @@
             </div>
             <div class="feed-card-name">Phiếu Bảo Hành Mới Tạo</div>
         </div>
-        <a href="https://mayindaithanh-baohanh.hf.space" target="_blank" rel="noopener noreferrer" class="feed-card-action">Mở App ➔</a>
+        <!-- Điều hướng nội bộ tới giao diện Tạo Phiếu Mới -->
+        <a href="/warranty/create" class="feed-card-action">
+            ➕ Tạo phiếu mới
+        </a>
     </div>
     <div class="feed-list">
         {% if recent_warranties %}
             {% for item in recent_warranties %}
-            <a href="https://mayindaithanh-baohanh.hf.space" target="_blank" rel="noopener noreferrer" class="feed-item">
+            <!-- Điều hướng tới giao diện Xem / Cập nhật phiếu bảo hành theo ID -->
+            <a href="/warranty/{{ item.id }}" class="feed-item">
                 <div class="feed-info">
                     <span class="feed-title">
                         {{ item.customer_name | default('Khách hàng') }} - {{ item.category | default('Máy in') }} 
@@ -189,7 +209,7 @@
                         {{ item.model_name | default('N/A') }}
                     </span>
                     <span class="feed-meta">
-                        Thời gian: 
+                        S/N: {{ item.serial_number | default('N/A') }} | Ngày tạo: 
                         {% if item.created_at %}
                             {{ item.created_at[8:10] }}/{{ item.created_at[5:7] }}/{{ item.created_at[0:4] }} {{ item.created_at[11:16] }}
                         {% else %}
@@ -197,7 +217,7 @@
                         {% endif %}
                     </span>
                 </div>
-                <span style="font-size: 0.75rem; color: var(--text-muted);">➔</span>
+                <span class="action-tag">Xem/Sửa ➔</span>
             </a>
             {% endfor %}
         {% else %}
@@ -218,28 +238,39 @@
             </div>
             <div class="feed-card-name">Đơn Chấm Công Gần Nhất</div>
         </div>
-        <a href="https://mayindaithanh-lapdat.hf.space" target="_blank" rel="noopener noreferrer" class="feed-card-action">Mở App ➔</a>
+        <!-- Điều hướng tới danh sách xem đơn -->
+        <a href="https://mayindaithanh-lapdat.hf.space/list" target="_blank" rel="noopener noreferrer" class="feed-card-action">
+            👁️ Xem danh sách
+        </a>
     </div>
     <div class="feed-list">
         {% if recent_installations %}
             {% for item in recent_installations %}
-            <a href="https://mayindaithanh-lapdat.hf.space" target="_blank" rel="noopener noreferrer" class="feed-item">
+            <!-- Điều hướng tương đối tới Route FastAPI: /cham-cong/detail/{id} -->
+            <a href="/cham-cong/detail/{{ item.id }}" class="feed-item">
                 <div class="feed-info">
                     <span class="feed-title">
-                        {{ item.ten | default('KTV') }} - {{ item.trang_thai | default('Chờ duyệt') }} 
-                        <span style="color: var(--primary-light);">||</span> 
+                        {{ item.ten | default('KTV') }} - 
+                        <span class="status-badge status-{{ item.trang_thai }}">
+                            {{ item.trang_thai | default('Chờ duyệt') }}
+                        </span>
+                        <span style="color: var(--primary-light, #38bdf8); margin: 0 4px;">||</span> 
                         HĐ: {{ item.so_hoa_don | default('N/A') }}
                     </span>
                     <span class="feed-meta">
-                        Thời gian: 
+                        🕒 Thời gian: 
                         {% if item.thoi_gian %}
-                            {{ item.thoi_gian[8:10] }}/{{ item.thoi_gian[5:7] }}/{{ item.thoi_gian[0:4] }} {{ item.thoi_gian[11:16] }}
+                            {% if item.thoi_gian is string %}
+                                {{ item.thoi_gian[8:10] }}/{{ item.thoi_gian[5:7] }}/{{ item.thoi_gian[0:4] }} {{ item.thoi_gian[11:16] }}
+                            {% else %}
+                                {{ item.thoi_gian.strftime('%d/%m/%Y %H:%M') }}
+                            {% endif %}
                         {% else %}
                             N/A
                         {% endif %}
                     </span>
                 </div>
-                <span style="font-size: 0.75rem; color: var(--text-muted);">➔</span>
+                <span class="action-tag">Xem chi tiết 👁️</span>
             </a>
             {% endfor %}
         {% else %}
@@ -260,24 +291,25 @@
             </div>
             <div class="feed-card-name">Bài Viết Thư Viện Gần Nhất</div>
         </div>
-        <a href="https://printer-guide.onrender.com" target="_blank" rel="noopener noreferrer" class="feed-card-action">Mở App ➔</a>
+        <a href="https://printer-guide.onrender.com" target="_blank" rel="noopener noreferrer" class="feed-card-action">Đến Thư Viện ➔</a>
     </div>
     <div class="feed-list">
         {% if recent_library %}
             {% for item in recent_library %}
-            <a href="https://printer-guide.onrender.com" target="_blank" rel="noopener noreferrer" class="feed-item">
+            <a href="https://printer-guide.onrender.com/post/{{ item.id }}" target="_blank" rel="noopener noreferrer" class="feed-item">
                 <div class="feed-info">
                     <span class="feed-title">{{ item.title | default('Tiêu đề tài liệu') }}</span>
                     <span class="feed-meta">
                         Thời gian: 
                         {% if item.created_at %}
-                            {{ item.created_at[8:10] }}/{{ item.created_at[5:7] }}/{{ item.created_at[0:4] }} {{ item.created_at[11:16] }}
+                            {% set clean_date = item.created_at | string %}
+                            {{ clean_date[8:10] }}/{{ clean_date[5:7] }}/{{ clean_date[0:4] }} {% if clean_date | length >= 16 %}{{ clean_date[11:16] }}{% endif %}
                         {% else %}
                             N/A
                         {% endif %}
                     </span>
                 </div>
-                <span style="font-size: 0.75rem; color: var(--text-muted);">➔</span>
+                <span class="action-tag">Đọc bài ➔</span>
             </a>
             {% endfor %}
         {% else %}
@@ -286,7 +318,9 @@
     </div>
 </div>
 
-{% if request.session.get('role') == 'Admin' %}
+<!-- Section: Quản trị hệ thống -->
+<div class="section-title">Quản trị hệ thống</div>
+
 <div class="card accent-purple" style="padding: 0.85rem; margin-top: 1rem;">
     <div class="feed-card-header">
         <div class="feed-card-title-group">
@@ -308,9 +342,8 @@
                 <span class="feed-title">Danh sách Quản trị viên & Kỹ thuật viên</span>
                 <span class="feed-meta">Xem, thêm mới hoặc phân quyền tài khoản hệ thống</span>
             </div>
-            <span style="font-size: 0.75rem; color: var(--text-muted);">➔</span>
+            <span class="action-tag">Quản lý ➔</span>
         </a>
     </div>
 </div>
-{% endif %}
 {% endblock %}

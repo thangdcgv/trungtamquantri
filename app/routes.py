@@ -1,5 +1,6 @@
 from fastapi import APIRouter, Request
 from fastapi.templating import Jinja2Templates
+from datetime import datetime, timezone
 from config import supabase
 
 router = APIRouter()
@@ -22,23 +23,29 @@ async def index(request: Request):
     
     try:
         if supabase:
-            # 1. Truy vấn 5 phiếu bảo hành gần nhất
+            # Lấy mốc thời gian ngày đầu tiên của tháng hiện tại (chuẩn UTC)
+            now = datetime.now(timezone.utc)
+            first_day_of_month = datetime(now.year, now.month, 1, tzinfo=timezone.utc).isoformat()
+
+            # 1. Truy vấn 5 phiếu bảo hành gần nhất trong tháng hiện tại (dựa vào created_at)
             res_warranty = supabase.table('warranty_records') \
                 .select('*') \
+                .gte('created_at', first_day_of_month) \
                 .order('created_at', desc=True) \
                 .limit(5) \
                 .execute()
             warranties = res_warranty.data if res_warranty and res_warranty.data else []
 
-            # 2. Truy vấn 3 bản ghi chấm công gần nhất
+            # 2. Truy vấn 5 đơn chấm công gần nhất trong tháng hiện tại (dựa vào thoi_gian)
             res_cham_cong = supabase.table('cham_cong') \
                 .select('*') \
-                .order('thoi_gian', desc=True) \
-                .limit(3) \
+                .gte('thoi_gian', first_day_of_month) \
+                .order('id', desc=True) \
+                .limit(5) \
                 .execute()
             installations = res_cham_cong.data if res_cham_cong and res_cham_cong.data else []
 
-            # 3. Truy vấn 3 bài hướng dẫn gần nhất từ bảng guide
+            # 3. Truy vấn 3 bài hướng dẫn gần nhất từ bảng guide (giữ nguyên không giới hạn tháng)
             res_guide = supabase.table('guide') \
                 .select('*') \
                 .eq('is_active', True) \
@@ -61,6 +68,7 @@ async def index(request: Request):
             "recent_library": guides
         }
     )
+
 @router.get("/api/health-status")
 async def health_status():
     return {
