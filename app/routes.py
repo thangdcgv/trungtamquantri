@@ -1,6 +1,6 @@
 from fastapi import APIRouter, Request
 from fastapi.templating import Jinja2Templates
-from datetime import datetime, timezone
+from datetime import datetime, timezone, timedelta
 from config import supabase
 
 router = APIRouter()
@@ -23,9 +23,12 @@ async def index(request: Request):
     
     try:
         if supabase:
-            # Lấy mốc thời gian ngày đầu tiên của tháng hiện tại (chuẩn UTC)
-            now = datetime.now(timezone.utc)
-            first_day_of_month = datetime(now.year, now.month, 1, tzinfo=timezone.utc).isoformat()
+            # Xác định múi giờ Việt Nam (UTC+7)
+            vietnam_tz = timezone(timedelta(hours=7))
+            
+            # Lấy mốc thời gian ngày đầu tiên của tháng hiện tại theo giờ Việt Nam
+            now_vn = datetime.now(vietnam_tz)
+            first_day_of_month = datetime(now_vn.year, now_vn.month, 1, tzinfo=vietnam_tz).isoformat()
 
             # 1. Truy vấn 5 phiếu bảo hành gần nhất trong tháng hiện tại (dựa vào created_at)
             res_warranty = supabase.table('warranty_records') \

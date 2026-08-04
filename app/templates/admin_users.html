@@ -4,381 +4,559 @@
 
 {% block head %}
 <style>
+    /* CSS Variables Fallback & Overrides */
+    :root {
+        --bg-surface: rgba(30, 30, 46, 0.6);
+        --bg-surface-hover: rgba(255, 255, 255, 0.04);
+        --border-light: rgba(255, 255, 255, 0.08);
+        --primary-glow: rgba(99, 102, 241, 0.35);
+    }
+
+    /* Container Rộng Rãi (Fluid Full Width) */
+    .admin-container {
+        width: 100%;
+        max-width: 100%;
+        padding: 0 0.5rem;
+    }
+
+    /* Page Header */
     .admin-header {
         display: flex;
         justify-content: space-between;
         align-items: center;
-        margin-bottom: 1.5rem;
+        margin-bottom: 1.75rem;
         flex-wrap: wrap;
-        gap: 1rem;
+        gap: 1.25rem;
     }
-    .admin-title {
-        font-size: 1.35rem;
-        font-weight: 700;
-        color: var(--text-main);
-        letter-spacing: -0.02em;
+    .admin-header-title h1 {
+        font-size: 1.6rem;
+        font-weight: 800;
+        color: var(--text-main, #ffffff);
+        letter-spacing: -0.025em;
+        margin: 0;
+        display: flex;
+        align-items: center;
+        gap: 0.6rem;
     }
-    .btn-primary {
-        background: linear-gradient(135deg, var(--primary), #4f46e5);
-        color: white;
-        border: none;
-        padding: 0.6rem 1.2rem;
+    .admin-header-title p {
+        font-size: 0.875rem;
+        color: var(--text-muted, #94a3b8);
+        margin: 0.35rem 0 0 0;
+    }
+
+    /* Stats Overview Grid (Tận dụng chiều rộng) */
+    .stats-grid {
+        display: grid;
+        grid-template-columns: repeat(auto-fit, minmax(240px, 1fr));
+        gap: 1.25rem;
+        margin-bottom: 1.5rem;
+    }
+    .stat-card {
+        background: var(--bg-surface);
+        border: 1px solid var(--border-light);
+        backdrop-filter: blur(12px);
+        border-radius: 14px;
+        padding: 1.25rem 1.5rem;
+        display: flex;
+        align-items: center;
+        justify-content: space-between;
+        transition: transform 0.2s, border-color 0.2s;
+    }
+    .stat-card:hover {
+        transform: translateY(-2px);
+        border-color: rgba(255, 255, 255, 0.18);
+    }
+    .stat-info .stat-label {
+        font-size: 0.78rem;
+        text-transform: uppercase;
+        letter-spacing: 0.05em;
+        color: var(--text-muted, #94a3b8);
+        font-weight: 600;
+    }
+    .stat-info .stat-value {
+        font-size: 1.65rem;
+        font-weight: 800;
+        color: var(--text-main, #ffffff);
+        margin-top: 0.25rem;
+    }
+    .stat-icon-wrapper {
+        width: 48px;
+        height: 48px;
+        border-radius: 12px;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        background: rgba(99, 102, 241, 0.12);
+        color: #818cf8;
+    }
+
+    /* Modern Buttons */
+    .btn-custom {
+        display: inline-flex;
+        align-items: center;
+        justify-content: center;
+        gap: 0.5rem;
+        padding: 0.65rem 1.25rem;
         border-radius: 10px;
         font-size: 0.85rem;
         font-weight: 600;
         cursor: pointer;
+        transition: all 0.2s cubic-bezier(0.16, 1, 0.3, 1);
         text-decoration: none;
-        display: inline-flex;
-        align-items: center;
-        gap: 0.5rem;
-        box-shadow: 0 4px 12px rgba(99, 102, 241, 0.25);
-        transition: all 0.2s ease;
+        border: 1px solid transparent;
     }
-    .btn-primary:hover {
+    .btn-primary-gradient {
+        background: linear-gradient(135deg, #6366f1 0%, #4f46e5 100%);
+        color: #ffffff;
+        box-shadow: 0 4px 14px var(--primary-glow);
+    }
+    .btn-primary-gradient:hover {
         transform: translateY(-1px);
+        box-shadow: 0 6px 20px var(--primary-glow);
         opacity: 0.95;
     }
+    .btn-glass {
+        background: rgba(255, 255, 255, 0.05);
+        border-color: var(--border-light);
+        color: var(--text-main, #ffffff);
+    }
+    .btn-glass:hover {
+        background: rgba(255, 255, 255, 0.09);
+        border-color: rgba(255, 255, 255, 0.2);
+    }
 
-    /* Toolbar & Search */
-    .toolbar-card {
+    /* Main Section Panel */
+    .panel-card {
+        background: var(--bg-surface);
+        border: 1px solid var(--border-light);
+        backdrop-filter: blur(12px);
+        border-radius: 16px;
+        overflow: hidden;
+        box-shadow: 0 10px 30px rgba(0, 0, 0, 0.25);
+    }
+
+    /* Toolbar & Filter Bar */
+    .toolbar-wrapper {
+        padding: 1.25rem 1.5rem;
+        border-bottom: 1px solid var(--border-light);
         display: flex;
         justify-content: space-between;
         align-items: center;
         gap: 1rem;
-        margin-bottom: 1.25rem;
         flex-wrap: wrap;
     }
-    .search-box {
+    .search-box-custom {
         position: relative;
         flex: 1;
-        min-width: 260px;
+        max-width: 480px;
+        min-width: 280px;
     }
-    .search-input {
+    .search-input-custom {
         width: 100%;
-        background: rgba(255, 255, 255, 0.04);
-        border: 1px solid var(--border-color);
-        padding: 0.6rem 0.9rem 0.6rem 2.4rem;
+        background: rgba(0, 0, 0, 0.2);
+        border: 1px solid var(--border-light);
+        padding: 0.65rem 1rem 0.65rem 2.6rem;
         border-radius: 10px;
-        color: var(--text-main);
-        font-size: 0.85rem;
-        transition: border-color 0.2s;
+        color: var(--text-main, #ffffff);
+        font-size: 0.875rem;
+        transition: all 0.2s;
     }
-    .search-input:focus {
-        border-color: var(--primary);
+    .search-input-custom:focus {
+        border-color: #6366f1;
         outline: none;
-        background: rgba(255, 255, 255, 0.07);
+        background: rgba(0, 0, 0, 0.35);
+        box-shadow: 0 0 0 3px rgba(99, 102, 241, 0.2);
     }
-    .search-icon {
+    .search-icon-custom {
         position: absolute;
-        left: 0.8rem;
+        left: 0.85rem;
         top: 50%;
         transform: translateY(-50%);
-        color: var(--text-muted);
-        font-size: 0.85rem;
+        color: var(--text-muted, #94a3b8);
+        pointer-events: none;
+        display: flex;
     }
 
-    /* Table styling */
-    .table-container {
+    /* Data Table Styling */
+    .table-responsive {
+        width: 100%;
         overflow-x: auto;
     }
-    .data-table {
+    .modern-table {
         width: 100%;
-        border-collapse: collapse;
+        border-collapse: separate;
+        border-spacing: 0;
         text-align: left;
-        font-size: 0.85rem;
+        font-size: 0.875rem;
     }
-    .data-table th, .data-table td {
-        padding: 1rem 1.25rem;
-        border-bottom: 1px solid var(--border-color);
-        vertical-align: middle;
-    }
-    .data-table th {
-        color: var(--text-muted);
-        font-weight: 600;
+    .modern-table th {
+        background: rgba(0, 0, 0, 0.15);
+        color: var(--text-muted, #94a3b8);
+        font-weight: 700;
         text-transform: uppercase;
         font-size: 0.72rem;
-        letter-spacing: 0.06em;
-        background: rgba(255, 255, 255, 0.01);
+        letter-spacing: 0.08em;
+        padding: 1rem 1.5rem;
+        border-bottom: 1px solid var(--border-light);
     }
-    .data-table tr {
-        transition: background 0.15s;
+    .modern-table td {
+        padding: 1.1rem 1.5rem;
+        border-bottom: 1px solid var(--border-light);
+        vertical-align: middle;
+        color: var(--text-main, #e2e8f0);
     }
-    .data-table tr:hover {
-        background: rgba(255, 255, 255, 0.025);
+    .modern-table tbody tr {
+        transition: background 0.15s ease;
+    }
+    .modern-table tbody tr:hover {
+        background: var(--bg-surface-hover);
+    }
+    .modern-table tbody tr:last-child td {
+        border-bottom: none;
     }
 
-    /* User Profile Cell */
-    .user-cell {
+    /* User Info Cell */
+    .user-profile-meta {
         display: flex;
         align-items: center;
-        gap: 0.85rem;
+        gap: 1rem;
     }
-    .user-avatar {
-        width: 38px;
-        height: 38px;
-        border-radius: 50%;
-        background: linear-gradient(135deg, var(--primary), #8b5cf6);
-        color: white;
+    .avatar-circle {
+        width: 42px;
+        height: 42px;
+        border-radius: 12px;
+        background: linear-gradient(135deg, #6366f1 0%, #a855f7 100%);
+        color: #ffffff;
         display: flex;
         align-items: center;
         justify-content: center;
-        font-weight: 700;
-        font-size: 0.9rem;
+        font-weight: 800;
+        font-size: 1rem;
         flex-shrink: 0;
-        box-shadow: 0 2px 6px rgba(0,0,0,0.2);
+        box-shadow: 0 4px 10px rgba(0, 0, 0, 0.25);
+    }
+    .user-name {
+        font-weight: 700;
+        color: var(--text-main, #ffffff);
+        font-size: 0.92rem;
+        line-height: 1.3;
+    }
+    .user-handle {
+        font-size: 0.78rem;
+        color: var(--text-muted, #94a3b8);
     }
 
-    /* Role Badges */
-    .badge-role {
-        padding: 0.3rem 0.75rem;
-        border-radius: 20px;
-        font-size: 0.72rem;
+    /* Form Controls Inside Table */
+    .select-role-custom {
+        background: rgba(0, 0, 0, 0.25);
+        border: 1px solid var(--border-light);
+        color: var(--text-main, #ffffff);
+        padding: 0.4rem 0.75rem;
+        border-radius: 8px;
+        font-size: 0.8rem;
         font-weight: 600;
-        display: inline-flex;
-        align-items: center;
-        gap: 0.3rem;
+        cursor: pointer;
+        transition: border-color 0.2s;
     }
-    .badge-admin { background: rgba(168, 85, 247, 0.15); color: #c084fc; border: 1px solid rgba(168, 85, 247, 0.3); }
-    .badge-user { background: rgba(56, 189, 248, 0.15); color: #38bdf8; border: 1px solid rgba(56, 189, 248, 0.3); }
+    .select-role-custom:focus {
+        border-color: #6366f1;
+        outline: none;
+    }
 
     /* Action Buttons */
-    .action-group {
+    .actions-flex {
         display: flex;
         gap: 0.5rem;
         justify-content: flex-end;
     }
-    .btn-action {
-        padding: 0.35rem 0.75rem;
-        border-radius: 7px;
-        font-size: 0.78rem;
+    .btn-action-icon {
+        padding: 0.45rem 0.8rem;
+        border-radius: 8px;
+        font-size: 0.8rem;
         font-weight: 600;
         cursor: pointer;
         border: 1px solid transparent;
         transition: all 0.2s;
         display: inline-flex;
         align-items: center;
-        gap: 0.3rem;
+        gap: 0.35rem;
     }
-    .btn-edit {
+    .btn-action-edit {
         background: rgba(59, 130, 246, 0.12);
         color: #60a5fa;
         border-color: rgba(59, 130, 246, 0.25);
     }
-    .btn-edit:hover {
+    .btn-action-edit:hover {
         background: rgba(59, 130, 246, 0.25);
+        border-color: rgba(59, 130, 246, 0.4);
     }
-    .btn-delete {
+    .btn-action-delete {
         background: rgba(239, 68, 68, 0.12);
         color: #f87171;
         border-color: rgba(239, 68, 68, 0.25);
     }
-    .btn-delete:hover {
+    .btn-action-delete:hover {
         background: rgba(239, 68, 68, 0.25);
+        border-color: rgba(239, 68, 68, 0.4);
     }
 
-    /* Modal Popup Styling */
+    /* Modals Upgrade */
     .modal-overlay {
         position: fixed;
         top: 0; left: 0; width: 100%; height: 100%;
-        background: rgba(0, 0, 0, 0.65);
-        backdrop-filter: blur(4px);
+        background: rgba(0, 0, 0, 0.75);
+        backdrop-filter: blur(6px);
         display: none;
         align-items: center;
         justify-content: center;
-        z-index: 1000;
+        z-index: 1050;
         padding: 1rem;
     }
     .modal-overlay.active {
         display: flex;
     }
     .modal-card {
-        background: #1e1e2d;
-        border: 1px solid var(--border-color);
-        border-radius: 16px;
+        background: #181825;
+        border: 1px solid var(--border-light);
+        border-radius: 20px;
         width: 100%;
-        max-width: 550px;
-        box-shadow: 0 20px 40px rgba(0,0,0,0.5);
-        animation: modalFadeIn 0.25s cubic-bezier(0.16, 1, 0.3, 1);
+        max-width: 620px;
+        box-shadow: 0 25px 50px -12px rgba(0, 0, 0, 0.6);
+        animation: modalSlideUp 0.25s cubic-bezier(0.16, 1, 0.3, 1);
         overflow: hidden;
     }
-    @keyframes modalFadeIn {
-        from { opacity: 0; transform: translateY(15px) scale(0.98); }
+    @keyframes modalSlideUp {
+        from { opacity: 0; transform: translateY(20px) scale(0.97); }
         to { opacity: 1; transform: translateY(0) scale(1); }
     }
     .modal-header {
-        padding: 1.25rem 1.5rem;
-        border-bottom: 1px solid var(--border-color);
+        padding: 1.25rem 1.75rem;
+        border-bottom: 1px solid var(--border-light);
         display: flex;
         justify-content: space-between;
         align-items: center;
+        background: rgba(255, 255, 255, 0.02);
     }
     .modal-title {
         font-weight: 700;
-        font-size: 1.05rem;
-        color: var(--text-main);
+        font-size: 1.1rem;
+        color: var(--text-main, #ffffff);
+        display: flex;
+        align-items: center;
+        gap: 0.5rem;
     }
-    .modal-close {
-        background: none;
+    .modal-close-btn {
+        background: transparent;
         border: none;
-        color: var(--text-muted);
-        font-size: 1.25rem;
+        color: var(--text-muted, #94a3b8);
         cursor: pointer;
-        padding: 0.2rem;
+        padding: 0.3rem;
+        border-radius: 6px;
+        display: flex;
+        transition: all 0.2s;
     }
-    .modal-close:hover { color: var(--text-main); }
+    .modal-close-btn:hover {
+        background: rgba(255, 255, 255, 0.1);
+        color: #ffffff;
+    }
     .modal-body {
-        padding: 1.5rem;
+        padding: 1.75rem;
         max-height: 75vh;
         overflow-y: auto;
     }
-
-    /* Form Controls */
-    .form-grid {
+    .form-grid-layout {
         display: grid;
         grid-template-columns: repeat(2, 1fr);
-        gap: 1rem;
+        gap: 1.25rem;
     }
-    .form-group {
-        display: flex;
-        flex-direction: column;
-        gap: 0.35rem;
-        grid-column: span 2;
+    .form-field-full { grid-column: span 2; }
+    .form-field-half { grid-column: span 1; }
+
+    @media (max-width: 640px) {
+        .form-field-half { grid-column: span 2; }
     }
-    .form-group.half {
-        grid-column: span 1;
-    }
-    @media (max-width: 600px) {
-        .form-group.half { grid-column: span 2; }
-    }
-    .form-group label {
-        font-size: 0.78rem;
-        color: var(--text-muted);
+
+    .field-label {
+        display: block;
+        font-size: 0.8rem;
+        color: var(--text-muted, #94a3b8);
         font-weight: 600;
+        margin-bottom: 0.4rem;
     }
-    .form-control {
-        background: rgba(255, 255, 255, 0.05);
-        border: 1px solid var(--border-color);
-        padding: 0.6rem 0.85rem;
-        border-radius: 8px;
-        color: var(--text-main);
-        font-size: 0.85rem;
+    .input-control {
+        width: 100%;
+        background: rgba(0, 0, 0, 0.25);
+        border: 1px solid var(--border-light);
+        padding: 0.65rem 0.9rem;
+        border-radius: 10px;
+        color: var(--text-main, #ffffff);
+        font-size: 0.875rem;
+        box-sizing: border-box;
+        transition: all 0.2s;
     }
-    .form-control:focus {
-        border-color: var(--primary);
+    .input-control:focus {
+        border-color: #6366f1;
         outline: none;
-        background: rgba(255, 255, 255, 0.08);
-    }
-    select.form-control option {
-        background: #1e1e2d;
-        color: var(--text-main);
+        background: rgba(0, 0, 0, 0.4);
+        box-shadow: 0 0 0 3px rgba(99, 102, 241, 0.2);
     }
     .modal-footer {
-        padding: 1rem 1.5rem;
-        border-top: 1px solid var(--border-color);
+        padding: 1.1rem 1.75rem;
+        border-top: 1px solid var(--border-light);
         display: flex;
         justify-content: flex-end;
         gap: 0.75rem;
-        background: rgba(0,0,0,0.1);
+        background: rgba(0, 0, 0, 0.15);
     }
-    .btn-secondary {
-        background: rgba(255, 255, 255, 0.06);
-        color: var(--text-main);
-        border: 1px solid var(--border-color);
-        padding: 0.6rem 1rem;
-        border-radius: 8px;
-        font-size: 0.82rem;
-        font-weight: 600;
-        cursor: pointer;
-    }
-    .btn-secondary:hover { background: rgba(255, 255, 255, 0.1); }
 </style>
 {% endblock %}
 
 {% block content %}
-<div class="admin-header">
-    <div>
-        <div class="admin-title">Quản Lý Tài Khoản & Phân Quyền</div>
-        <div style="font-size: 0.8rem; color: var(--text-muted); margin-top: 0.2rem;">Hệ thống nhân sự và phân quyền kiểm soát vận hành nội bộ</div>
+<div class="admin-container">
+    <!-- Header Page -->
+    <div class="admin-header">
+        <div class="admin-header-title">
+            <h1>
+                <svg width="28" height="28" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round" style="color: #818cf8;"><path d="M16 21v-2a4 4 0 0 0-4-4H6a4 4 0 0 0-4 4v2"></path><circle cx="9" cy="7" r="4"></circle><path d="M22 21v-2a4 4 0 0 0-3-3.87"></path><path d="M16 3.13a4 4 0 0 1 0 7.75"></path></svg>
+                Quản Lý Tài Khoản & Phân Quyền
+            </h1>
+            <p>Hệ thống nhân sự và phân quyền kiểm soát vận hành nội bộ Máy In Đại Thành</p>
+        </div>
+        <div style="display: flex; gap: 0.75rem; flex-wrap: wrap;">
+            <button onclick="openModal('addModal')" class="btn-custom btn-primary-gradient">
+                <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><line x1="12" y1="5" x2="12" y2="19"></line><line x1="5" y1="12" x2="19" y2="12"></line></svg>
+                <span>Thêm Tài Khoản Mới</span>
+            </button>
+            <a href="/" class="btn-custom btn-glass">
+                <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><line x1="19" y1="12" x2="5" y2="12"></line><polyline points="12 19 5 12 12 5"></polyline></svg>
+                <span>Về Trang Chủ</span>
+            </a>
+        </div>
     </div>
-    <div style="display: flex; gap: 0.75rem;">
-        <button onclick="openModal('addModal')" class="btn-primary">
-            <span>➕ Thêm Tài Khoản Mới</span>
-        </button>
-        <a href="/" class="btn-secondary" style="text-decoration: none; display: inline-flex; align-items: center; gap: 0.4rem;">← Về Trang Chủ</a>
-    </div>
-</div>
 
-<!-- Toolbar & Search Bar -->
-<div class="toolbar-card card" style="padding: 1rem 1.25rem;">
-    <div class="search-box">
-        <span class="search-icon">🔍</span>
-        <input type="text" id="userSearchInput" class="search-input" placeholder="Tìm kiếm theo họ tên, tên đăng nhập hoặc email..." onkeyup="filterUsers()">
+    <!-- Stats Overview Cards (Tận dụng diện tích rộng) -->
+    <div class="stats-grid">
+        <div class="stat-card">
+            <div class="stat-info">
+                <div class="stat-label">Tổng Số Nhân Sự</div>
+                <div class="stat-value" id="statTotalUsers">{{ users | length if users else 0 }}</div>
+            </div>
+            <div class="stat-icon-wrapper">
+                <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M17 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2"></path><circle cx="9" cy="7" r="4"></circle><path d="M23 21v-2a4 4 0 0 0-3-3.87"></path><path d="M16 3.13a4 4 0 0 1 0 7.75"></path></svg>
+            </div>
+        </div>
+        <div class="stat-card">
+            <div class="stat-info">
+                <div class="stat-label">Quản Trị Viên (Admin)</div>
+                <div class="stat-value" style="color: #c084fc;">
+                    {% set admin_count = namespace(value=0) %}
+                    {% if users %}
+                        {% for u in users %}{% if u.role == 'Admin' %}{% set admin_count.value = admin_count.value + 1 %}{% endif %}{% endfor %}
+                    {% endif %}
+                    {{ admin_count.value }}
+                </div>
+            </div>
+            <div class="stat-icon-wrapper" style="background: rgba(168, 85, 247, 0.12); color: #c084fc;">
+                <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10z"></path></svg>
+            </div>
+        </div>
+        <div class="stat-card">
+            <div class="stat-info">
+                <div class="stat-label">Tài Khoản Thường (User)</div>
+                <div class="stat-value" style="color: #38bdf8;">
+                    {{ (users | length) - admin_count.value if users else 0 }}
+                </div>
+            </div>
+            <div class="stat-icon-wrapper" style="background: rgba(56, 189, 248, 0.12); color: #38bdf8;">
+                <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M20 21v-2a4 4 0 0 0-4-4H8a4 4 0 0 0-4 4v2"></path><circle cx="12" cy="7" r="4"></circle></svg>
+            </div>
+        </div>
     </div>
-    <div style="font-size: 0.8rem; color: var(--text-muted);">
-        Tổng số nhân sự: <strong id="totalCount" style="color: var(--text-main);">{{ users | length }}</strong>
-    </div>
-</div>
 
-<!-- Danh Sách Tài Khoản Bảng Chuyên Nghiệp -->
-<div class="card" style="padding: 0; overflow: hidden;">
-    <div class="table-container">
-        <table class="data-table" id="usersTable">
-            <thead>
-                <tr>
-                    <th>Nhân sự</th>
-                    <th>Chức danh</th>
-                    <th>Email</th>
-                    <th>Quyền hạn</th>
-                    <th style="text-align: right;">Thao tác</th>
-                </tr>
-            </thead>
-            <tbody>
-                {% if users %}
-                    {% for u in users %}
-                    <tr class="user-row" data-search="{{ u.ho_ten | lower }} {{ u.username | lower }} {{ u.email | lower }}">
-                        <td>
-                            <div class="user-cell">
-                                <div class="user-avatar">
-                                    {{ u.ho_ten[:1] | upper if u.ho_ten else 'U' }}
-                                </div>
-                                <div>
-                                    <div style="font-weight: 600; color: var(--text-main);">{{ u.ho_ten | default('Chưa cập nhật') }}</div>
-                                    <div style="font-size: 0.75rem; color: var(--text-muted);">@{{ u.username }}</div>
-                                </div>
-                            </div>
-                        </td>
-                        <td>
-                            <div style="font-weight: 500; color: var(--text-main);">{{ u.chuc_danh | default('Nhân viên kỹ thuật') }}</div>
-                            <div style="font-size: 0.75rem; color: var(--text-muted);">{{ u.so_dien_thoai | default('Chưa có SĐT') }}</div>
-                        </td>
-                        <td style="color: var(--text-muted); font-size: 0.82rem;">{{ u.email | default('N/A') }}</td>
-                        <td>
-                            <form action="/admin/users/update-role/{{ u.id }}" method="POST" style="display: inline;">
-                                <select name="role" class="form-control" style="padding: 0.3rem 0.6rem; font-size: 0.78rem; width: auto;" onchange="this.form.submit()">
-                                    <option value="User" {% if u.role == 'User' %}selected{% endif %}>User (Thường)</option>
-                                    <option value="Admin" {% if u.role == 'Admin' %}selected{% endif %}>Admin (Quản trị)</option>
-                                </select>
-                            </form>
-                        </td>
-                        <td style="text-align: right;">
-                            <div class="action-group">
-                                <button type="button" class="btn-action btn-edit" data-user='{{ u | tojson | safe }}' onclick='openEditModalFromBtn(this)'>
-                                    ✏️ Sửa
-                                </button>
-                                <form action="/admin/users/delete/{{ u.id }}" method="POST" onsubmit="return confirm('Cảnh báo: Bạn có chắc chắn muốn xóa tài khoản này khỏi hệ thống không?');" style="display: inline;">
-                                    <button type="submit" class="btn-action btn-delete">🗑️ Xóa</button>
-                                </form>
-                            </div>
-                        </td>
-                    </tr>
-                    {% endfor %}
-                {% else %}
+    <!-- Main Table Container -->
+    <div class="panel-card">
+        <!-- Toolbar & Live Search -->
+        <div class="toolbar-wrapper">
+            <div class="search-box-custom">
+                <span class="search-icon-custom">
+                    <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="11" cy="11" r="8"></circle><line x1="21" y1="21" x2="16.65" y2="16.65"></line></svg>
+                </span>
+                <input type="text" id="userSearchInput" class="search-input-custom" placeholder="Tìm kiếm nhanh theo tên, username, email..." onkeyup="filterUsers()">
+            </div>
+            <div style="font-size: 0.85rem; color: var(--text-muted, #94a3b8); font-weight: 500;">
+                Hiển thị: <strong id="totalCount" style="color: var(--text-main, #ffffff);">{{ users | length if users else 0 }}</strong> nhân sự
+            </div>
+        </div>
+
+        <!-- Data Table -->
+        <div class="table-responsive">
+            <table class="modern-table" id="usersTable">
+                <thead>
                     <tr>
-                        <td colspan="5" class="feed-empty" style="text-align: center; padding: 3rem; color: var(--text-muted);">Chưa có tài khoản nào được khởi tạo trong cơ sở dữ liệu.</td>
+                        <th>Nhân Sự</th>
+                        <th>Chức Danh</th>
+                        <th>Email</th>
+                        <th>Quyền Hạn</th>
+                        <th style="text-align: right;">Thao Tác</th>
                     </tr>
-                {% endif %}
-            </tbody>
-        </table>
+                </thead>
+                <tbody>
+                    {% if users %}
+                        {% for u in users %}
+                        <tr class="user-row" data-search="{{ u.ho_ten | lower }} {{ u.username | lower }} {{ u.email | lower }}">
+                            <td>
+                                <div class="user-profile-meta">
+                                    <div class="avatar-circle">
+                                        {{ u.ho_ten[:1] | upper if u.ho_ten else 'U' }}
+                                    </div>
+                                    <div>
+                                        <div class="user-name">{{ u.ho_ten | default('Chưa cập nhật') }}</div>
+                                        <div class="user-handle">@{{ u.username }}</div>
+                                    </div>
+                                </div>
+                            </td>
+                            <td>
+                                <div style="font-weight: 600; color: var(--text-main, #ffffff);">{{ u.chuc_danh | default('Nhân viên kỹ thuật') }}</div>
+                                <div style="font-size: 0.78rem; color: var(--text-muted, #94a3b8);">{{ u.so_dien_thoai | default('Chưa cập nhật SĐT') }}</div>
+                            </td>
+                            <td style="color: var(--text-muted, #94a3b8); font-size: 0.85rem;">
+                                {{ u.email | default('N/A') }}
+                            </td>
+                            <td>
+                                <form action="/admin/users/update-role/{{ u.id }}" method="POST" style="display: inline;">
+                                    <select name="role" class="select-role-custom" onchange="this.form.submit()">
+                                        <option value="User" {% if u.role == 'User' %}selected{% endif %}>User (Kỹ thuật viên)</option>
+                                        <option value="Admin" {% if u.role == 'Admin' %}selected{% endif %}>Admin (Quản trị viên)</option>
+                                    </select>
+                                </form>
+                            </td>
+                            <td style="text-align: right;">
+                                <div class="actions-flex">
+                                    <button type="button" class="btn-action-icon btn-action-edit" data-user='{{ u | tojson | safe }}' onclick='openEditModalFromBtn(this)'>
+                                        <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M11 4H4a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2v-7"></path><path d="M18.5 2.5a2.121 2.121 0 0 1 3 3L12 15l-4 1 1-4 9.5-9.5z"></path></svg>
+                                        <span>Sửa</span>
+                                    </button>
+                                    <form action="/admin/users/delete/{{ u.id }}" method="POST" onsubmit="return confirm('Cảnh báo: Bạn có chắc chắn muốn xóa tài khoản này khỏi hệ thống không?');" style="display: inline;">
+                                        <button type="submit" class="btn-action-icon btn-action-delete">
+                                            <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polyline points="3 6 5 6 21 6"></polyline><path d="M19 6v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6m3 0V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2"></path></svg>
+                                            <span>Xóa</span>
+                                        </button>
+                                    </form>
+                                </div>
+                            </td>
+                        </tr>
+                        {% endfor %}
+                    {% else %}
+                        <tr>
+                            <td colspan="5" style="text-align: center; padding: 4rem 1rem; color: var(--text-muted, #94a3b8);">
+                                <svg width="40" height="40" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round" style="margin-bottom: 0.5rem; opacity: 0.5;"><circle cx="12" cy="12" r="10"></circle><line x1="12" y1="8" x2="12" y2="12"></line><line x1="12" y1="16" x2="12.01" y2="16"></line></svg>
+                                <div>Chưa có tài khoản nào được khởi tạo trong cơ sở dữ liệu.</div>
+                            </td>
+                        </tr>
+                    {% endif %}
+                </tbody>
+            </table>
+        </div>
     </div>
 </div>
 
@@ -386,39 +564,44 @@
 <div class="modal-overlay" id="addModal">
     <div class="modal-card">
         <div class="modal-header">
-            <div class="modal-title">➕ Khởi Tạo Tài Khoản Mới</div>
-            <button class="modal-close" onclick="closeModal('addModal')">&times;</button>
+            <div class="modal-title">
+                <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="#818cf8" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><line x1="12" y1="5" x2="12" y2="19"></line><line x1="5" y1="12" x2="19" y2="12"></line></svg>
+                <span>Khởi Tạo Tài Khoản Mới</span>
+            </div>
+            <button class="modal-close-btn" onclick="closeModal('addModal')">
+                <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><line x1="18" y1="6" x2="6" y2="18"></line><line x1="6" y1="6" x2="18" y2="18"></line></svg>
+            </button>
         </div>
         <form action="/admin/users/add" method="POST">
             <div class="modal-body">
-                <div class="form-grid">
-                    <div class="form-group half">
-                        <label>Họ và tên nhân sự</label>
-                        <input type="text" name="ho_ten" class="form-control" required placeholder="Ví dụ: Nguyễn Văn Thắng">
+                <div class="form-grid-layout">
+                    <div class="form-field-half">
+                        <label class="field-label">Họ và tên nhân sự</label>
+                        <input type="text" name="ho_ten" class="input-control" required placeholder="Nguyễn Văn Thắng">
                     </div>
-                    <div class="form-group half">
-                        <label>Tên đăng nhập (Username)</label>
-                        <input type="text" name="username" class="form-control" required placeholder="thangnv">
+                    <div class="form-field-half">
+                        <label class="field-label">Tên đăng nhập (Username)</label>
+                        <input type="text" name="username" class="input-control" required placeholder="thangnv">
                     </div>
-                    <div class="form-group half">
-                        <label>Email đăng nhập Supabase</label>
-                        <input type="email" name="email" class="form-control" required placeholder="thang@daithanh.vn">
+                    <div class="form-field-half">
+                        <label class="field-label">Email đăng nhập Supabase</label>
+                        <input type="email" name="email" class="input-control" required placeholder="thang@daithanh.vn">
                     </div>
-                    <div class="form-group half">
-                        <label>Mật khẩu ban đầu</label>
-                        <input type="password" name="password" class="form-control" required placeholder="Ít nhất 6 ký tự">
+                    <div class="form-field-half">
+                        <label class="field-label">Mật khẩu ban đầu</label>
+                        <input type="password" name="password" class="input-control" required placeholder="Ít nhất 6 ký tự">
                     </div>
-                    <div class="form-group half">
-                        <label>Chức danh công việc</label>
-                        <input type="text" name="chuc_danh" class="form-control" placeholder="Kỹ thuật viên / Quản lý">
+                    <div class="form-field-half">
+                        <label class="field-label">Chức danh công việc</label>
+                        <input type="text" name="chuc_danh" class="input-control" placeholder="Kỹ thuật viên / Quản lý">
                     </div>
-                    <div class="form-group half">
-                        <label>Số điện thoại liên hệ</label>
-                        <input type="text" name="so_dien_thoai" class="form-control" placeholder="0909xxxxxx">
+                    <div class="form-field-half">
+                        <label class="field-label">Số điện thoại liên hệ</label>
+                        <input type="text" name="so_dien_thoai" class="input-control" placeholder="0909xxxxxx">
                     </div>
-                    <div class="form-group">
-                        <label>Phân quyền hệ thống</label>
-                        <select name="role" class="form-control">
+                    <div class="form-field-full">
+                        <label class="field-label">Phân quyền hệ thống</label>
+                        <select name="role" class="input-control">
                             <option value="User">User (Kỹ thuật viên - Quyền hạn tiêu chuẩn)</option>
                             <option value="Admin">Admin (Quản trị viên - Toàn quyền hệ thống)</option>
                         </select>
@@ -426,8 +609,8 @@
                 </div>
             </div>
             <div class="modal-footer">
-                <button type="button" class="btn-secondary" onclick="closeModal('addModal')">Hủy bỏ</button>
-                <button type="submit" class="btn-primary">Tạo tài khoản</button>
+                <button type="button" class="btn-custom btn-glass" onclick="closeModal('addModal')">Hủy bỏ</button>
+                <button type="submit" class="btn-custom btn-primary-gradient">Khởi tạo tài khoản</button>
             </div>
         </form>
     </div>
@@ -437,27 +620,32 @@
 <div class="modal-overlay" id="editModal">
     <div class="modal-card">
         <div class="modal-header">
-            <div class="modal-title">✏️ Chỉnh Sửa Thông Tin Nhân Sự</div>
-            <button class="modal-close" onclick="closeModal('editModal')">&times;</button>
+            <div class="modal-title">
+                <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="#60a5fa" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><path d="M11 4H4a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2v-7"></path><path d="M18.5 2.5a2.121 2.121 0 0 1 3 3L12 15l-4 1 1-4 9.5-9.5z"></path></svg>
+                <span>Chỉnh Sửa Thông Tin Nhân Sự</span>
+            </div>
+            <button class="modal-close-btn" onclick="closeModal('editModal')">
+                <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><line x1="18" y1="6" x2="6" y2="18"></line><line x1="6" y1="6" x2="18" y2="18"></line></svg>
+            </button>
         </div>
         <form id="editForm" method="POST">
             <div class="modal-body">
-                <div class="form-grid">
-                    <div class="form-group">
-                        <label>Họ và tên nhân sự</label>
-                        <input type="text" id="edit_ho_ten" name="ho_ten" class="form-control" required>
+                <div class="form-grid-layout">
+                    <div class="form-field-full">
+                        <label class="field-label">Họ và tên nhân sự</label>
+                        <input type="text" id="edit_ho_ten" name="ho_ten" class="input-control" required>
                     </div>
-                    <div class="form-group half">
-                        <label>Chức danh công việc</label>
-                        <input type="text" id="edit_chuc_danh" name="chuc_danh" class="form-control">
+                    <div class="form-field-half">
+                        <label class="field-label">Chức danh công việc</label>
+                        <input type="text" id="edit_chuc_danh" name="chuc_danh" class="input-control">
                     </div>
-                    <div class="form-group half">
-                        <label>Số điện thoại liên hệ</label>
-                        <input type="text" id="edit_so_dien_thoai" name="so_dien_thoai" class="form-control">
+                    <div class="form-field-half">
+                        <label class="field-label">Số điện thoại liên hệ</label>
+                        <input type="text" id="edit_so_dien_thoai" name="so_dien_thoai" class="input-control">
                     </div>
-                    <div class="form-group">
-                        <label>Phân quyền hệ thống</label>
-                        <select id="edit_role" name="role" class="form-control">
+                    <div class="form-field-full">
+                        <label class="field-label">Phân quyền hệ thống</label>
+                        <select id="edit_role" name="role" class="input-control">
                             <option value="User">User (Kỹ thuật viên)</option>
                             <option value="Admin">Admin (Quản trị viên)</option>
                         </select>
@@ -465,8 +653,8 @@
                 </div>
             </div>
             <div class="modal-footer">
-                <button type="button" class="btn-secondary" onclick="closeModal('editModal')">Hủy bỏ</button>
-                <button type="submit" class="btn-primary">Lưu thay đổi</button>
+                <button type="button" class="btn-custom btn-glass" onclick="closeModal('editModal')">Hủy bỏ</button>
+                <button type="submit" class="btn-custom btn-primary-gradient">Lưu thay đổi</button>
             </div>
         </form>
     </div>
@@ -490,14 +678,14 @@
         openModal('editModal');
     }
 
-    // Đóng modal khi bấm ra ngoài vùng nội dung
+    // Đóng modal khi click bên ngoài overlay
     window.onclick = function(event) {
         if (event.target.classList.contains('modal-overlay')) {
             event.target.classList.remove('active');
         }
     }
 
-    // Tính năng Live Search lọc bảng trực tiếp
+    // Live Search filtering
     function filterUsers() {
         let input = document.getElementById('userSearchInput').value.toLowerCase();
         let rows = document.getElementsByClassName('user-row');
@@ -505,7 +693,7 @@
 
         for (let i = 0; i < rows.length; i++) {
             let searchData = rows[i].getAttribute('data-search');
-            if (searchData.includes(input)) {
+            if (searchData && searchData.includes(input)) {
                 rows[i].style.display = "";
                 visibleCount++;
             } else {
@@ -514,9 +702,9 @@
         }
         document.getElementById('totalCount').innerText = visibleCount;
     }
+
     function openEditModalFromBtn(button) {
         try {
-            // Lấy chuỗi JSON từ thuộc tính data-user và chuyển đổi thành Object
             const userJson = button.getAttribute('data-user');
             const user = JSON.parse(userJson);
             openEditModal(user);

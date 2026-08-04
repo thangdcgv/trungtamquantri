@@ -341,7 +341,7 @@
     </div>
 
     <form id="updateWarrantyForm" action="/warranty/api/update/{{ item.id }}" method="POST">
-        <!-- Hidden inputs -->
+        <!-- Hidden inputs để lưu trữ trạng thái phân loại -->
         <input type="hidden" name="category" id="db_category" value="{{ item.category }}">
         <input type="hidden" name="condition" id="db_condition" value="{{ item.condition }}">
         <input type="hidden" name="no_page_limit" id="db_no_page_limit" value="{{ 'true' if item.no_page_limit else 'false' }}">
@@ -401,12 +401,12 @@
             </div>
         </div>
 
-        <!-- 3. Chi tiết thiết bị & Thời hạn bảo hành -->
+        <!-- 3. Chi tiết thiết bị & Thời hạn bảo hành (Khóa cứng theo chính sách) -->
         <div class="section-box">
             <div class="group-title" id="warranty_detail_title">⚙️ CHI TIẾT BẢO HÀNH ({{ item.category | upper }})</div>
             
             <div class="warranty-subcard">
-                <div class="sub-group-title">📌 ĐỊNH DANH & THỜI HẠN BẢO HÀNH</div>
+                <div class="sub-group-title">📌 ĐỊNH DANH & THỜI HẠN BẢO HÀNH (QUẢN LÝ BỞI GÓI)</div>
                 <div class="form-grid-2">
                     <div class="field-group">
                         <label class="field-label">Model máy *</label>
@@ -414,26 +414,19 @@
                     </div>
                     <div class="field-group">
                         <label class="field-label">Số Serial (S/N) <span class="badge-locked">🔒 CỐ ĐỊNH</span></label>
-                        <input type="text" name="serial_number" class="form-control-custom" value="{{ item.serial_number }}" readonly>
+                        <input type="text" name="serial_number" class="form-control-custom" value="{{ item.serial_number }}" readonly style="background: rgba(255,255,255,0.03); color: #64748b; cursor: not-allowed;">
                     </div>
                     <div class="field-group">
                         <label class="field-label">BH Cơ máy (Tháng)</label>
-                        <div class="input-spinner-group">
-                            <button type="button" class="btn-spin" onclick="spin('warranty_months', -1)">-</button>
-                            <input type="number" name="warranty_months" id="warranty_months" class="form-control-custom" value="{{ item.warranty_months }}">
-                            <button type="button" class="btn-spin" onclick="spin('warranty_months', 1)">+</button>
-                        </div>
+                        <!-- Khóa cứng readonly, phụ thuộc hoàn toàn vào gói chính sách -->
+                        <input type="number" name="warranty_months" id="warranty_months" class="form-control-custom" value="{{ item.warranty_months }}" readonly style="background: rgba(255,255,255,0.03); color: #38bdf8; font-weight: 700; cursor: not-allowed;">
                     </div>
                     <div class="field-group">
                         <label class="field-label" id="head_warranty_label">
                             {% if item.category == 'Máy Laser' %}BH Hộp mực (Tháng){% else %}BH Đầu phun (Tháng){% endif %}
                         </label>
-                        <div class="input-spinner-group">
-                            <button type="button" class="btn-spin" onclick="spin('head_warranty_months', -1)">-</button>
-                            <input type="number" name="head_warranty_months" id="head_warranty_months" class="form-control-custom" 
-                                   value="{{ item.cartridge_warranty_months if item.category == 'Máy Laser' else item.head_warranty_months }}">
-                            <button type="button" class="btn-spin" onclick="spin('head_warranty_months', 1)">+</button>
-                        </div>
+                        <!-- Khóa cứng readonly, phụ thuộc hoàn toàn vào gói chính sách -->
+                        <input type="number" name="head_warranty_months" id="head_warranty_months" class="form-control-custom" value="{{ item.cartridge_warranty_months if item.category == 'Máy Laser' else item.head_warranty_months }}" readonly style="background: rgba(255,255,255,0.03); color: #38bdf8; font-weight: 700; cursor: not-allowed;">
                     </div>
                 </div>
             </div>
@@ -444,7 +437,7 @@
                 <div class="form-grid-2">
                     <div class="field-group">
                         <label class="field-label">Số trang ban đầu</label>
-                        <div class="input-spinner-group">
+                        <div class="input-spinner-group" id="initial_counter_wrapper">
                             <button type="button" class="btn-spin" onclick="spin('initial_counter', -100)">-</button>
                             <input type="number" name="initial_counter" id="initial_counter" class="form-control-custom" value="{{ item.initial_counter or 0 }}">
                             <button type="button" class="btn-spin" onclick="spin('initial_counter', 100)">+</button>
@@ -460,19 +453,13 @@
                     </div>
                     <div class="field-group">
                         <label class="field-label">Định mức Cơ (Trang)</label>
-                        <div class="input-spinner-group">
-                            <button type="button" class="btn-spin" onclick="spin('page_limit_body', -1000)">-</button>
-                            <input type="number" name="page_limit_body" id="page_limit_body" class="form-control-custom" value="{{ item.page_limit_body or 10000 }}">
-                            <button type="button" class="btn-spin" onclick="spin('page_limit_body', 1000)">+</button>
-                        </div>
+                        <!-- Khóa cứng readonly, tự động cập nhật theo gói -->
+                        <input type="number" name="page_limit_body" id="page_limit_body" class="form-control-custom" value="{{ item.page_limit_body or 10000 }}" readonly style="background: rgba(255,255,255,0.03); color: #38bdf8; font-weight: 700; cursor: not-allowed;">
                     </div>
                     <div class="field-group">
                         <label class="field-label">Định mức Đầu/Mực (Trang)</label>
-                        <div class="input-spinner-group">
-                            <button type="button" class="btn-spin" onclick="spin('page_limit_head', -500)">-</button>
-                            <input type="number" name="page_limit_head" id="page_limit_head" class="form-control-custom" value="{{ item.page_limit_head or 3000 }}">
-                            <button type="button" class="btn-spin" onclick="spin('page_limit_head', 500)">+</button>
-                        </div>
+                        <!-- Khóa cứng readonly, tự động cập nhật theo gói -->
+                        <input type="number" name="page_limit_head" id="page_limit_head" class="form-control-custom" value="{{ item.page_limit_head or 3000 }}" readonly style="background: rgba(255,255,255,0.03); color: #38bdf8; font-weight: 700; cursor: not-allowed;">
                     </div>
                 </div>
             </div>

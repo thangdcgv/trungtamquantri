@@ -351,9 +351,6 @@
 <div class="warranty-card">
     <!-- Top Navigation & Header Bar -->
     <div class="header-bar">
-        <a href="javascript:history.back()" class="btn-back">
-            <span>←</span> Quay lại
-        </a>
         <h1 class="form-header-title">➕ THÊM THÔNG TIN BẢO HÀNH</h1>
         <div style="width: 80px;" class="d-none d-sm-block"></div>
     </div>
@@ -436,13 +433,13 @@
             </div>
         </div>
 
-        <!-- 4. Chi tiết bảo hành (Đã tối ưu layout) -->
+        <!-- 4. Chi tiết bảo hành (Khóa hoàn toàn theo Chính sách) -->
         <div class="section-box">
             <div class="group-title" id="warranty_detail_title">⚙️ CHI TIẾT BẢO HÀNH (MÁY IN PHUN - MỚI)</div>
             
-            <!-- Thẻ con 1: Định danh thiết bị & Thời gian bảo hành -->
+            <!-- Thẻ con 1: Định danh thiết bị & Thời hạn bảo hành (Khóa theo gói) -->
             <div class="warranty-highlight-card">
-                <div class="sub-group-title">📌 CẤU HÌNH MÁY & THỜI HẠN</div>
+                <div class="sub-group-title">📌 CẤU HÌNH MÁY & THỜI HẠN (TỰ ĐỘNG THEO GÓI)</div>
                 <div class="form-grid-2">
                     <div class="field-group">
                         <label class="field-label">Model máy *</label>
@@ -454,30 +451,25 @@
                     </div>
                     <div class="field-group">
                         <label class="field-label">BH Cơ máy (Tháng)</label>
-                        <div class="input-spinner-group">
-                            <button type="button" class="btn-spin" onclick="spin('warranty_months', -1)">-</button>
-                            <input type="number" name="warranty_months" id="warranty_months" class="form-control-custom" value="12" readonly>
-                            <button type="button" class="btn-spin" onclick="spin('warranty_months', 1)">+</button>
-                        </div>
+                        <!-- Khóa cứng không có nút bấm, lấy trực tiếp từ policy -->
+                        <input type="number" name="warranty_months" id="warranty_months" class="form-control-custom" readonly style="background: rgba(255,255,255,0.03); color: #38bdf8; font-weight: 700; cursor: not-allowed;">
                     </div>
                     <div class="field-group">
                         <label class="field-label" id="head_warranty_label">BH Đầu phun (Tháng)</label>
-                        <div class="input-spinner-group">
-                            <button type="button" class="btn-spin" onclick="spin('head_warranty_months', -1)">-</button>
-                            <input type="number" name="head_warranty_months" id="head_warranty_months" class="form-control-custom" value="1" readonly>
-                            <button type="button" class="btn-spin" onclick="spin('head_warranty_months', 1)">+</button>
-                        </div>
+                        <!-- Khóa cứng không có nút bấm -->
+                        <input type="number" name="head_warranty_months" id="head_warranty_months" class="form-control-custom" readonly style="background: rgba(255,255,255,0.03); color: #38bdf8; font-weight: 700; cursor: not-allowed;">
                     </div>
                 </div>
             </div>
 
             <!-- Thẻ con 2: Định mức số trang -->
             <div class="warranty-highlight-card" style="margin-bottom: 0;">
-                <div class="sub-group-title">📊 ĐỊNH MỨC SỐ TRANG IN</div>
+                <div class="sub-group-title">📊 ĐỊNH MỨC SỐ TRANG IN (TỰ ĐỘNG THEO GÓI)</div>
                 <div class="form-grid-3">
                     <div class="field-group">
-                        <label class="field-label">Số trang ban đầu (Trang)</label>
-                        <div class="input-spinner-group">
+                        <label class="field-label">Số trang máy đã in ban đầu</label>
+                        <!-- Ô này duy nhất được phép nhập/chỉnh sửa (nếu máy in phun có giới hạn trang) -->
+                        <div class="input-spinner-group" id="initial_counter_wrapper">
                             <button type="button" class="btn-spin" onclick="spin('initial_counter', -100)">-</button>
                             <input type="number" name="initial_counter" id="initial_counter" class="form-control-custom" value="0">
                             <button type="button" class="btn-spin" onclick="spin('initial_counter', 100)">+</button>
@@ -485,19 +477,13 @@
                     </div>
                     <div class="field-group">
                         <label class="field-label">Định mức Cơ máy (Trang)</label>
-                        <div class="input-spinner-group">
-                            <button type="button" class="btn-spin" onclick="spin('page_limit_body', -1000)">-</button>
-                            <input type="number" name="page_limit_body" id="page_limit_body" class="form-control-custom" value="10000" readonly>
-                            <button type="button" class="btn-spin" onclick="spin('page_limit_body', 1000)">+</button>
-                        </div>
+                        <!-- Khóa cứng không có nút bấm -->
+                        <input type="number" name="page_limit_body" id="page_limit_body" class="form-control-custom" readonly style="background: rgba(255,255,255,0.03); color: #38bdf8; font-weight: 700; cursor: not-allowed;">
                     </div>
                     <div class="field-group">
                         <label class="field-label">Định mức Đầu/Mực (Trang)</label>
-                        <div class="input-spinner-group">
-                            <button type="button" class="btn-spin" onclick="spin('page_limit_head', -500)">-</button>
-                            <input type="number" name="page_limit_head" id="page_limit_head" class="form-control-custom" value="3000" readonly>
-                            <button type="button" class="btn-spin" onclick="spin('page_limit_head', 500)">+</button>
-                        </div>
+                        <!-- Khóa cứng không có nút bấm -->
+                        <input type="number" name="page_limit_head" id="page_limit_head" class="form-control-custom" readonly style="background: rgba(255,255,255,0.03); color: #38bdf8; font-weight: 700; cursor: not-allowed;">
                     </div>
                 </div>
             </div>

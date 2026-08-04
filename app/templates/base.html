@@ -235,31 +235,33 @@
             <span>Trang chủ</span>
         </a>
 
-        <!-- 2. App Chấm Công (HuggingFace) -->
-        <a href="https://mayindaithanh-lapdat.hf.space" target="_blank" rel="noopener noreferrer" class="nav-item">
-            <svg viewBox="0 0 24 24">
+        <!-- 2. App Chấm Công Lắp Đặt Nội Bộ -->
+        <a href="/cham-cong/form" class="nav-item">
+            <svg viewBox="0 0 24 24" width="20" height="20" stroke="currentColor" stroke-width="2" fill="none">
                 <circle cx="12" cy="12" r="10"></circle>
                 <polyline points="12 6 12 12 16 14"></polyline>
             </svg>
             <span>Chấm công</span>
         </a>
 
-        <!-- 3. App Bảo Hành (HuggingFace) -->
-        <a href="https://mayindaithanh-baohanh.hf.space" target="_blank" rel="noopener noreferrer" class="nav-item">
-            <svg viewBox="0 0 24 24">
+        <!-- 3. App Bảo Hành Nội Bộ -->
+        <a href="/warranty/create" class="nav-item {% if '/warranty' in request.url.path %}active{% endif %}">
+            <svg viewBox="0 0 24 24" width="20" height="20" stroke="currentColor" stroke-width="2" fill="none">
                 <path d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10z"></path>
             </svg>
             <span>Bảo hành</span>
         </a>
 
-        <!-- 4. Thư Viện Máy In (Render) -->
-        <a href="https://printer-guide.onrender.com" target="_blank" rel="noopener noreferrer" class="nav-item">
-            <svg viewBox="0 0 24 24">
-                <path d="M4 19.5A2.5 2.5 0 0 1 6.5 17H20"></path>
-                <path d="M6.5 2H20v20H6.5A2.5 2.5 0 0 1 4 19.5v-15A2.5 2.5 0 0 1 6.5 2z"></path>
+        <!-- 4. Cụm Quản Trị Hệ Thống -->
+        {% if request.session.get('role') == 'Admin' %}
+        <a href="/admin" class="nav-item {% if request.url.path.startswith('/admin') %}active{% endif %}">
+            <svg viewBox="0 0 24 24" width="20" height="20" stroke="currentColor" stroke-width="2" fill="none" stroke-linecap="round" stroke-linejoin="round">
+                <path d="M12.22 2h-.44a2 2 0 0 0-2 2v.18a2 2 0 0 1-1 1.73l-.43.25a2 2 0 0 1-2 0l-.15-.08a2 2 0 0 0-2.73.73l-.22.38a2 2 0 0 0 .73 2.73l.15.1a2 2 0 0 1 1 1.72v.51a2 2 0 0 1-1 1.74l-.15.09a2 2 0 0 0-.73 2.73l.22.38a2 2 0 0 0 2.73.73l.15-.08a2 2 0 0 1 2 0l.43.25a2 2 0 0 1 1 1.73V20a2 2 0 0 0 2 2h.44a2 2 0 0 0 2-2v-.18a2 2 0 0 1 1-1.73l.43-.25a2 2 0 0 1 2 0l.15.08a2 2 0 0 0 2.73-.73l.22-.38a2 2 0 0 0-.73-2.73l-.15-.08a2 2 0 0 1-1-1.74v-.5a2 2 0 0 1 1-1.74l.15-.09a2 2 0 0 0 .73-2.73l-.22-.38a2 2 0 0 0-2.73-.73l-.15.08a2 2 0 0 1-2 0l-.43-.25a2 2 0 0 1-1-1.73V4a2 2 0 0 0-2-2z"></path>
+                <circle cx="12" cy="12" r="3"></circle>
             </svg>
-            <span>Thư viện</span>
+            <span>Quản trị</span>
         </a>
+        {% endif %}
     </nav>
 
     {% block scripts %}{% endblock %}

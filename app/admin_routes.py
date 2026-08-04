@@ -1,4 +1,4 @@
-from fastapi import APIRouter, Request, Form, HTTPException
+from fastapi import APIRouter, Request, Form, HTTPException, status
 from fastapi.responses import RedirectResponse
 from fastapi.templating import Jinja2Templates
 from config import supabase
@@ -6,25 +6,49 @@ from config import supabase
 router = APIRouter(prefix="/admin", tags=["Admin"])
 templates = Jinja2Templates(directory="app/templates")
 
+
 def verify_admin_access(request: Request):
-    """Hàm kiểm tra bảo mật: Bắt buộc phải đăng nhập và phải có quyền Admin"""
+    """Bắt buộc người dùng phải đăng nhập và có quyền Admin để tiếp tục"""
     if 'user_id' not in request.session:
-        return RedirectResponse(url="/auth/login", status_code=303)
+        raise HTTPException(
+            status_code=status.HTTP_303_SEE_OTHER,
+            headers={"Location": "/auth/login"}
+        )
     
     user_role = request.session.get('role', 'User')
     if user_role != 'Admin':
         raise HTTPException(
-            status_code=403, 
-            detail="⛔ Truy cập bị từ chối: Bạn không có quyền quản trị hệ thống tài khoản!"
+            status_code=status.HTTP_403_FORBIDDEN, 
+            detail="⛔ Truy cập bị từ chối: Bạn không có quyền quản trị hệ thống!"
         )
-    return None
 
+
+# ==========================================
+# 1. TRANG DASHBOARD QUẢN TRỊ TRUNG TÂM
+# ==========================================
+@router.get("")
+@router.get("/")
+async def admin_dashboard(request: Request):
+    verify_admin_access(request)
+    
+    current_user = {
+        "name": request.session.get('ho_ten', 'Quản trị viên'),
+        "role": request.session.get('role', 'Admin')
+    }
+
+    return templates.TemplateResponse(
+        request=request,
+        name="admin.html",
+        context={"current_user": current_user}
+    )
+
+
+# ==========================================
+# 2. QUẢN LÝ TÀI KHOẢN (USERS)
+# ==========================================
 @router.get("/users")
 async def list_users(request: Request):
-    # Kiểm tra quyền Admin
-    auth_check = verify_admin_access(request)
-    if isinstance(auth_check, RedirectResponse):
-        return auth_check
+    verify_admin_access(request)
     
     users = []
     try:
@@ -36,18 +60,18 @@ async def list_users(request: Request):
 
     current_user = {
         "name": request.session.get('ho_ten', 'Quản trị viên'),
-        "role": request.session.get('role', 'User')
+        "role": request.session.get('role', 'Admin')
     }
 
     return templates.TemplateResponse(
-        request,
-        "admin_users.html",
-        {
-            "request": request,
+        request=request,
+        name="admin_users.html",  # Hoặc "admin.html" tùy thuộc file template danh sách user của bạn
+        context={
             "users": users,
             "current_user": current_user
         }
     )
+
 
 @router.post("/users/add")
 async def add_user(
@@ -60,7 +84,7 @@ async def add_user(
     chuc_danh: str = Form(None),
     so_dien_thoai: str = Form(None)
 ):
-    verify_admin_access(request) # Chặn nếu không phải Admin
+    verify_admin_access(request)
     try:
         if supabase:
             auth_response = supabase.auth.admin.create_user({
@@ -83,7 +107,8 @@ async def add_user(
     except Exception as e:
         print(f"❌ Lỗi thêm tài khoản: {e}")
 
-    return RedirectResponse(url="/admin/users", status_code=303)
+    return RedirectResponse(url="/admin/users", status_code=status.HTTP_303_SEE_OTHER)
+
 
 @router.post("/users/edit/{user_id}")
 async def edit_user(
@@ -94,7 +119,7 @@ async def edit_user(
     so_dien_thoai: str = Form(None),
     role: str = Form("User")
 ):
-    verify_admin_access(request) # Chặn nếu không phải Admin
+    verify_admin_access(request)
     try:
         if supabase:
             supabase.table('quan_tri_vien').update({
@@ -106,22 +131,24 @@ async def edit_user(
     except Exception as e:
         print(f"❌ Lỗi cập nhật tài khoản: {e}")
         
-    return RedirectResponse(url="/admin/users", status_code=303)
+    return RedirectResponse(url="/admin/users", status_code=status.HTTP_303_SEE_OTHER)
+
 
 @router.post("/users/update-role/{user_id}")
 async def update_user_role(request: Request, user_id: int, role: str = Form(...)):
-    verify_admin_access(request) # Chặn nếu không phải Admin
+    verify_admin_access(request)
     try:
         if supabase:
             supabase.table('quan_tri_vien').update({"role": role}).eq("id", user_id).execute()
     except Exception as e:
         print(f"❌ Lỗi cập nhật quyền: {e}")
         
-    return RedirectResponse(url="/admin/users", status_code=303)
+    return RedirectResponse(url="/admin/users", status_code=status.HTTP_303_SEE_OTHER)
+
 
 @router.post("/users/delete/{user_id}")
 async def delete_user(request: Request, user_id: int):
-    verify_admin_access(request) # Chặn nếu không phải Admin
+    verify_admin_access(request)
     try:
         if supabase:
             res = supabase.table('quan_tri_vien').select('auth_id').eq("id", user_id).execute()
@@ -133,15 +160,48 @@ async def delete_user(request: Request, user_id: int):
     except Exception as e:
         print(f"❌ Lỗi xóa tài khoản: {e}")
         
-    return RedirectResponse(url="/admin/users", status_code=303)
-def verify_admin_access(request: Request):
-    if 'user_id' not in request.session:
-        return RedirectResponse(url="/auth/login", status_code=303)
+    return RedirectResponse(url="/admin/users", status_code=status.HTTP_303_SEE_OTHER)
+
+
+# ==========================================
+# 3. CẤU HÌNH CHẤM CÔNG (CONFIG)
+# ==========================================
+@router.get("/config-cham-cong")
+async def get_config_cham_cong(request: Request):
+    verify_admin_access(request)
     
-    user_role = request.session.get('role', 'User')
-    if user_role != 'Admin':
-        raise HTTPException(
-            status_code=403, 
-            detail="⛔ Truy cập bị từ chối: Bạn không có quyền quản trị hệ thống tài khoản!"
-        )
-    return None
+    config_data = {}
+    try:
+        if supabase:
+            res = supabase.table('cau_hinh_cham_cong').select('*').limit(1).execute()
+            if res and res.data:
+                config_data = res.data[0]
+    except Exception as e:
+        print(f"❌ Lỗi tải cấu hình chấm công: {e}")
+
+    return templates.TemplateResponse(
+        request=request,
+        name="config_cham_cong.html",
+        context={"config": config_data}
+    )
+
+
+@router.post("/config-cham-cong/save")
+async def save_config_cham_cong(request: Request):
+    verify_admin_access(request)
+    
+    try:
+        form_data = await request.form()
+        update_dict = {key: value for key, value in form_data.items()}
+        
+        if supabase:
+            check = supabase.table('cau_hinh_cham_cong').select('id').limit(1).execute()
+            if check and check.data:
+                config_id = check.data[0]['id']
+                supabase.table('cau_hinh_cham_cong').update(update_dict).eq('id', config_id).execute()
+            else:
+                supabase.table('cau_hinh_cham_cong').insert(update_dict).execute()
+    except Exception as e:
+        print(f"❌ Lỗi lưu cấu hình chấm công: {e}")
+        
+    return RedirectResponse(url="/admin/config-cham-cong", status_code=status.HTTP_303_SEE_OTHER)

@@ -1,0 +1,139 @@
+{% extends "base.html" %}
+
+{% block title %}Quản Trị Hệ Thống - Máy In Đại Thành{% endblock %}
+
+{% block head %}
+<!-- Bootstrap 5 CSS & FontAwesome Icons -->
+<link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css" rel="stylesheet">
+<link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+
+<style>
+    /* BẮT BUỘC DARK MODE ĐỒNG BỘ */
+    body {
+        background-color: var(--bg-main) !important;
+        color: var(--text-main) !important;
+    }
+
+    /* CARD ĐIỀU HƯỚNG QUẢN TRỊ */
+    .admin-card {
+        background-color: var(--bg-card);
+        border: 1px solid var(--border-color);
+        border-radius: 18px;
+        padding: 24px;
+        transition: transform 0.2s ease, border-color 0.2s ease, box-shadow 0.2s ease;
+        text-decoration: none !important;
+        color: var(--text-main);
+        display: flex;
+        flex-direction: column;
+        justify-content: space-between;
+        height: 100%;
+        box-shadow: 0 8px 20px rgba(0, 0, 0, 0.4);
+    }
+
+    .admin-card:hover {
+        transform: translateY(-4px);
+        border-color: var(--primary-light);
+        box-shadow: 0 12px 28px rgba(56, 189, 248, 0.18);
+        color: #ffffff;
+    }
+
+    .icon-box {
+        width: 56px;
+        height: 56px;
+        border-radius: 14px;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        font-size: 1.6rem;
+        margin-bottom: 16px;
+    }
+
+    .icon-users {
+        background: rgba(56, 189, 248, 0.15);
+        color: #38bdf8;
+    }
+
+    .icon-config {
+        background: rgba(245, 158, 11, 0.15);
+        color: #f59e0b;
+    }
+
+    .btn-action {
+        background: #090d16;
+        border: 1px solid rgba(255, 255, 255, 0.15);
+        color: #cbd5e1;
+        border-radius: 10px;
+        padding: 10px 16px;
+        font-size: 0.9rem;
+        font-weight: 600;
+        display: inline-flex;
+        align-items: center;
+        gap: 8px;
+        margin-top: 20px;
+        width: 100%;
+        justify-content: center;
+        transition: all 0.2s ease;
+    }
+
+    .admin-card:hover .btn-action {
+        background: var(--primary);
+        border-color: var(--primary);
+        color: #ffffff;
+    }
+</style>
+{% endblock %}
+
+{% block content %}
+<div class="container-fluid px-0">
+    <!-- TIÊU ĐỀ TRANG -->
+    <div class="mb-4 pb-2 border-bottom border-secondary border-opacity-25">
+        <h5 class="fw-bold text-white mb-1 d-flex align-items-center gap-2">
+            <i class="fa-solid fa-user-shield text-info"></i> Quản Trị Hệ Thống
+        </h5>
+        <p class="text-secondary small m-0">Trung tâm điều hành tài khoản nhân viên & cấu hình định mức chấm công</p>
+    </div>
+
+    <!-- DANH SÁCH MODULE QUẢN TRỊ -->
+    <div class="row g-3">
+        <!-- 1. QUẢN LÝ TÀI KHOẢN -->
+        <div class="col-12 col-md-6">
+            <a href="/admin/users" class="admin-card">
+                <div>
+                    <div class="icon-box icon-users">
+                        <i class="fa-solid fa-users-gear"></i>
+                    </div>
+                    <h6 class="fw-bold text-white mb-2 fs-5">Quản Lý Tài Khoản</h6>
+                    <p class="text-secondary small mb-0">
+                        Thêm mới tài khoản nhân viên, phân quyền truy cập, chỉnh sửa thông tin hoặc đặt lại mật khẩu người dùng.
+                    </p>
+                </div>
+                <div>
+                    <span class="btn-action">
+                        Quản lý người dùng <i class="fa-solid fa-arrow-right"></i>
+                    </span>
+                </div>
+            </a>
+        </div>
+
+        <!-- 2. CẤU HÌNH CHẤM CÔNG -->
+        <div class="col-12 col-md-6">
+            <a href="/admin/config-cham-cong" class="admin-card">
+                <div>
+                    <div class="icon-box icon-config">
+                        <i class="fa-solid fa-sliders"></i>
+                    </div>
+                    <h6 class="fw-bold text-white mb-2 fs-5">Cấu Hình Chấm Công</h6>
+                    <p class="text-secondary small mb-0">
+                        Điều chỉnh định mức đơn giá km, phụ phí đi tỉnh, làm ngoài giờ, trợ cấp thợ phụ và đơn giá lắp đặt máy móc.
+                    </p>
+                </div>
+                <div>
+                    <span class="btn-action">
+                        Thay đổi cấu hình <i class="fa-solid fa-arrow-right"></i>
+                    </span>
+                </div>
+            </a>
+        </div>
+    </div>
+</div>
+{% endblock %}
