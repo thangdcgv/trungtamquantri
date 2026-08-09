@@ -653,8 +653,8 @@
 
                             <!-- Ghi Chú Phản Hồi Từ Admin -->
                             {% if item.ghi_chu_duyet %}
-                                <div class="p-2 bg-warning-subtle text-warning border border-warning-subtle rounded-3 small mb-2">
-                                    <i class="fa-solid fa-comment-dots me-1"></i><strong>Ghi chú duyệt:</strong> {{ item.ghi_chu_duyet }}
+                                <div class="p-2 rounded-3 small mb-2" style="background: rgba(245, 158, 11, 0.1); border: 1px solid rgba(245, 158, 11, 0.3); color: #fde047;">
+                                    <i class="fa-solid fa-comment-dots me-1"></i><strong class="text-white">Ghi chú duyệt:</strong> {{ item.ghi_chu_duyet }}
                                 </div>
                             {% endif %}
                         </div>
@@ -668,7 +668,7 @@
 
                                 <div class="d-flex gap-2">
                                     {% if item.trang_thai != 'Từ chối' %}
-                                        <button class="btn btn-action-sm btn-outline-danger" onclick="openApproveModal('{{ item.id }}', 'Từ chối', '{{ item.so_hoa_don }}')">
+                                        <button class="btn btn-action-sm btn-outline-danger text-white" onclick="openApproveModal('{{ item.id }}', 'Từ chối', '{{ item.so_hoa_don }}')">
                                             <i class="fa-solid fa-xmark me-1"></i> Từ chối
                                         </button>
                                     {% endif %}
