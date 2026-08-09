@@ -6,6 +6,7 @@
 <!-- Bootstrap 5 CSS & FontAwesome Icons -->
 <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css" rel="stylesheet">
 <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+<link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
 
 <style>
     :root {
@@ -18,9 +19,11 @@
     }
 
     body {
+        -webkit-font-smoothing: antialiased;
+        -moz-osx-font-smoothing: grayscale;
         background-color: var(--bg-main) !important;
         color: var(--text-main) !important;
-        font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif;
+        font-family: 'Inter', system-ui, sans-serif;
     }
 
     .app-container {
@@ -383,36 +386,49 @@
             </div>
             {% endif %}
 
-            <!-- BƯỚC 1: TẢI ẢNH CHỨNG TỪ -->
-            <div class="step-card">
-                <div class="step-title">
-                    <span class="step-badge">1</span> Tải biên bản / Hóa đơn
+            <!-- BƯỚC 1: TẢI ẢNH HÓA ĐƠN -->
+            <div class="step-card" id="stepCardImage">
+            <div class="step-title d-flex align-items-center justify-content-between">
+                <div>
+                    <span class="step-badge">1</span> Tải Ảnh Hóa đơn <span class="text-danger">*</span>
                 </div>
-                
-                <div class="upload-zone" onclick="document.getElementById('fileInput').click();">
-                    <i class="fa-solid fa-camera fs-1 text-info mb-3"></i>
-                    <h6 class="fw-bold text-white mb-1">Chạm để chụp ảnh chứng từ</h6>
-                    <p class="text-muted mb-0" style="font-size: 0.8rem;">Tự động nén dung lượng trước khi gửi</p>
-                    <input class="d-none" type="file" id="fileInput" name="file" accept="image/*" capture="environment" {% if not edit_data or not edit_data.hinh_anh %}required{% endif %}>
+                <span id="imgStatusBadge" class="badge {% if edit_data and edit_data.hinh_anh %}bg-success{% else %}bg-secondary{% endif %}">
+                    {% if edit_data and edit_data.hinh_anh %}Đã có ảnh{% else %}Chưa chọn ảnh{% endif %}
+                </span>
+            </div>
+            
+            <!-- Vùng Upload Ảnh -->
+            <div class="upload-zone" id="uploadZone" onclick="document.getElementById('fileInput').click();">
+                <i class="fa-solid fa-camera fs-1 text-info mb-3"></i>
+                <h6 class="fw-bold text-white mb-1">Chạm để chụp ảnh hóa đơn</h6>
+                <p class="text-muted mb-0" style="font-size: 0.8rem;">Tự động nén dung lượng trước khi gửi</p>
+                <input class="d-none" type="file" id="fileInput" name="file" accept="image/*" capture="environment">
+                <input type="hidden" id="existing_image_url" name="existing_image_url" value="{{ edit_data.hinh_anh if edit_data else '' }}">
+            </div>
+
+            <!-- Thông báo lỗi khi thiếu ảnh -->
+            <div id="imageErrorMessage" class="text-danger small mt-2 fw-bold hidden">
+                <i class="fa-solid fa-triangle-exclamation me-1"></i> Vui lòng chụp hoặc tải lên ảnh hóa đơn đính kèm!
+            </div>
+            
+            <!-- Vùng Xem Trước Ảnh -->
+            <div id="previewArea" class="mt-3 {% if not edit_data or not edit_data.hinh_anh %}hidden{% endif %}">
+                <div class="d-flex justify-content-between align-items-center mb-3 px-1">
+                    <span class="small fw-medium text-light"><i class="fa-solid fa-image text-info me-1"></i> Xem trước:</span>
+                    <div class="d-flex gap-2">
+                        <button type="button" class="btn btn-sm btn-outline-custom px-3 py-1" id="btnRotate">
+                            <i class="fa-solid fa-rotate-right text-info"></i> Xoay
+                        </button>
+                        <button type="button" class="btn btn-sm btn-outline-custom border-danger text-danger px-3 py-1" id="btnClearImg">
+                            <i class="fa-solid fa-trash"></i> Xóa
+                        </button>
+                    </div>
                 </div>
-                
-                <div id="previewArea" class="mt-3 {% if not edit_data or not edit_data.hinh_anh %}hidden{% endif %}">
-                    <div class="d-flex justify-content-between align-items-center mb-3 px-1">
-                        <span class="small fw-medium text-light"><i class="fa-solid fa-image text-info me-1"></i> Xem trước:</span>
-                        <div class="d-flex gap-2">
-                            <button type="button" class="btn btn-sm btn-outline-custom px-3 py-1" id="btnRotate">
-                                <i class="fa-solid fa-rotate-right text-info"></i> Xoay
-                            </button>
-                            <button type="button" class="btn btn-sm btn-outline-custom border-danger text-danger px-3 py-1" id="btnClearImg">
-                                <i class="fa-solid fa-trash"></i> Xóa
-                            </button>
-                        </div>
-                    </div>
-                    <div class="image-preview-wrapper text-center shadow-inner">
-                        <img id="imagePreview" src="{{ edit_data.hinh_anh if edit_data else '' }}" alt="Preview Hóa Đơn">
-                    </div>
+                <div class="image-preview-wrapper text-center shadow-inner">
+                    <img id="imagePreview" src="{{ edit_data.hinh_anh if edit_data else '' }}" alt="Preview Hóa Đơn">
                 </div>
             </div>
+        </div>
 
             <!-- BƯỚC 2: LOẠI HÌNH LÀM VIỆC -->
             <div class="step-card">
@@ -610,6 +626,7 @@
 
 <script>
     document.addEventListener("DOMContentLoaded", function() {
+        // 1. Active menu tab
         const navItems = document.querySelectorAll('.bottom-nav .nav-item');
         navItems.forEach(item => {
             if (item.getAttribute('href') === '/cham-cong/form') {
@@ -619,7 +636,9 @@
             }
         });
         
+        // 2. Khởi tạo trạng thái giao diện
         updateUI();
+        validateImageState();
     });
 
     // --- STEPPER NUMERIC (+ / -) ---
@@ -630,90 +649,143 @@
             currentVal = Math.max(0, currentVal + change);
             input.value = currentVal;
             
-            // Tạo hiệu ứng chớp nhẹ khi bấm nút
             input.style.opacity = '0.5';
             setTimeout(() => input.style.opacity = '1', 100);
         }
     }
 
-    // --- AUTO-TRIM & UPPERCASE SO HOA DON ---
+    // --- AUTO-TRIM & UPPERCASE SỐ HÓA ĐƠN ---
     const soHoaDonInput = document.getElementById('so_hoa_don');
     if (soHoaDonInput) {
         soHoaDonInput.addEventListener('input', function() {
+            // Tự động xóa khoảng trắng và chuyển chữ hoa
             this.value = this.value.toUpperCase().replace(/\s+/g, '');
         });
     }
 
     // --- TÌM KIẾM HÓA ĐƠN ĐỂ SỬA ---
-    document.getElementById('btnSearchInvoice').addEventListener('click', async function() {
-        const hdInput = document.getElementById('search_hd_input').value.trim().toUpperCase();
-        const msgDiv = document.getElementById('searchResultMsg');
-        
-        if (!hdInput) {
-            msgDiv.className = "mt-3 small text-danger";
-            msgDiv.innerHTML = "<i class='fa-solid fa-circle-exclamation me-1'></i> Vui lòng nhập số hóa đơn!";
-            return;
-        }
-
-        try {
-            msgDiv.className = "mt-3 small text-info";
-            msgDiv.innerHTML = "<i class='fa-solid fa-spinner fa-spin me-1'></i> Đang tra cứu hệ thống...";
-
-            const response = await fetch(`/cham-cong/api/search-invoice?so_hd=${encodeURIComponent(hdInput)}`);
-            const result = await response.json();
-
-            if (response.ok && result.success) {
-                msgDiv.className = "mt-3 small text-success";
-                msgDiv.innerHTML = `<i class='fa-solid fa-circle-check me-1'></i> Đã tìm thấy! Đang tải lại trang...`;
-                window.location.href = `/cham-cong/form?edit_id=${result.data.id}`;
-            } else {
+    const btnSearch = document.getElementById('btnSearchInvoice');
+    if (btnSearch) {
+        btnSearch.addEventListener('click', async function() {
+            const hdInput = document.getElementById('search_hd_input').value.trim().toUpperCase();
+            const msgDiv = document.getElementById('searchResultMsg');
+            
+            if (!hdInput) {
                 msgDiv.className = "mt-3 small text-danger";
-                msgDiv.innerHTML = `<i class='fa-solid fa-circle-xmark me-1'></i> ${result.message || "Không tìm thấy hóa đơn này!"}`;
+                msgDiv.innerHTML = "<i class='fa-solid fa-circle-exclamation me-1'></i> Vui lòng nhập số hóa đơn!";
+                return;
             }
-        } catch (err) {
-            msgDiv.className = "mt-3 small text-danger";
-            msgDiv.innerHTML = "<i class='fa-solid fa-triangle-exclamation me-1'></i> Lỗi kết nối đến máy chủ!";
-        }
-    });
 
-    // --- PREVIEW, XOAY VÀ XÓA ẢNH ---
+            try {
+                msgDiv.className = "mt-3 small text-info";
+                msgDiv.innerHTML = "<i class='fa-solid fa-spinner fa-spin me-1'></i> Đang tra cứu hệ thống...";
+
+                const response = await fetch(`/cham-cong/api/search-invoice?so_hd=${encodeURIComponent(hdInput)}`);
+                const result = await response.json();
+
+                if (response.ok && result.success) {
+                    msgDiv.className = "mt-3 small text-success";
+                    msgDiv.innerHTML = `<i class='fa-solid fa-circle-check me-1'></i> Đã tìm thấy! Đang tải dữ liệu...`;
+                    window.location.href = `/cham-cong/form?edit_id=${result.data.id}`;
+                } else {
+                    msgDiv.className = "mt-3 small text-danger";
+                    msgDiv.innerHTML = `<i class='fa-solid fa-circle-xmark me-1'></i> ${result.message || "Không tìm thấy hóa đơn này!"}`;
+                }
+            } catch (err) {
+                msgDiv.className = "mt-3 small text-danger";
+                msgDiv.innerHTML = "<i class='fa-solid fa-triangle-exclamation me-1'></i> Lỗi kết nối đến máy chủ!";
+            }
+        });
+    }
+
+    // --- QUẢN LÝ UPLOAD ẢNH, PREVIEW & BÁO LỖI ---
     const fileInput = document.getElementById('fileInput');
+    const existingImgInput = document.getElementById('existing_image_url');
+    const uploadZone = document.getElementById('uploadZone');
+    const imgErrorMsg = document.getElementById('imageErrorMessage');
     const previewArea = document.getElementById('previewArea');
     const imagePreview = document.getElementById('imagePreview');
     const btnRotate = document.getElementById('btnRotate');
     const btnClearImg = document.getElementById('btnClearImg');
+    const imgStatusBadge = document.getElementById('imgStatusBadge');
     let currentRotation = 0;
 
-    fileInput.addEventListener('change', function(e) {
-        const file = e.target.files[0];
-        if (file) {
-            const reader = new FileReader();
-            reader.onload = function(event) {
-                imagePreview.src = event.target.result;
-                previewArea.classList.remove('hidden');
-                currentRotation = 0;
-                imagePreview.style.transform = `rotate(0deg)`;
-                document.getElementById('image_rotation').value = 0;
-                
-                // Cuộn xuống để xem ảnh dễ hơn
-                previewArea.scrollIntoView({ behavior: 'smooth', block: 'nearest' });
+    // Kiểm tra & cập nhật trạng thái ô ảnh
+    function validateImageState() {
+        const hasNewFile = fileInput && fileInput.files && fileInput.files.length > 0;
+        const hasExistingUrl = existingImgInput && existingImgInput.value && existingImgInput.value.trim() !== "";
+
+        if (hasNewFile || hasExistingUrl) {
+            if (uploadZone) uploadZone.classList.remove('border-danger');
+            if (imgErrorMsg) imgErrorMsg.classList.add('hidden');
+            if (imgStatusBadge) {
+                imgStatusBadge.className = "badge bg-success";
+                imgStatusBadge.innerText = hasNewFile ? "Đã chọn ảnh mới" : "Đã có ảnh";
             }
-            reader.readAsDataURL(file);
+            return true;
+        } else {
+            if (imgStatusBadge) {
+                imgStatusBadge.className = "badge bg-secondary";
+                imgStatusBadge.innerText = "Chưa chọn ảnh";
+            }
+            return false;
         }
-    });
+    }
 
-    btnRotate.addEventListener('click', function() {
-        currentRotation = (currentRotation + 90) % 360;
-        imagePreview.style.transform = `rotate(${currentRotation}deg)`;
-        document.getElementById('image_rotation').value = currentRotation; 
-    });
+    if (fileInput) {
+        fileInput.addEventListener('change', function(e) {
+            const file = e.target.files[0];
+            if (file) {
+                if (!file.type.startsWith('image/')) {
+                    alert("❌ Tệp chọn không phải là định dạng ảnh!");
+                    this.value = '';
+                    validateImageState();
+                    return;
+                }
 
-    btnClearImg.addEventListener('click', function() {
-        fileInput.value = '';
-        imagePreview.src = '';
-        document.getElementById('existing_image_url').value = '';
-        previewArea.classList.add('hidden');
-    });
+                if (file.size > 15 * 1024 * 1024) {
+                    alert("❌ File ảnh quá lớn! Vui lòng chọn ảnh nhỏ hơn 15MB.");
+                    this.value = '';
+                    validateImageState();
+                    return;
+                }
+
+                const reader = new FileReader();
+                reader.onload = function(event) {
+                    imagePreview.src = event.target.result;
+                    previewArea.classList.remove('hidden');
+                    currentRotation = 0;
+                    imagePreview.style.transform = `rotate(0deg)`;
+                    
+                    const rotInput = document.getElementById('image_rotation');
+                    if (rotInput) rotInput.value = 0;
+                    
+                    validateImageState();
+                    previewArea.scrollIntoView({ behavior: 'smooth', block: 'nearest' });
+                };
+                reader.readAsDataURL(file);
+            }
+        });
+    }
+
+    if (btnRotate) {
+        btnRotate.addEventListener('click', function() {
+            currentRotation = (currentRotation + 90) % 360;
+            imagePreview.style.transform = `rotate(${currentRotation}deg)`;
+            const rotInput = document.getElementById('image_rotation');
+            if (rotInput) rotInput.value = currentRotation; 
+        });
+    }
+
+    if (btnClearImg) {
+        btnClearImg.addEventListener('click', function() {
+            if (fileInput) fileInput.value = '';
+            if (imagePreview) imagePreview.src = '';
+            if (existingImgInput) existingImgInput.value = '';
+            if (previewArea) previewArea.classList.add('hidden');
+            validateImageState();
+        });
+    }
 
     // --- TOGGLE CONDITIONAL BLOCKS ---
     const isDiTinh = document.getElementById('is_di_tinh');
@@ -726,19 +798,19 @@
 
     function updateUI() {
         if (isDiTinh && isDiTinh.checked) {
-            diTinhBlock.classList.remove('hidden');
+            if (diTinhBlock) diTinhBlock.classList.remove('hidden');
         } else if (diTinhBlock) {
             diTinhBlock.classList.add('hidden');
         }
 
         if (isHotro && isHotro.checked) {
-            diCungBlock.classList.remove('hidden');
+            if (diCungBlock) diCungBlock.classList.remove('hidden');
         } else if (diCungBlock) {
             diCungBlock.classList.add('hidden');
         }
 
         if (isNgoaiGio && isNgoaiGio.checked) {
-            ngoaiGioBlock.classList.remove('hidden');
+            if (ngoaiGioBlock) ngoaiGioBlock.classList.remove('hidden');
         } else if (ngoaiGioBlock) {
             ngoaiGioBlock.classList.add('hidden');
         }
@@ -786,52 +858,151 @@
         });
     }
 
-    // --- GỬI ĐƠN CHẤM CÔNG ---
-    document.getElementById('chamCongForm').addEventListener('submit', async function(e) {
-        e.preventDefault();
-
-        const btnSubmit = document.getElementById('btnSubmit');
-        const alertMsg = document.getElementById('alertMsg');
-        btnSubmit.disabled = true;
-        btnSubmit.innerHTML = '<i class="fa-solid fa-spinner fa-spin me-2"></i> ĐANG XỬ LÝ & TẢI ẢNH...';
-        
-        const formData = new FormData(this);
-
-        // Nén ảnh tải lên nếu có chọn tệp mới
-        const selectedFile = fileInput.files[0];
-        if (selectedFile) {
-            const compressedFile = await compressImageFile(selectedFile);
-            formData.set('file', compressedFile);
-        }
-
-        try {
-            const response = await fetch('/cham-cong/api/submit', {
-                method: 'POST',
-                body: formData
-            });
-
-            const result = await response.json();
-            alertMsg.classList.remove('hidden', 'alert-danger', 'alert-success');
+    // --- HÀM VALIDATE FORM TRƯỚC KHU SUBMIT ---
+    function validateForm() {
+        // 1. Kiểm tra Bắt buộc Ảnh
+        const hasValidImage = validateImageState();
+        if (!hasValidImage) {
+            if (uploadZone) uploadZone.classList.add('border-danger');
+            if (imgErrorMsg) imgErrorMsg.classList.remove('hidden');
             
-            if (response.ok && result.success) {
-                alertMsg.classList.add('alert-success', 'bg-success', 'bg-opacity-10', 'text-success');
-                alertMsg.innerHTML = `<i class="fa-solid fa-circle-check me-2"></i> ${result.message || 'Đã lưu đơn thành công!'}`;
-                setTimeout(() => {
-                    window.location.href = '/cham-cong/form';
-                }, 1200);
-            } else {
-                alertMsg.classList.add('alert-danger', 'bg-danger', 'bg-opacity-10', 'text-danger');
-                alertMsg.innerHTML = `<i class="fa-solid fa-circle-exclamation me-2"></i> ${result.message || result.detail || 'Có lỗi xảy ra trong quá trình xử lý!'}`;
-                btnSubmit.disabled = false;
-                btnSubmit.innerHTML = '{% if edit_data %}<i class="fa-solid fa-floppy-disk fs-4 me-2"></i> CẬP NHẬT HÓA ĐƠN{% else %}<i class="fa-solid fa-paper-plane fs-4 me-2"></i> GỬI YÊU CẦU DUYỆT{% endif %}';
+            const stepCardImg = document.getElementById('stepCardImage') || uploadZone;
+            if (stepCardImg) {
+                stepCardImg.scrollIntoView({ behavior: 'smooth', block: 'center' });
             }
-        } catch (error) {
-            alertMsg.classList.remove('hidden', 'alert-success');
-            alertMsg.classList.add('alert-danger', 'bg-danger', 'bg-opacity-10', 'text-danger');
-            alertMsg.innerHTML = '<i class="fa-solid fa-triangle-exclamation me-2"></i> Lỗi kết nối tới máy chủ!';
-            btnSubmit.disabled = false;
-            btnSubmit.innerHTML = '{% if edit_data %}<i class="fa-solid fa-floppy-disk fs-4 me-2"></i> CẬP NHẬT HÓA ĐƠN{% else %}<i class="fa-solid fa-paper-plane fs-4 me-2"></i> GỬI YÊU CẦU DUYỆT{% endif %}';
+            return "Vui lòng chụp hoặc tải ảnh hóa đơn đính kèm!";
         }
-    });
+
+        // 2. Kiểm tra số hóa đơn
+        const soHoaDonEl = document.getElementById('so_hoa_don');
+        const soHoaDon = soHoaDonEl ? soHoaDonEl.value.trim() : "";
+        if (!soHoaDon) {
+            return "Vui lòng nhập số hóa đơn!";
+        }
+        if (soHoaDon.length < 3) {
+            return "Số hóa đơn phải có ít nhất 3 ký tự!";
+        }
+
+        // 3. Kiểm tra đi tỉnh hay đi nội thành
+        const isDiTinhChecked = isDiTinh && isDiTinh.checked;
+
+        if (!isDiTinhChecked) {
+            // Kiểm tra quãng đường khi đi nội thành
+            const qdEl = document.getElementById('quang_duong');
+            const quangDuong = qdEl ? parseFloat(qdEl.value) : 0;
+            if (isNaN(quangDuong) || quangDuong < 0) {
+                return "Quãng đường không hợp lệ!";
+            }
+            if (quangDuong > 1000) {
+                return "Quãng đường nhập vào quá lớn (vượt quá 1000 KM). Vui lòng kiểm tra lại!";
+            }
+
+            // Kiểm tra máy móc khi đi nội thành
+            const mayLon = parseInt(document.getElementById('combo_may_lon')?.value) || 0;
+            const mayNho = parseInt(document.getElementById('combo_may_nho')?.value) || 0;
+            const mayEp = parseInt(document.getElementById('combo_may_ep')?.value) || 0;
+            if (mayLon + mayNho + mayEp <= 0) {
+                return "Vui lòng chọn ít nhất 1 thiết bị (Máy lớn, Máy nhỏ hoặc Máy ép)!";
+            }
+        }
+
+        // 4. Kiểm tra trường thợ phụ nếu bật checkbox
+        if (isHotro && isHotro.checked) {
+            const soNguoi = parseInt(document.getElementById('so_nguoi_di_cung')?.value) || 0;
+            if (soNguoi <= 0) {
+                return "Bạn đã chọn 'Có thợ phụ', vui lòng nhập số lượng thợ phụ (ít nhất là 1)!";
+            }
+        }
+
+        // 5. Kiểm tra nội dung
+        const noiDungEl = document.querySelector('textarea[name="noi_dung"]');
+        const noiDung = noiDungEl ? noiDungEl.value.trim() : "";
+        if (!noiDung) {
+            return "Vui lòng nhập địa chỉ giao hàng hoặc ghi chú nội dung công việc!";
+        }
+        if (noiDung.length < 8) {
+            return "Nội dung / Địa chỉ ghi chú quá ngắn (ít nhất 8 ký tự)!";
+        }
+
+        return null; // Không có lỗi
+    }
+
+    // --- GỬI ĐƠN CHẤM CÔNG ---
+    const chamCongForm = document.getElementById('chamCongForm');
+    if (chamCongForm) {
+        chamCongForm.addEventListener('submit', async function(e) {
+            e.preventDefault();
+
+            const alertMsg = document.getElementById('alertMsg');
+            
+            // Client Validation
+            const errorMsg = validateForm();
+            if (errorMsg) {
+                if (alertMsg) {
+                    alertMsg.classList.remove('hidden', 'alert-success');
+                    alertMsg.classList.add('alert-danger', 'bg-danger', 'bg-opacity-10', 'text-danger');
+                    alertMsg.innerHTML = `<i class="fa-solid fa-triangle-exclamation me-2"></i> ${errorMsg}`;
+                    if (!document.getElementById('imageErrorMessage') || document.getElementById('imageErrorMessage').classList.contains('hidden')) {
+                        alertMsg.scrollIntoView({ behavior: 'smooth', block: 'center' });
+                    }
+                }
+                return;
+            }
+
+            const btnSubmit = document.getElementById('btnSubmit');
+            if (btnSubmit) {
+                btnSubmit.disabled = true;
+                btnSubmit.innerHTML = '<i class="fa-solid fa-spinner fa-spin me-2"></i> ĐANG XỬ LÝ & TẢI ẢNH...';
+            }
+            
+            const formData = new FormData(this);
+
+            // Nén ảnh tải lên nếu có chọn tệp mới
+            const selectedFile = fileInput ? fileInput.files[0] : null;
+            if (selectedFile) {
+                const compressedFile = await compressImageFile(selectedFile);
+                formData.set('file', compressedFile);
+            }
+
+            try {
+                const response = await fetch('/cham-cong/api/submit', {
+                    method: 'POST',
+                    body: formData
+                });
+
+                const result = await response.json();
+                if (alertMsg) alertMsg.classList.remove('hidden', 'alert-danger', 'alert-success');
+                
+                if (response.ok && result.success) {
+                    if (alertMsg) {
+                        alertMsg.classList.add('alert-success', 'bg-success', 'bg-opacity-10', 'text-success');
+                        alertMsg.innerHTML = `<i class="fa-solid fa-circle-check me-2"></i> ${result.message || 'Đã lưu đơn thành công!'}`;
+                    }
+                    setTimeout(() => {
+                        window.location.href = '/cham-cong/form';
+                    }, 1200);
+                } else {
+                    if (alertMsg) {
+                        alertMsg.classList.add('alert-danger', 'bg-danger', 'bg-opacity-10', 'text-danger');
+                        alertMsg.innerHTML = `<i class="fa-solid fa-circle-exclamation me-2"></i> ${result.message || result.detail || 'Có lỗi xảy ra trong quá trình xử lý!'}`;
+                    }
+                    if (btnSubmit) {
+                        btnSubmit.disabled = false;
+                        btnSubmit.innerHTML = '{% if edit_data %}<i class="fa-solid fa-floppy-disk fs-4 me-2"></i> CẬP NHẬT HÓA ĐƠN{% else %}<i class="fa-solid fa-paper-plane fs-4 me-2"></i> GỬI YÊU CẦU DUYỆT{% endif %}';
+                    }
+                }
+            } catch (error) {
+                if (alertMsg) {
+                    alertMsg.classList.remove('hidden', 'alert-success');
+                    alertMsg.classList.add('alert-danger', 'bg-danger', 'bg-opacity-10', 'text-danger');
+                    alertMsg.innerHTML = '<i class="fa-solid fa-triangle-exclamation me-2"></i> Lỗi kết nối tới máy chủ!';
+                }
+                if (btnSubmit) {
+                    btnSubmit.disabled = false;
+                    btnSubmit.innerHTML = '{% if edit_data %}<i class="fa-solid fa-floppy-disk fs-4 me-2"></i> CẬP NHẬT HÓA ĐƠN{% else %}<i class="fa-solid fa-paper-plane fs-4 me-2"></i> GỬI YÊU CẦU DUYỆT{% endif %}';
+                }
+            }
+        });
+    }
 </script>
 {% endblock %}

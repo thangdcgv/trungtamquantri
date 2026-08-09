@@ -1,14 +1,15 @@
 import io
 import logging
+import re
 from datetime import datetime, timezone
 from pathlib import Path
 from typing import Optional
 
-from fastapi import APIRouter, File, Form, Request, UploadFile, status, HTTPException
+from fastapi import APIRouter, File, Form, Request, UploadFile, status, Query
 from fastapi.responses import HTMLResponse, JSONResponse, RedirectResponse
 from fastapi.templating import Jinja2Templates
 from PIL import Image, ImageOps
-from pydantic import BaseModel, Field
+from pydantic import BaseModel, Field, validator
 
 from config import supabase  # Supabase client instance
 
@@ -45,20 +46,22 @@ DEFAULT_CONFIG = {
     "moc_km_4": 80000,       # 41-50km
     "phi_vuot_50km": 5000,   # mỗi km > 50km
     "price_may_lon": 80000,
-    "price_may_nho": 50000,
+    "price_may_nho": 30000,
     "price_may_ep_near": 80000, # <= 20km
     "price_may_ep_far": 50000   # > 20km
 }
 
 
 def get_config_cham_cong() -> dict:
-    """Lấy cấu hình đơn giá linh hoạt từ cau_hinh_cham_cong hoặc config_cham_cong"""
+    """Lấy cấu hình đơn giá linh hoạt từ config_cham_cong với DEFAULT_CONFIG làm fallback"""
     config = DEFAULT_CONFIG.copy()
     try:
-        res_row = supabase.table("cau_hinh_cham_cong").select("*").limit(1).execute()
-        if res_row.data and len(res_row.data) > 0:
-            for k, v in res_row.data[0].items():
-                if k != "id" and v is not None:
+        res_cfg = supabase.table("config_cham_cong").select("key_name, value_num").execute()
+        if res_cfg.data:
+            for item in res_cfg.data:
+                k = item.get("key_name")
+                v = item.get("value_num")
+                if k and v is not None:
                     try:
                         config[k] = float(v)
                     except (ValueError, TypeError):
@@ -68,10 +71,14 @@ def get_config_cham_cong() -> dict:
         pass
 
     try:
-        res_cfg = supabase.table("config_cham_cong").select("key_name, value_num").execute()
-        if res_cfg.data:
-            for item in res_cfg.data:
-                config[item['key_name']] = float(item['value_num'])
+        res_row = supabase.table("config_cham_cong").select("*").limit(1).execute()
+        if res_row.data and len(res_row.data) > 0:
+            for k, v in res_row.data[0].items():
+                if k != "id" and v is not None:
+                    try:
+                        config[k] = float(v)
+                    except (ValueError, TypeError):
+                        config[k] = v
     except Exception as e:
         logger.error(f"Lỗi lấy config từ DB: {e}")
 
@@ -97,7 +104,7 @@ def process_image(file_bytes: bytes, rotation: int = 0) -> bytes:
 def upload_image_to_supabase(file_bytes: bytes, filename: str) -> Optional[str]:
     """Upload ảnh lên Supabase Storage"""
     try:
-        bucket_name = "cham_cong_images"
+        bucket_name = "AnhChamCong"
         time_prefix = datetime.now().strftime("%Y%m%d_%H%M%S")
         safe_filename = f"{time_prefix}_{filename.replace(' ', '_')}"
         
@@ -113,8 +120,8 @@ def upload_image_to_supabase(file_bytes: bytes, filename: str) -> Optional[str]:
 
 
 def check_duplicate_invoice(so_hd: str, edit_id: Optional[int] = None) -> tuple[bool, str]:
-    """Kiểm tra mã hóa đơn trùng lặp"""
-    so_hd_clean = so_hd.strip().upper()
+    """Kiểm tra mã hóa đơn trùng lặp (xóa khoảng trắng, chuẩn hóa chữ hoa)"""
+    so_hd_clean = re.sub(r'\s+', '', so_hd.strip().upper())
     formatted_hd = so_hd_clean if so_hd_clean.startswith("HD") else f"HD{so_hd_clean}"
     
     query = supabase.table("cham_cong").select("id").eq("so_hoa_don", formatted_hd)
@@ -128,7 +135,7 @@ def check_duplicate_invoice(so_hd: str, edit_id: Optional[int] = None) -> tuple[
 
 
 def parse_datetime_field(item: dict):
-    """Hỗ trợ chuyển đổi trường thoi_gian từ chuỗi sang datetime object để dùng được .strftime"""
+    """Chuyển đổi trường thoi_gian từ chuỗi sang datetime object"""
     if item and isinstance(item.get("thoi_gian"), str):
         try:
             item["thoi_gian"] = datetime.fromisoformat(item["thoi_gian"].replace("Z", "+00:00"))
@@ -138,7 +145,7 @@ def parse_datetime_field(item: dict):
 
 
 def tinh_tien_lap_dat(
-    quang_duong: int,
+    quang_duong: float,
     so_may_lon: int,
     so_may_nho: int,
     so_may_ep: int,
@@ -147,12 +154,11 @@ def tinh_tien_lap_dat(
     so_dem_ks: int,
     is_di_tinh: bool,
     is_ngoai_gio: bool,
-    gia_thuong_luong: int,
-    phu_phi_phat_sinh: int,
+    gia_thuong_luong: float,
+    phu_phi_phat_sinh: float,
     config: dict
 ) -> dict:
-    """Calculates installation charges dynamically based on DB config"""
-    cfg = config or DEFAULT_CONFIG
+    cfg = config or {}
 
     phu_cap_tho_phu = cfg.get("phu_cap_tho_phu", 80000)
     phu_cap_di_tinh = cfg.get("phu_cap_di_tinh", 500000)
@@ -166,18 +172,20 @@ def tinh_tien_lap_dat(
     phi_vuot_50km = cfg.get("phi_vuot_50km", 5000)
 
     price_may_lon = cfg.get("price_may_lon", 80000)
-    price_may_nho = cfg.get("price_may_nho", 50000)
+    price_may_nho = cfg.get("price_may_nho", 30000)
     price_may_ep_near = cfg.get("price_may_ep_near", 80000)
     price_may_ep_far = cfg.get("price_may_ep_far", 50000)
 
+    device_cost = 0.0
+    distance_cost = 0.0
+    tho_phu_cost = 0.0
+    di_tinh_cost = 0.0
+
     if is_di_tinh:
-        tien_quang_duong = 0
-        tien_may_lon = 0
-        tien_may_nho = 0
-        tien_may_ep = 0
-        base_di_tinh_total = phu_cap_di_tinh + (so_ngay_an * phu_cap_ngay_an) + (so_dem_ks * phu_cap_dem_ks)
-        tong_tien_chinh = base_di_tinh_total
-        tien_nguoi_di_cung = so_nguoi_di_cung * base_di_tinh_total
+        base_di_tinh_self = phu_cap_di_tinh + (so_ngay_an * phu_cap_ngay_an) + (so_dem_ks * phu_cap_dem_ks)
+        tien_nguoi_di_cung = so_nguoi_di_cung * base_di_tinh_self
+        di_tinh_cost = float(base_di_tinh_self + tien_nguoi_di_cung)
+        tong_tien_chinh = di_tinh_cost
     else:
         if quang_duong <= 0:
             tien_quang_duong = 0
@@ -192,11 +200,21 @@ def tinh_tien_lap_dat(
         else:
             tien_quang_duong = moc_4 + (quang_duong - 50) * phi_vuot_50km
 
-        tien_may_lon = so_may_lon * price_may_lon
-        tien_may_nho = so_may_nho * price_may_nho
-        tien_may_ep = (price_may_ep_near if quang_duong <= 20 else price_may_ep_far) if so_may_ep > 0 else 0
+        distance_cost = float(tien_quang_duong)
 
-        tong_tien_chinh = tien_quang_duong + tien_may_lon + tien_may_nho + tien_may_ep
+        tien_may_lon = so_may_lon * price_may_lon
+        co_may_chinh = (so_may_lon > 0) or (so_may_ep > 0)
+        if co_may_chinh:
+            tien_may_nho = so_may_nho * price_may_nho
+        else:
+            tien_may_nho = max(0, so_may_nho - 1) * price_may_nho
+
+        tien_may_ep = 0
+        if so_may_ep > 0:
+            don_gia_ep = price_may_ep_near if quang_duong <= 20 else price_may_ep_far
+            tien_may_ep = so_may_ep * don_gia_ep
+
+        device_cost = float(tien_may_lon + tien_may_nho + tien_may_ep)
 
         if so_nguoi_di_cung > 0:
             if so_may_ep > 0:
@@ -206,14 +224,23 @@ def tinh_tien_lap_dat(
             else:
                 tien_nguoi_di_cung = so_nguoi_di_cung * phu_cap_tho_phu
         else:
-            tien_nguoi_di_cung = 0
+            tien_nguoi_di_cung = 0.0
 
-    tien_ngoai_gio = gia_thuong_luong if is_ngoai_gio else 0
-    tong_tien = tong_tien_chinh + tien_nguoi_di_cung + tien_ngoai_gio + phu_phi_phat_sinh
+        tho_phu_cost = float(tien_nguoi_di_cung)
+        tong_tien_chinh = distance_cost + device_cost + tho_phu_cost
+
+    tien_ngoai_gio = float(gia_thuong_luong) if is_ngoai_gio else 0.0
+    phu_phi = float(phu_phi_phat_sinh)
+
+    tong_tien = float(tong_tien_chinh + tien_ngoai_gio + phu_phi)
 
     return {
-        "tien_quang_duong": tien_quang_duong,
-        "tien_nguoi_di_cung": tien_nguoi_di_cung,
+        "device_cost": device_cost,
+        "distance_cost": distance_cost,
+        "tho_phu_cost": tho_phu_cost,
+        "di_tinh_cost": di_tinh_cost,
+        "tien_ngoai_gio": tien_ngoai_gio,
+        "phu_phi_phat_sinh": phu_phi,
         "tong_tien": tong_tien
     }
 
@@ -224,11 +251,14 @@ def build_noi_dung(
     so_ngay_an: int,
     so_dem_ks: int,
     so_nguoi_di_cung: int,
-    phu_phi_khac: int,
+    phu_phi_khac: float,
     is_ngoai_gio: bool,
-    gia_thuong_luong: int
+    gia_thuong_luong: float
 ) -> str:
-    """Tạo ghi chú nội dung tổng hợp"""
+    """Tạo ghi chú nội dung tổng hợp (Đã fix lỗi trùng lặp khi Edit)"""
+    # Xóa các chuỗi thông tin bổ sung cũ dạng [...] nếu có
+    clean_base = re.sub(r'\s*\[.*?\]$', '', noi_dung_goc.strip())
+
     details = []
     if is_di_tinh:
         di_tinh_str = "Đi tỉnh"
@@ -248,7 +278,7 @@ def build_noi_dung(
         details.append(f"Phụ phí: {phu_phi_khac:,.0f}đ")
         
     extra_info = f" [{', '.join(details)}]" if details else ""
-    return f"{noi_dung_goc.strip()}{extra_info}"
+    return f"{clean_base}{extra_info}"
 
 
 # ==========================================
@@ -258,6 +288,13 @@ def build_noi_dung(
 class DuyetPhieuSchema(BaseModel):
     trang_thai: str = Field(..., description="Trạng thái: 'Đã duyệt', 'Từ chối', hoặc 'Chờ duyệt'")
     ghi_chu_duyet: Optional[str] = Field(default="", description="Ghi chú từ QTV")
+
+    @validator('trang_thai')
+    def validate_trang_thai(cls, v):
+        allowed = ['Đã duyệt', 'Từ chối', 'Chờ duyệt']
+        if v not in allowed:
+            raise ValueError(f"Trạng thái phải thuộc một trong các giá trị: {allowed}")
+        return v
 
 
 # ==========================================
@@ -282,32 +319,26 @@ async def list_cham_cong(request: Request):
         )
         
         recent_installations = res_cc.data or []
-        
-        # Parse thời gian cho toàn bộ danh sách để tránh lỗi strftime trong vòng lặp template
         for item in recent_installations:
             parse_datetime_field(item)
         
-        # Thiết lập item đầu tiên làm mặc định
-        if recent_installations:
-            item = recent_installations[0]
-        else:
-            item = {
-                "id": 0,
-                "so_hoa_don": "Chưa có",
-                "noi_dung": "Chưa có dữ liệu chấm công trong tháng",
-                "thanh_tien": 0,
-                "trang_thai": "Chưa có",
-                "quang_duong": 0,
-                "combo": 0,
-                "hinh_anh": "",
-                "thoi_gian": datetime.now(timezone.utc)
-            }
+        item = recent_installations[0] if recent_installations else {
+            "id": 0,
+            "so_hoa_don": "Chưa có",
+            "noi_dung": "Chưa có dữ liệu chấm công trong tháng",
+            "thanh_tien": 0,
+            "trang_thai": "Chưa có",
+            "quang_duong": 0,
+            "combo": 0,
+            "hinh_anh": "",
+            "thoi_gian": datetime.now(timezone.utc)
+        }
 
         return templates.TemplateResponse(
             request=request,
             name="cham_cong_detail.html",
             context={
-                "request": request,  # <--- BẮT BUỘC CÓ ĐỂ ĐỌC SESSION TRONG HTML
+                "request": request,
                 "recent_installations": recent_installations,
                 "item": item
             }
@@ -319,7 +350,7 @@ async def list_cham_cong(request: Request):
 
 @router.get("/detail/{item_id}", response_class=HTMLResponse)
 async def detail_cham_cong(request: Request, item_id: int):
-    """Xem chi tiết phiếu chấm công hướng tới giao diện cham_cong_detail.html"""
+    """Xem chi tiết phiếu chấm công"""
     try:
         res = supabase.table('cham_cong').select('*').eq('id', item_id).execute()
         if not res.data:
@@ -332,7 +363,7 @@ async def detail_cham_cong(request: Request, item_id: int):
             request=request,
             name="cham_cong_detail.html",
             context={
-                "request": request,  # <--- BẮT BUỘC CÓ ĐỂ ĐỌC SESSION TRONG HTML
+                "request": request,
                 "item": item
             }
         )
@@ -367,6 +398,7 @@ async def get_form_cham_cong(request: Request, edit_id: Optional[int] = None):
             request=request,
             name="lap_dat.html",
             context={
+                "request": request,
                 "config": cfg,
                 "edit_data": edit_data,
                 "employees_list": employees_list
@@ -381,7 +413,13 @@ async def get_form_cham_cong(request: Request, edit_id: Optional[int] = None):
 async def search_invoice(so_hd: str):
     """API tra cứu hóa đơn theo số HD để chỉnh sửa"""
     try:
-        so_hd_clean = so_hd.strip().upper()
+        so_hd_clean = re.sub(r'\s+', '', so_hd.strip().upper())
+        if not so_hd_clean:
+            return JSONResponse(
+                status_code=status.HTTP_400_BAD_REQUEST,
+                content={"success": False, "message": "❌ Vui lòng nhập số hóa đơn!"}
+            )
+
         res = supabase.table("cham_cong").select("id, so_hoa_don").ilike("so_hoa_don", f"%{so_hd_clean}%").limit(1).execute()
         if res.data and len(res.data) > 0:
             return JSONResponse(status_code=status.HTTP_200_OK, content={"success": True, "data": res.data[0]})
@@ -403,15 +441,15 @@ async def submit_cham_cong(
     request: Request,
     so_hoa_don: str = Form(...),
     noi_dung: str = Form(...),
-    quang_duong: int = Form(0),
+    quang_duong: float = Form(0.0),
     combo_may_lon: int = Form(0),
     combo_may_nho: int = Form(0),
     combo_may_ep: int = Form(0),
     so_ngay_an: int = Form(0),
     so_dem_ks: int = Form(0),
     so_nguoi_di_cung: int = Form(0),
-    phu_phi_phat_sinh: int = Form(0),
-    gia_thuong_luong: int = Form(0),
+    phu_phi_phat_sinh: float = Form(0.0),
+    gia_thuong_luong: float = Form(0.0),
     is_di_tinh: bool = Form(False),
     is_ngoai_gio: bool = Form(False),
     is_hotro_khac: bool = Form(False),
@@ -422,22 +460,69 @@ async def submit_cham_cong(
     file: Optional[UploadFile] = File(None)
 ):
     try:
+        # ==========================================
+        # VALIDATION CÁC TRƯỜNG ĐẦU VÀO
+        # ==========================================
+        clean_noi_dung = noi_dung.strip()
+        if not clean_noi_dung or len(clean_noi_dung) < 8:
+            return JSONResponse(
+                status_code=status.HTTP_400_BAD_REQUEST,
+                content={"success": False, "message": "❌ Nội dung / Địa chỉ công việc quá ngắn (tối thiểu 8 ký tự)!"}
+            )
+
+        if quang_duong < 0 or quang_duong > 1000:
+            return JSONResponse(
+                status_code=status.HTTP_400_BAD_REQUEST,
+                content={"success": False, "message": "❌ Quãng đường không hợp lệ (phải từ 0 đến 1000 KM)!"}
+            )
+
+        if combo_may_lon < 0 or combo_may_nho < 0 or combo_may_ep < 0:
+            return JSONResponse(
+                status_code=status.HTTP_400_BAD_REQUEST,
+                content={"success": False, "message": "❌ Số lượng máy móc không được là số âm!"}
+            )
+
+        if not is_di_tinh and (combo_may_lon + combo_may_nho + combo_may_ep) <= 0:
+            return JSONResponse(
+                status_code=status.HTTP_400_BAD_REQUEST,
+                content={"success": False, "message": "❌ Vui lòng chọn ít nhất 1 thiết bị (Máy lớn, Máy nhỏ hoặc Máy ép)!"}
+            )
+
+        if is_hotro_khac and so_nguoi_di_cung <= 0:
+            return JSONResponse(
+                status_code=status.HTTP_400_BAD_REQUEST,
+                content={"success": False, "message": "❌ Bạn đã chọn 'Có thợ phụ', vui lòng nhập số lượng thợ phụ (ít nhất là 1)!"}
+            )
+
+        if phu_phi_phat_sinh < 0 or gia_thuong_luong < 0 or so_ngay_an < 0 or so_dem_ks < 0:
+            return JSONResponse(
+                status_code=status.HTTP_400_BAD_REQUEST,
+                content={"success": False, "message": "❌ Các giá trị phụ phí/chi phí không được là số âm!"}
+            )
+
         parsed_edit_id = int(edit_id) if edit_id and edit_id.strip().isdigit() else None
         
         session_user = request.session.get("username", "system_user")
-        session_fullname = request.session.get("ho_ten") or request.session.get("full_name") or session_user
+        session_fullname = request.session.get("ho_ten") or request.session.get("username", "system_user")
+        user_role = request.session.get("role", "User")
 
+        # Phân quyền: Chỉ Admin mới được phép chỉ định target_username
         if target_username and target_username.strip():
-            target_user = target_username.strip()
-            try:
-                emp_res = supabase.table("quan_tri_vien").select("ho_ten").eq("username", target_user).limit(1).execute()
-                ho_ten_target = emp_res.data[0].get("ho_ten", target_user) if emp_res.data else target_user
-            except Exception:
-                ho_ten_target = target_user
+            if user_role == "Admin":
+                target_user = target_username.strip()
+                try:
+                    emp_res = supabase.table("quan_tri_vien").select("ho_ten").eq("username", target_user).limit(1).execute()
+                    ho_ten_target = emp_res.data[0].get("ho_ten", target_user) if emp_res.data else target_user
+                except Exception:
+                    ho_ten_target = target_user
+            else:
+                target_user = session_user
+                ho_ten_target = session_fullname
         else:
             target_user = session_user
             ho_ten_target = session_fullname
         
+        # Kiểm tra trùng hóa đơn
         hop_le, final_hd = check_duplicate_invoice(so_hoa_don, parsed_edit_id)
         if not hop_le:
             return JSONResponse(
@@ -445,9 +530,22 @@ async def submit_cham_cong(
                 content={"success": False, "message": f"❌ Số hóa đơn {final_hd} đã tồn tại!"}
             )
 
+        # Validate File Upload
         final_image_url = existing_image_url
         if file and file.filename:
+            if not file.content_type.startswith("image/"):
+                return JSONResponse(
+                    status_code=status.HTTP_400_BAD_REQUEST,
+                    content={"success": False, "message": "❌ Định dạng tệp đính kèm không hợp lệ! Chỉ chấp nhận file ảnh."}
+                )
+
             file_bytes = await file.read()
+            if len(file_bytes) > 15 * 1024 * 1024:
+                return JSONResponse(
+                    status_code=status.HTTP_400_BAD_REQUEST,
+                    content={"success": False, "message": "❌ Dung lượng ảnh quá lớn (vượt quá 15MB)!"}
+                )
+
             processed_bytes = process_image(file_bytes, image_rotation)
             cloud_url = upload_image_to_supabase(processed_bytes, file.filename)
             if cloud_url:
@@ -485,7 +583,7 @@ async def submit_cham_cong(
         )
 
         noi_dung_final = build_noi_dung(
-            noi_dung_goc=noi_dung,
+            noi_dung_goc=clean_noi_dung,
             is_di_tinh=is_di_tinh,
             so_ngay_an=actual_so_ngay_an,
             so_dem_ks=actual_so_dem_ks,
@@ -501,9 +599,15 @@ async def submit_cham_cong(
             "thoi_gian": datetime.now(timezone.utc).strftime("%Y-%m-%dT%H:%M:%SZ"),
             "so_hoa_don": final_hd,
             "noi_dung": noi_dung_final,
-            "quang_duong": int(quang_duong) if not is_di_tinh else 0,
+            "quang_duong": float(quang_duong),  # Lưu giữ số KM thực tế thay vì ép về 0
             "combo": int(combo_may_lon) + int(combo_may_nho) + int(combo_may_ep),
-            "thanh_tien": float(res_tinh["tong_tien"]),
+            "thanh_tien": float(res_tinh.get("tong_tien", 0)),
+            "device_cost": float(res_tinh.get("device_cost", 0)),
+            "distance_cost": float(res_tinh.get("distance_cost", 0)),
+            "tho_phu_cost": float(res_tinh.get("tho_phu_cost", 0)),
+            "di_tinh_cost": float(res_tinh.get("di_tinh_cost", 0)),
+            "tien_ngoai_gio": float(res_tinh.get("tien_ngoai_gio", 0)),
+            "phu_phi_phat_sinh": float(res_tinh.get("phu_phi_phat_sinh", 0)),
             "hinh_anh": final_image_url,
             "trang_thai": 'Chờ duyệt'
         }
@@ -526,9 +630,16 @@ async def submit_cham_cong(
 
 
 @router.post("/api/duyet/{item_id}")
-async def duyet_phieu(item_id: int, payload: DuyetPhieuSchema):
-    """Phê duyệt / Từ chối phiếu"""
+async def duyet_phieu(request: Request, item_id: int, payload: DuyetPhieuSchema):
+    """Phê duyệt / Từ chối phiếu (Chỉ dành cho Admin)"""
     try:
+        user_role = request.session.get("role", "User")
+        if user_role != "Admin":
+            return JSONResponse(
+                status_code=status.HTTP_403_FORBIDDEN,
+                content={"success": False, "message": "❌ Từ chối truy cập: Bạn không có quyền quản trị!"}
+            )
+
         update_data = {
             "trang_thai": payload.trang_thai,
             "ghi_chu_duyet": payload.ghi_chu_duyet.strip() if payload.ghi_chu_duyet else ""
@@ -557,18 +668,29 @@ async def duyet_phieu(item_id: int, payload: DuyetPhieuSchema):
 @router.get("/config-view", response_class=HTMLResponse)
 async def get_config_page(request: Request):
     """Trang quản trị giao diện điều chỉnh định mức chấm công cho Admin"""
+    user_role = request.session.get("role", "User")
+    if user_role != "Admin":
+        return HTMLResponse(content="<h3>❌ Bạn không có quyền truy cập trang này!</h3>", status_code=403)
+
     cfg = get_config_cham_cong()
     return templates.TemplateResponse(
         request=request,
         name="config_cham_cong.html",
-        context={"config": cfg}
+        context={"request": request, "config": cfg}
     )
 
 
 @router.post("/api/config/update")
 async def update_config_cham_cong(request: Request):
-    """API lưu toàn bộ thông số định mức mới vào Supabase"""
+    """API lưu toàn bộ thông số định mức mới vào Supabase (Yêu cầu Admin)"""
     try:
+        user_role = request.session.get("role", "User")
+        if user_role != "Admin":
+            return JSONResponse(
+                status_code=status.HTTP_403_FORBIDDEN,
+                content={"success": False, "message": "❌ Bạn không có quyền thực hiện thao tác này!"}
+            )
+
         form_data = await request.form()
         
         for key, value in form_data.items():
@@ -592,34 +714,115 @@ async def update_config_cham_cong(request: Request):
             status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
             content={"success": False, "message": f"❌ Lỗi hệ thống: {str(e)}"}
         )
-@router.post("/api/duyet/{item_id}")
-async def duyet_phieu(request: Request, item_id: int, payload: DuyetPhieuSchema):
-    """Phê duyệt / Từ chối phiếu (Bắt buộc phải là Admin mới được phép gọi)"""
+
+@router.get("/list", response_class=HTMLResponse)
+async def view_danh_sach_cham_cong(
+    request: Request,
+    status_filter: Optional[str] = Query(None),
+    search: Optional[str] = Query(None),
+    thang: Optional[int] = Query(None),
+    nam: Optional[int] = Query(None),
+    ktv: Optional[str] = Query(None),
+    limit: int = Query(100)
+):
+    """Giao diện danh sách đơn phân quyền theo User / Admin chuẩn 100% Schema DB"""
     try:
-        # BẢO MẬT BACKEND: Kiểm tra quyền Admin
         user_role = request.session.get("role", "User")
+        current_username = request.session.get("username", "")
+
+        now = datetime.now()
+        current_year = now.year
+        current_month = now.month
+
+        selected_month = thang if thang is not None else current_month
+        selected_year = nam if nam is not None else current_year
+
+        # 1. Query dữ liệu từ Supabase
+        query = supabase.table("cham_cong").select("*")
+
+        # 2. PHÂN QUYỀN: User thường chỉ xem đơn của chính mình
         if user_role != "Admin":
-            return JSONResponse(
-                status_code=status.HTTP_403_FORBIDDEN,
-                content={"success": False, "message": "❌ Từ chối truy cập: Bạn không có quyền quản trị!"}
+            query = query.eq("username", current_username)
+
+        # 3. LỌC THEO TRẠNG THÁI
+        if status_filter and status_filter in ["Chờ duyệt", "Đã duyệt", "Từ chối"]:
+            query = query.eq("trang_thai", status_filter)
+
+        # 4. LỌC THEO KỸ THUẬT VIÊN (Chỉ dành cho Admin)
+        if ktv and ktv != "Tất cả" and user_role == "Admin":
+            query = query.eq("username", ktv)
+
+        # 5. LỌC THEO THÁNG & NĂM (Dựa vào cột thoi_gian)
+        if selected_year > 0:
+            if selected_month > 0:
+                start_date = f"{selected_year}-{selected_month:02d}-01T00:00:00"
+                if selected_month == 12:
+                    end_date = f"{selected_year + 1}-01-01T00:00:00"
+                else:
+                    end_date = f"{selected_year}-{selected_month + 1:02d}-01T00:00:00"
+                query = query.gte("thoi_gian", start_date).lt("thoi_gian", end_date)
+            else:
+                query = query.gte("thoi_gian", f"{selected_year}-01-01T00:00:00").lt("thoi_gian", f"{selected_year + 1}-01-01T00:00:00")
+
+        # 6. TÌM KIẾM TỪ KHÓA (Chuẩn hóa cột: username, ten, noi_dung, so_hoa_don)
+        if search and search.strip():
+            clean_search = search.strip()
+            query = query.or_(
+                f"username.ilike.%{clean_search}%,"
+                f"ten.ilike.%{clean_search}%,"
+                f"noi_dung.ilike.%{clean_search}%,"
+                f"so_hoa_don.ilike.%{clean_search}%"
             )
 
-        update_data = {
-            "trang_thai": payload.trang_thai,
-            "ghi_chu_duyet": payload.ghi_chu_duyet.strip() if payload.ghi_chu_duyet else ""
+        # 7. TRUY VẤN VÀ SẮP XẾP GẦN NHẤT
+        res = query.order("id", desc=True).limit(limit).execute()
+        danh_sach = res.data or []
+
+        # Parse iso format thoi_gian -> datetime
+        for item in danh_sach:
+            try:
+                parse_datetime_field(item)
+            except Exception as parse_err:
+                logger.warning(f"Lỗi parse datetime cho ID {item.get('id')}: {parse_err}")
+
+        # 8. LẤY DANH SÁCH KTV CHO DROPDOWN BỘ LỌC (Chuẩn hóa cột: username, ten)
+        danh_sach_ktv = []
+        if user_role == "Admin":
+            try:
+                ktv_res = supabase.table("cham_cong").select("username, ten").execute()
+                raw_ktv = ktv_res.data or []
+                seen = set()
+                for k in raw_ktv:
+                    u = k.get("username")
+                    if u and u not in seen:
+                        seen.add(u)
+                        display_name = k.get("ten") or u
+                        danh_sach_ktv.append((u, display_name))
+            except Exception as ktv_err:
+                logger.error(f"Lỗi tải danh sách KTV: {ktv_err}")
+
+        # 9. RENDER TEMPLATE (Chính xác tham số request)
+        context = {
+            "request": request,
+            "danh_sach": danh_sach,
+            "user_role": user_role,
+            "current_username": current_username,
+            "status_filter": status_filter or "Tất cả",
+            "search_query": search or "",
+            "selected_month": selected_month,
+            "selected_year": selected_year,
+            "selected_ktv": ktv or "Tất cả",
+            "limit": limit,
+            "danh_sach_ktv": danh_sach_ktv,
+            "current_year": current_year
         }
-
-        res = supabase.table('cham_cong').update(update_data).eq('id', item_id).execute()
-        if res.data:
-            return {"success": True, "message": f"Đã cập nhật trạng thái: {payload.trang_thai}"}
-
-        return JSONResponse(
-            status_code=status.HTTP_404_NOT_FOUND,
-            content={"success": False, "message": "Không tìm thấy phiếu chấm công"}
+        
+        return templates.TemplateResponse(
+            request=request,
+            name="danh_sach_cham_cong.html",
+            context=context
         )
+
     except Exception as e:
-        logger.error(f"Lỗi duyệt phiếu {item_id}: {str(e)}")
-        return JSONResponse(
-            status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
-            content={"success": False, "message": f"Lỗi hệ thống: {str(e)}"}
-        )
+        logger.error(f"Lỗi tải danh sách chấm công: {e}", exc_info=True)
+        return HTMLResponse(content=f"<h3>Lỗi hệ thống: {str(e)}</h3>", status_code=500)

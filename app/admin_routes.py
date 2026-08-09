@@ -221,7 +221,7 @@ async def get_config_cham_cong(request: Request, admin: dict = Depends(get_curre
     config_data = {}
     try:
         if supabase:
-            res = supabase.table('cau_hinh_cham_cong').select('*').limit(1).execute()
+            res = supabase.table('config_cham_cong').select('*').limit(1).execute()
             if res and res.data:
                 config_data = res.data[0]
     except Exception as e:
@@ -241,12 +241,12 @@ async def save_config_cham_cong(request: Request, admin: dict = Depends(get_curr
         update_dict = {key: value for key, value in form_data.items()}
         
         if supabase:
-            check = supabase.table('cau_hinh_cham_cong').select('id').limit(1).execute()
+            check = supabase.table('config_cham_cong').select('id').limit(1).execute()
             if check and check.data:
                 config_id = check.data[0]['id']
-                supabase.table('cau_hinh_cham_cong').update(update_dict).eq('id', config_id).execute()
+                supabase.table('config_cham_cong').update(update_dict).eq('id', config_id).execute()
             else:
-                supabase.table('cau_hinh_cham_cong').insert(update_dict).execute()
+                supabase.table('config_cham_cong').insert(update_dict).execute()
                 
         request.session["success_message"] = "Cập nhật cấu hình chấm công thành công!"
     except Exception as e:

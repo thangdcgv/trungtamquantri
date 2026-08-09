@@ -376,7 +376,8 @@
                     </div>
                     <div class="feed-card-name">Đơn Chấm Công Gần Nhất</div>
                 </div>
-                <a href="https://mayindaithanh-lapdat.hf.space/list" target="_blank" rel="noopener noreferrer" class="feed-card-action">
+                <!-- Đường dẫn đúng tới trang danh sách -->
+                <a href="/cham-cong/list" class="feed-card-action">
                     <i class="fa-solid fa-list"></i>
                     <span>Xem danh sách</span>
                 </a>
@@ -384,6 +385,7 @@
             <div class="feed-list">
                 {% if recent_installations %}
                     {% for item in recent_installations %}
+                    <!-- Đường dẫn đúng tới trang chi tiết -->
                     <a href="/cham-cong/detail/{{ item.id }}" class="feed-item">
                         <div class="feed-info">
                             <span class="feed-title">

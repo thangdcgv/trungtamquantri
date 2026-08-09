@@ -2,11 +2,24 @@ from fastapi import APIRouter, Request
 from fastapi.templating import Jinja2Templates
 from datetime import datetime, timezone, timedelta
 from config import supabase
-from fastapi.responses import RedirectResponse
+from fastapi.responses import HTMLResponse, RedirectResponse
+import logging
+from typing import Optional
+
+# Khai báo logger
+logger = logging.getLogger(__name__)
 
 router = APIRouter()
 templates = Jinja2Templates(directory="app/templates")
 
+def parse_datetime_field(item: dict):
+    """Chuyển đổi trường thoi_gian từ chuỗi ISO sang datetime object"""
+    if item and isinstance(item.get("thoi_gian"), str):
+        try:
+            item["thoi_gian"] = datetime.fromisoformat(item["thoi_gian"].replace("Z", "+00:00"))
+        except Exception:
+            pass
+    return item
 @router.get("/")
 async def index(request: Request):
     if 'user_id' not in request.session:

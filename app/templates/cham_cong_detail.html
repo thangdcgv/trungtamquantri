@@ -390,30 +390,49 @@
 
             <!-- Bảng kê chi phí thành phần -->
             <div style="margin-top: 1.25rem; background: rgba(0, 0, 0, 0.2); border: 1px solid rgba(255, 255, 255, 0.06); border-radius: 12px; padding: 1rem 1.15rem;">
-                <div style="font-size: 0.75rem; color: #38bdf8; font-weight: 800; text-transform: uppercase; margin-bottom: 0.5rem; letter-spacing: 0.03em;">
+                <div style="font-size: 0.75rem; color: #38bdf8; font-weight: 800; text-transform: uppercase; margin-bottom: 0.75rem; letter-spacing: 0.03em;">
                     <i class="fa-solid fa-chart-pie" style="margin-right: 4px;"></i> Bảng kê chi phí thành phần
                 </div>
-                <div class="breakdown-row">
-                    <span class="breakdown-label">Công thiết bị (Máy lớn / Máy ép)</span>
-                    <span class="breakdown-val">{{ "{:,.0f}".format(item.device_cost or 0) }} đ</span>
-                </div>
-                <div class="breakdown-row">
-                    <span class="breakdown-label">Phí quãng đường / Khoán mốc km</span>
-                    <span class="breakdown-val">{{ "{:,.0f}".format(item.distance_cost or 0) }} đ</span>
-                </div>
-                <div class="breakdown-row">
-                    <span class="breakdown-label">Phụ cấp thợ phụ nội thành</span>
-                    <span class="breakdown-val">{{ "{:,.0f}".format(item.tho_phu_cost or 0) }} đ</span>
-                </div>
+
                 {% if item.di_tinh_cost and item.di_tinh_cost > 0 %}
-                <div class="breakdown-row">
+                <div class="breakdown-row" style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 0.5rem;">
                     <span class="breakdown-label">Phụ cấp công tác tỉnh (Ăn / KS / Phí)</span>
                     <span class="breakdown-val">{{ "{:,.0f}".format(item.di_tinh_cost) }} đ</span>
                 </div>
+                {% else %}
+                <div class="breakdown-row" style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 0.5rem;">
+                    <span class="breakdown-label">Công thiết bị (Máy lớn / Ép nếu có)</span>
+                    <span class="breakdown-val">{{ "{:,.0f}".format(item.device_cost or 0) }} đ</span>
+                </div>
+
+                <div class="breakdown-row" style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 0.5rem;">
+                    <span class="breakdown-label">Phí quãng đường / Khoán mốc km</span>
+                    <span class="breakdown-val">{{ "{:,.0f}".format(item.distance_cost or 0) }} đ</span>
+                </div>
+
+                <div class="breakdown-row" style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 0.5rem;">
+                    <span class="breakdown-label">Phụ cấp thợ phụ nội thành</span>
+                    <span class="breakdown-val">{{ "{:,.0f}".format(item.tho_phu_cost or 0) }} đ</span>
+                </div>
                 {% endif %}
-                <div class="breakdown-row" style="border-bottom: none; padding-top: 0.85rem; margin-top: 0.35rem; border-top: 1px solid rgba(255,255,255,0.08);">
-                    <span class="breakdown-label" style="font-weight: 800; color: var(--text-main);">TỔNG THÀNH TIỀN</span>
-                    <span class="breakdown-val info-value-money">{{ "{:,.0f}".format(item.thanh_tien or 0) }} đ</span>
+
+                {% if item.tien_ngoai_gio and item.tien_ngoai_gio > 0 %}
+                <div class="breakdown-row" style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 0.5rem;">
+                    <span class="breakdown-label">Phụ cấp ngoài giờ</span>
+                    <span class="breakdown-val">{{ "{:,.0f}".format(item.tien_ngoai_gio) }} đ</span>
+                </div>
+                {% endif %}
+
+                {% if item.phu_phi_phat_sinh and item.phu_phi_phat_sinh > 0 %}
+                <div class="breakdown-row" style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 0.5rem;">
+                    <span class="breakdown-label">Phụ phí phát sinh khác</span>
+                    <span class="breakdown-val">{{ "{:,.0f}".format(item.phu_phi_phat_sinh) }} đ</span>
+                </div>
+                {% endif %}
+
+                <div class="breakdown-row" style="border-bottom: none; padding-top: 0.85rem; margin-top: 0.5rem; border-top: 1px solid rgba(255,255,255,0.08); display: flex; justify-content: space-between; align-items: center;">
+                    <span class="breakdown-label" style="font-weight: 800; color: #fff;">TỔNG THÀNH TIỀN</span>
+                    <span class="breakdown-val info-value-money" style="font-size: 1rem; color: #38bdf8; font-weight: 800;">{{ "{:,.0f}".format(item.thanh_tien or 0) }} đ</span>
                 </div>
             </div>
         </div>
@@ -471,7 +490,7 @@
                     <select id="trangThaiSelect" class="form-control" style="background: rgba(0,0,0,0.25); border: 1px solid var(--border-color); color: var(--text-main); border-radius: 12px; padding: 0.8rem; width: 100%; font-weight: 600; outline: none; transition: border-color 0.2s ease;">
                         <option value="Đã duyệt" {% if item.trang_thai == 'Đã duyệt' %}selected{% endif %}>✅ Đã duyệt</option>
                         <option value="Từ chối" {% if item.trang_thai == 'Từ chối' %}selected{% endif %}>❌ Từ chối</option>
-                        <option value="Chờ duyệt" {% if item.trang_thai == 'Chờ duyệt' %}selected{% endif %}>⏳ Chờ duyệt lại</option>
+                        <option value="Chờ duyệt" {% if item.trang_thai == 'Chờ duyệt' %}selected{% endif %}>⏳ Chờ duyệt</option>
                     </select>
                 </div>
 
