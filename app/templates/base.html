@@ -5,20 +5,45 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, viewport-fit=cover">
     <title>{% block title %}Center Hub - Máy In Đại Thành{% endblock %}</title>
 
+    <!-- Google Fonts: Plus Jakarta Sans (Chuẩn font giao diện App hiện đại) -->
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@400;500;600;700;800&display=swap" rel="stylesheet">
+
     <style>
         :root {
-            --bg-main: #0f172a;
-            --bg-card: #1e293b;
-            --bg-card-hover: #334155;
+            /* Palette Màu Mới: Deep Tech Dark */
+            --bg-main: #070a12;
+            --bg-card: rgba(18, 26, 43, 0.7);
+            --bg-card-solid: #121a2b;
+            --bg-card-hover: #182339;
+            
             --border-color: rgba(255, 255, 255, 0.08);
+            --border-color-active: rgba(56, 189, 248, 0.4);
+
+            /* Brand Accent Colors */
             --primary: #0284c7;
             --primary-light: #38bdf8;
+            --primary-glow: rgba(56, 189, 248, 0.25);
+            
             --accent-green: #10b981;
             --accent-orange: #f59e0b;
+            --accent-red: #ef4444;
+
+            /* Text & Visual Hierarchy */
             --text-main: #f8fafc;
-            --text-muted: #94a3b8;
-            --top-header-height: 58px;
-            --bottom-nav-height: 64px;
+            --text-sub: #cbd5e1;
+            --text-muted: #64748b;
+
+            --top-header-height: 62px;
+            --bottom-nav-height: 68px;
+
+            /* Visual Effects */
+            --glass-bg: rgba(10, 15, 29, 0.82);
+            --glass-blur: blur(20px) saturate(180%);
+            --radius-card: 16px;
+            --radius-btn: 12px;
+            --shadow-glow: 0 0 20px -5px rgba(2, 132, 199, 0.3);
         }
 
         * {
@@ -29,7 +54,7 @@
         }
 
         body {
-            font-family: system-ui, -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+            font-family: 'Plus Jakarta Sans', -apple-system, BlinkMacSystemFont, sans-serif;
             background-color: var(--bg-main);
             color: var(--text-main);
             min-height: 100vh;
@@ -37,9 +62,13 @@
             flex-direction: column;
             -webkit-font-smoothing: antialiased;
             overflow-x: hidden;
+            background-image: 
+                radial-gradient(circle at 50% 0%, rgba(2, 132, 199, 0.12) 0%, transparent 50%),
+                radial-gradient(circle at 100% 100%, rgba(16, 185, 129, 0.05) 0%, transparent 40%);
+            background-attachment: fixed;
         }
 
-        /* Top Header Fixed */
+        /* Top Header Fixed - Đỉnh cao Glassmorphism */
         .app-header {
             position: fixed;
             top: 0;
@@ -47,27 +76,39 @@
             right: 0;
             height: calc(var(--top-header-height) + env(safe-area-inset-top));
             padding-top: env(safe-area-inset-top);
-            background-color: rgba(15, 23, 42, 0.88);
-            backdrop-filter: blur(16px);
-            -webkit-backdrop-filter: blur(16px);
+            background: var(--glass-bg);
+            backdrop-filter: var(--glass-blur);
+            -webkit-backdrop-filter: var(--glass-blur);
             border-bottom: 1px solid var(--border-color);
             display: flex;
             align-items: center;
             justify-content: space-between;
-            padding-left: 1rem;
-            padding-right: 1rem;
+            padding-left: 1.25rem;
+            padding-right: 1.25rem;
             z-index: 100;
         }
 
         .header-brand {
             display: flex;
             align-items: center;
-            gap: 0.75rem;
+            gap: 0.85rem;
             text-decoration: none;
         }
 
+        .logo-wrapper {
+            position: relative;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            width: 38px;
+            height: 38px;
+            border-radius: 10px;
+            background: rgba(255, 255, 255, 0.04);
+            border: 1px solid var(--border-color);
+        }
+
         .header-logo {
-            height: 30px;
+            height: 24px;
             width: auto;
             object-fit: contain;
         }
@@ -78,52 +119,69 @@
         }
 
         .header-title {
-            font-size: 0.95rem;
-            font-weight: 700;
+            font-size: 0.9rem;
+            font-weight: 800;
             color: var(--text-main);
-            letter-spacing: 0.05em;
-            line-height: 1.1;
+            letter-spacing: 0.04em;
+            line-height: 1.2;
+            text-transform: uppercase;
         }
 
         .header-subtitle {
             font-size: 0.68rem;
             color: var(--primary-light);
-            font-weight: 600;
-            letter-spacing: 0.03em;
+            font-weight: 700;
+            letter-spacing: 0.05em;
+            text-transform: uppercase;
+            display: flex;
+            align-items: center;
+            gap: 4px;
+        }
+
+        .header-subtitle::before {
+            content: '';
+            display: inline-block;
+            width: 6px;
+            height: 6px;
+            background-color: var(--accent-green);
+            border-radius: 50%;
+            box-shadow: 0 0 8px var(--accent-green);
         }
 
         .logout-btn {
-            min-width: 44px;
-            min-height: 44px;
+            width: 40px;
+            height: 40px;
             display: flex;
             align-items: center;
             justify-content: center;
-            background: transparent;
-            border: none;
-            color: var(--text-muted);
+            background: rgba(255, 255, 255, 0.04);
+            border: 1px solid var(--border-color);
+            color: var(--text-sub);
             border-radius: 12px;
             text-decoration: none;
-            transition: background 0.2s, color 0.2s;
+            transition: all 0.2s cubic-bezier(0.4, 0, 0.2, 1);
         }
 
         .logout-btn:active {
-            background-color: rgba(255, 255, 255, 0.1);
-            color: #ef4444;
+            background-color: rgba(239, 68, 68, 0.15);
+            color: var(--accent-red);
+            border-color: rgba(239, 68, 68, 0.3);
+            transform: scale(0.95);
         }
 
-        /* Container Nội Dung */
+        /* Container Nội Dung Chic & Clean */
         .app-content {
             flex: 1;
-            padding-top: calc(var(--top-header-height) + env(safe-area-inset-top) + 1rem);
-            padding-bottom: calc(var(--bottom-nav-height) + env(safe-area-inset-bottom) + 1.25rem);
-            padding-left: 1rem;
-            padding-right: 1rem;
+            padding-top: calc(var(--top-header-height) + env(safe-area-inset-top) + 1.25rem);
+            padding-bottom: calc(var(--bottom-nav-height) + env(safe-area-inset-bottom) + 1.5rem);
+            padding-left: 1.25rem;
+            padding-right: 1.25rem;
             max-width: 600px;
             width: 100%;
             margin: 0 auto;
         }
 
-        /* Bottom Navigation Bar (Thumb-Zone Tối Ưu) */
+        /* Bottom Navigation Bar chuẩn Floating App iOS/Android */
         .bottom-nav {
             position: fixed;
             bottom: 0;
@@ -131,9 +189,9 @@
             right: 0;
             height: calc(var(--bottom-nav-height) + env(safe-area-inset-bottom));
             padding-bottom: env(safe-area-inset-bottom);
-            background-color: rgba(15, 23, 42, 0.92);
-            backdrop-filter: blur(16px);
-            -webkit-backdrop-filter: blur(16px);
+            background: var(--glass-bg);
+            backdrop-filter: var(--glass-blur);
+            -webkit-backdrop-filter: var(--glass-blur);
             border-top: 1px solid var(--border-color);
             display: flex;
             align-items: center;
@@ -150,10 +208,11 @@
             height: var(--bottom-nav-height);
             color: var(--text-muted);
             text-decoration: none;
-            font-size: 0.7rem;
-            font-weight: 500;
-            gap: 4px;
-            transition: color 0.15s ease, transform 0.1s ease;
+            font-size: 0.72rem;
+            font-weight: 600;
+            gap: 5px;
+            position: relative;
+            transition: all 0.2s cubic-bezier(0.4, 0, 0.2, 1);
         }
 
         .nav-item svg {
@@ -164,36 +223,93 @@
             stroke-width: 2;
             stroke-linecap: round;
             stroke-linejoin: round;
+            transition: transform 0.2s ease, stroke 0.2s ease;
         }
 
         .nav-item:active {
-            transform: scale(0.92);
+            transform: scale(0.9);
         }
 
+        /* Tab đang chọn - Highlight nổi bật */
         .nav-item.active {
             color: var(--primary-light);
-            font-weight: 600;
         }
 
         .nav-item.active svg {
             stroke: var(--primary-light);
+            transform: translateY(-2px);
+            filter: drop-shadow(0 2px 8px var(--primary-glow));
         }
 
-        /* Core Component Style */
+        /* Đốm sáng báo hiệu Tab Active */
+        .nav-item.active::after {
+            content: '';
+            position: absolute;
+            top: 0;
+            width: 28px;
+            height: 3px;
+            background: var(--primary-light);
+            border-radius: 0 0 4px 4px;
+            box-shadow: 0 2px 10px var(--primary-light);
+        }
+
+        /* Base Card & UI Elements để sử dụng ở các trang con */
         .card {
-            background-color: var(--bg-card);
+            background: var(--bg-card);
+            backdrop-filter: blur(12px);
             border: 1px solid var(--border-color);
-            border-radius: 18px;
+            border-radius: var(--radius-card);
             padding: 1.25rem;
-            margin-bottom: 1rem;
-            box-shadow: 0 10px 25px -5px rgba(0, 0, 0, 0.3);
+            margin-bottom: 1.25rem;
+            box-shadow: 0 10px 30px -10px rgba(0, 0, 0, 0.5);
+            transition: border-color 0.2s ease;
         }
 
-        input, select, textarea, button {
-            -webkit-appearance: none;
-            -moz-appearance: none;
-            appearance: none;
+        .card:hover {
+            border-color: rgba(255, 255, 255, 0.15);
+        }
+
+        /* Chuẩn hóa Input / Button Chuyên Nghiệp */
+        input, select, textarea {
+            width: 100%;
+            background-color: rgba(10, 15, 29, 0.6);
+            border: 1px solid var(--border-color);
+            border-radius: var(--radius-btn);
+            color: var(--text-main);
+            padding: 0.75rem 1rem;
             font-family: inherit;
+            font-size: 0.92rem;
+            outline: none;
+            transition: all 0.2s ease;
+        }
+
+        input:focus, select:focus, textarea:focus {
+            border-color: var(--primary-light);
+            box-shadow: 0 0 0 3px var(--primary-glow);
+            background-color: rgba(10, 15, 29, 0.9);
+        }
+
+        button, .btn {
+            display: inline-flex;
+            align-items: center;
+            justify-content: center;
+            gap: 0.5rem;
+            background: linear-gradient(135deg, var(--primary) 0%, #0369a1 100%);
+            color: #ffffff;
+            font-weight: 700;
+            font-size: 0.92rem;
+            border: none;
+            border-radius: var(--radius-btn);
+            padding: 0.8rem 1.25rem;
+            cursor: pointer;
+            transition: all 0.2s ease;
+            box-shadow: var(--shadow-glow);
+            text-decoration: none;
+        }
+
+        button:active, .btn:active {
+            transform: scale(0.97);
+            opacity: 0.9;
         }
     </style>
 
@@ -204,14 +320,16 @@
     <!-- Header Trực quan -->
     <header class="app-header">
         <a href="/" class="header-brand">
-            <img src="https://ejbillnpxxiubbiyyaxn.supabase.co/storage/v1/object/public/publicLogo/LOGO.png" alt="Logo Máy In Đại Thành" class="header-logo">
+            <div class="logo-wrapper">
+                <img src="https://ejbillnpxxiubbiyyaxn.supabase.co/storage/v1/object/public/publicLogo/LOGO.png" alt="Logo Máy In Đại Thành" class="header-logo">
+            </div>
             <div class="header-title-box">
-                <span class="header-title">TRUNG TÂM QUẢN TRỊ</span>
-                <span class="header-subtitle">MÁY IN ĐẠI THÀNH</span>
+                <span class="header-title">Center Hub</span>
+                <span class="header-subtitle">Máy In Đại Thành</span>
             </div>
         </a>
         <a href="/auth/logout" class="logout-btn" title="Đăng xuất">
-            <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+            <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
                 <path d="M9 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h4"></path>
                 <polyline points="16 17 21 12 16 7"></polyline>
                 <line x1="21" y1="12" x2="9" y2="12"></line>
@@ -236,8 +354,8 @@
         </a>
 
         <!-- 2. App Chấm Công Lắp Đặt Nội Bộ -->
-        <a href="/cham-cong/form" class="nav-item">
-            <svg viewBox="0 0 24 24" width="20" height="20" stroke="currentColor" stroke-width="2" fill="none">
+        <a href="/cham-cong/form" class="nav-item {% if '/cham-cong' in request.url.path %}active{% endif %}">
+            <svg viewBox="0 0 24 24">
                 <circle cx="12" cy="12" r="10"></circle>
                 <polyline points="12 6 12 12 16 14"></polyline>
             </svg>
@@ -246,7 +364,7 @@
 
         <!-- 3. App Bảo Hành Nội Bộ -->
         <a href="/warranty/create" class="nav-item {% if '/warranty' in request.url.path %}active{% endif %}">
-            <svg viewBox="0 0 24 24" width="20" height="20" stroke="currentColor" stroke-width="2" fill="none">
+            <svg viewBox="0 0 24 24">
                 <path d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10z"></path>
             </svg>
             <span>Bảo hành</span>
@@ -255,7 +373,7 @@
         <!-- 4. Cụm Quản Trị Hệ Thống -->
         {% if request.session.get('role') == 'Admin' %}
         <a href="/admin" class="nav-item {% if request.url.path.startswith('/admin') %}active{% endif %}">
-            <svg viewBox="0 0 24 24" width="20" height="20" stroke="currentColor" stroke-width="2" fill="none" stroke-linecap="round" stroke-linejoin="round">
+            <svg viewBox="0 0 24 24">
                 <path d="M12.22 2h-.44a2 2 0 0 0-2 2v.18a2 2 0 0 1-1 1.73l-.43.25a2 2 0 0 1-2 0l-.15-.08a2 2 0 0 0-2.73.73l-.22.38a2 2 0 0 0 .73 2.73l.15.1a2 2 0 0 1 1 1.72v.51a2 2 0 0 1-1 1.74l-.15.09a2 2 0 0 0-.73 2.73l.22.38a2 2 0 0 0 2.73.73l.15-.08a2 2 0 0 1 2 0l.43.25a2 2 0 0 1 1 1.73V20a2 2 0 0 0 2 2h.44a2 2 0 0 0 2-2v-.18a2 2 0 0 1 1-1.73l.43-.25a2 2 0 0 1 2 0l.15.08a2 2 0 0 0 2.73-.73l.22-.38a2 2 0 0 0-.73-2.73l-.15-.08a2 2 0 0 1-1-1.74v-.5a2 2 0 0 1 1-1.74l.15-.09a2 2 0 0 0 .73-2.73l-.22-.38a2 2 0 0 0-2.73-.73l-.15.08a2 2 0 0 1-2 0l-.43-.25a2 2 0 0 1-1-1.73V4a2 2 0 0 0-2-2z"></path>
                 <circle cx="12" cy="12" r="3"></circle>
             </svg>

@@ -307,6 +307,7 @@ async def list_cham_cong(request: Request):
             request=request,
             name="cham_cong_detail.html",
             context={
+                "request": request,  # <--- BẮT BUỘC CÓ ĐỂ ĐỌC SESSION TRONG HTML
                 "recent_installations": recent_installations,
                 "item": item
             }
@@ -330,7 +331,10 @@ async def detail_cham_cong(request: Request, item_id: int):
         return templates.TemplateResponse(
             request=request,
             name="cham_cong_detail.html",
-            context={"item": item}
+            context={
+                "request": request,  # <--- BẮT BUỘC CÓ ĐỂ ĐỌC SESSION TRONG HTML
+                "item": item
+            }
         )
     except Exception as e:
         logger.error(f"Lỗi chi tiết phiếu {item_id}: {str(e)}")
@@ -587,4 +591,35 @@ async def update_config_cham_cong(request: Request):
         return JSONResponse(
             status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
             content={"success": False, "message": f"❌ Lỗi hệ thống: {str(e)}"}
+        )
+@router.post("/api/duyet/{item_id}")
+async def duyet_phieu(request: Request, item_id: int, payload: DuyetPhieuSchema):
+    """Phê duyệt / Từ chối phiếu (Bắt buộc phải là Admin mới được phép gọi)"""
+    try:
+        # BẢO MẬT BACKEND: Kiểm tra quyền Admin
+        user_role = request.session.get("role", "User")
+        if user_role != "Admin":
+            return JSONResponse(
+                status_code=status.HTTP_403_FORBIDDEN,
+                content={"success": False, "message": "❌ Từ chối truy cập: Bạn không có quyền quản trị!"}
+            )
+
+        update_data = {
+            "trang_thai": payload.trang_thai,
+            "ghi_chu_duyet": payload.ghi_chu_duyet.strip() if payload.ghi_chu_duyet else ""
+        }
+
+        res = supabase.table('cham_cong').update(update_data).eq('id', item_id).execute()
+        if res.data:
+            return {"success": True, "message": f"Đã cập nhật trạng thái: {payload.trang_thai}"}
+
+        return JSONResponse(
+            status_code=status.HTTP_404_NOT_FOUND,
+            content={"success": False, "message": "Không tìm thấy phiếu chấm công"}
+        )
+    except Exception as e:
+        logger.error(f"Lỗi duyệt phiếu {item_id}: {str(e)}")
+        return JSONResponse(
+            status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
+            content={"success": False, "message": f"Lỗi hệ thống: {str(e)}"}
         )

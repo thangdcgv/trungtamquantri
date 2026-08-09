@@ -1,483 +1,598 @@
-<!DOCTYPE html>
-<html lang="vi">
-<head>
-    <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
-    <title>Cấu hình Định mức Chấm công</title>
-    <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css" rel="stylesheet">
-    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
-    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/animate.css/4.1.1/animate.min.css"/>
-    <style>
-        :root {
-            --bg-main: #090d16;
-            --card-bg: rgba(30, 41, 59, 0.7);
-            --card-border: rgba(255, 255, 255, 0.08);
-            --input-bg: #0f172a;
-            --text-primary: #f8fafc;
-            --text-muted: #94a3b8;
-            --accent-cyan: #38bdf8;
-            --accent-amber: #f59e0b;
-            --accent-emerald: #10b981;
-            --accent-indigo: #818cf8;
-        }
+{% extends "base.html" %}
 
-        body { 
-            background-color: var(--bg-main); 
-            color: var(--text-primary); 
-            font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif;
-            padding-bottom: 110px;
-            -webkit-tap-highlight-color: transparent;
-        }
+{% block title %}Cấu hình Định mức Chấm công{% endblock %}
 
-        /* Ambient Glow Background */
-        body::before {
-            content: "";
-            position: fixed;
-            top: 0;
-            left: 50%;
-            transform: translateX(-50%);
-            width: 100%;
-            max-width: 600px;
-            height: 300px;
-            background: radial-gradient(circle, rgba(56, 189, 248, 0.08) 0%, rgba(15, 23, 42, 0) 70%);
-            pointer-events: none;
-            z-index: 0;
-        }
+{% block head %}
+<link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+<style>
+    :root {
+        --bg-main: #0f172a;
+        --bg-card: #1e293b;
+        --text-main: #f8fafc;
+        --accent-color: #f59e0b; /* Chuyển màu chủ đạo sang Amber cho trang Cấu hình */
+        --accent-hover: #d97706;
+        --border-color: rgba(255,255,255,.12);
+        --muted: #94a3b8;
+    }
 
-        /* Top Header Sticky */
-        .app-header {
-            position: sticky;
-            top: 0;
-            z-index: 1020;
-            background: rgba(9, 13, 22, 0.85);
-            backdrop-filter: blur(16px);
-            -webkit-backdrop-filter: blur(16px);
-            border-bottom: 1px solid var(--card-border);
-            padding: 12px 16px;
-        }
+    body {
+        background-color: var(--bg-main) !important;
+        color: var(--text-main) !important;
+        font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif;
+    }
 
-        .btn-back-header {
-            width: 36px;
-            height: 36px;
-            border-radius: 12px;
-            background: rgba(255, 255, 255, 0.05);
-            border: 1px solid rgba(255, 255, 255, 0.1);
-            color: var(--text-primary);
-            display: flex;
-            align-items: center;
-            justify-content: center;
-            text-decoration: none;
-            transition: all 0.2s ease;
-        }
+    /* Ambient Glow Background */
+    body::before {
+        content: "";
+        position: fixed;
+        top: 0;
+        left: 50%;
+        transform: translateX(-50%);
+        width: 100%;
+        max-width: 600px;
+        height: 300px;
+        background: radial-gradient(circle, rgba(245, 158, 11, 0.08) 0%, rgba(15, 23, 42, 0) 70%);
+        pointer-events: none;
+        z-index: -1;
+    }
 
-        .btn-back-header:active {
-            background: rgba(255, 255, 255, 0.15);
-            transform: scale(0.95);
-        }
+    .warranty-app {
+        max-width: 600px;
+        margin: 0 auto;
+        padding: 1rem .5rem 3rem;
+    }
 
-        /* Glassmorphism Section Card */
-        .config-section {
-            background: var(--card-bg);
-            backdrop-filter: blur(12px);
-            -webkit-backdrop-filter: blur(12px);
-            border: 1px solid var(--card-border);
-            border-radius: 20px;
-            padding: 18px;
-            margin-bottom: 18px;
-            box-shadow: 0 10px 25px -5px rgba(0, 0, 0, 0.3);
-            position: relative;
-            z-index: 1;
-        }
+    .warranty-header {
+        display: flex;
+        align-items: center;
+        justify-content: space-between;
+        gap: 12px;
+        margin-bottom: 18px;
+        padding: 0 4px;
+    }
 
-        .section-header {
-            display: flex;
-            align-items: center;
-            justify-content: space-between;
-            margin-bottom: 16px;
-            padding-bottom: 10px;
-            border-bottom: 1px solid rgba(255, 255, 255, 0.06);
-        }
+    .warranty-brand {
+        display: flex;
+        align-items: center;
+        gap: 12px;
+        min-width: 0;
+    }
 
-        .section-title {
-            font-size: 0.92rem;
-            font-weight: 700;
-            text-transform: uppercase;
-            letter-spacing: 0.6px;
-            display: flex;
-            align-items: center;
-            gap: 10px;
-        }
+    .warranty-brand-icon {
+        width: 50px;
+        height: 50px;
+        flex: 0 0 50px;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        border-radius: 16px;
+        background: linear-gradient(135deg, rgba(245,158,11,.20), rgba(217,119,6,.20));
+        border: 1px solid rgba(245,158,11,.30);
+        color: var(--accent-color);
+        font-size: 1.35rem;
+        box-shadow: 0 6px 18px rgba(245,158,11,.12);
+    }
 
-        .title-cyan { color: var(--accent-cyan); }
-        .title-amber { color: var(--accent-amber); }
-        .title-indigo { color: var(--accent-indigo); }
-        .title-emerald { color: var(--accent-emerald); }
+    .warranty-brand h1 {
+        margin: 0;
+        color: #fff;
+        font-size: 1rem;
+        font-weight: 800;
+        letter-spacing: .02em;
+    }
 
-        .icon-box {
-            width: 32px;
-            height: 32px;
-            border-radius: 10px;
-            display: flex;
-            align-items: center;
-            justify-content: center;
-            font-size: 0.9rem;
-        }
+    .warranty-brand small {
+        display: block;
+        margin-top: 3px;
+        color: var(--accent-color);
+        font-size: .74rem;
+        font-weight: 600;
+    }
 
-        .icon-cyan { background: rgba(56, 189, 248, 0.15); color: var(--accent-cyan); }
-        .icon-amber { background: rgba(245, 158, 11, 0.15); color: var(--accent-amber); }
-        .icon-indigo { background: rgba(129, 140, 248, 0.15); color: var(--accent-indigo); }
-        .icon-emerald { background: rgba(16, 185, 129, 0.15); color: var(--accent-emerald); }
+    .status-badge {
+        flex: 0 0 auto;
+        border: 1px solid rgba(56,189,248,.35);
+        color: #38bdf8;
+        background: rgba(56,189,248,.10);
+        border-radius: 20px;
+        padding: .35rem .65rem;
+        font-size: .7rem;
+        font-weight: 700;
+        display: inline-flex;
+        align-items: center;
+        gap: .4rem;
+    }
 
-        /* Config Item Block */
-        .config-item {
-            padding-bottom: 14px;
-            margin-bottom: 14px;
-            border-bottom: 1px dashed rgba(255, 255, 255, 0.08);
-        }
+    .warranty-shell {
+        background: rgba(30,41,59,.70);
+        border: 1px solid var(--border-color);
+        border-radius: 24px;
+        box-shadow: 0 10px 40px rgba(0,0,0,.50);
+        backdrop-filter: blur(12px);
+        -webkit-backdrop-filter: blur(12px);
+        padding: 12px;
+    }
 
-        .config-item:last-child {
-            padding-bottom: 0;
-            margin-bottom: 0;
-            border-bottom: none;
-        }
+    @media (min-width: 576px) {
+        .warranty-shell { padding: 16px; }
+    }
 
-        .config-label {
-            font-size: 0.9rem;
-            font-weight: 600;
-            color: var(--text-primary);
-            margin-bottom: 2px;
-        }
+    .policy-box {
+        display: flex;
+        gap: 12px;
+        margin-bottom: 16px;
+        padding: 16px;
+        border-radius: 18px;
+        background: rgba(56,189,248,.045);
+        border: 1px solid rgba(56,189,248,.20);
+        border-left: 4px solid #38bdf8;
+    }
 
-        .config-desc {
-            font-size: 0.78rem;
-            color: var(--text-muted);
-            margin-bottom: 8px;
-            line-height: 1.35;
-        }
+    .policy-box i {
+        color: #f59e0b;
+        font-size: 1.2rem;
+        margin-top: 2px;
+    }
 
-        /* Modern Custom Input Group */
-        .input-group-custom {
-            background: var(--input-bg);
-            border: 1px solid rgba(255, 255, 255, 0.1);
-            border-radius: 12px;
-            overflow: hidden;
-            transition: all 0.25s cubic-bezier(0.4, 0, 0.2, 1);
-        }
+    .policy-box p {
+        margin: 0;
+        font-size: 0.82rem;
+        line-height: 1.4;
+        color: #e2e8f0;
+    }
 
-        .input-group-custom:focus-within {
-            border-color: var(--accent-cyan);
-            box-shadow: 0 0 0 3px rgba(56, 189, 248, 0.18);
-            transform: translateY(-1px);
-        }
+    .step-card {
+        background: rgba(15,23,42,.60);
+        border: 1px solid var(--border-color);
+        border-radius: 18px;
+        padding: 18px;
+        margin-bottom: 16px;
+        box-shadow: 0 4px 8px rgba(0,0,0,.12);
+    }
 
-        .form-control-custom {
-            background: transparent !important;
-            border: none !important;
-            color: #38bdf8 !important;
-            font-weight: 700;
-            font-size: 1.05rem;
-            padding: 10px 14px;
-            text-align: right;
-        }
+    .step-card:last-child { margin-bottom: 0; }
 
-        .form-control-custom:focus {
-            box-shadow: none !important;
-        }
+    .step-title {
+        display: flex;
+        align-items: center;
+        gap: 10px;
+        font-size: .88rem;
+        font-weight: 800;
+        text-transform: uppercase;
+        letter-spacing: .04em;
+        margin-bottom: 16px;
+        padding-bottom: 12px;
+        border-bottom: 1px dashed rgba(255,255,255,.10);
+    }
 
-        .unit-badge {
-            background: rgba(255, 255, 255, 0.04);
-            color: var(--text-muted);
-            border: none;
-            border-left: 1px solid rgba(255, 255, 255, 0.06);
-            font-size: 0.8rem;
-            font-weight: 600;
-            padding: 0 14px;
-            display: flex;
-            align-items: center;
-        }
+    .title-cyan { color: #38bdf8; }
+    .title-amber { color: #f59e0b; }
+    .title-indigo { color: #818cf8; }
+    .title-emerald { color: #10b981; }
 
-        /* Bottom Fixed Container (Save Action) */
-        .bottom-fixed-wrapper {
-            position: fixed;
-            bottom: 0;
-            left: 0;
-            right: 0;
-            z-index: 1030;
-            background: rgba(9, 13, 22, 0.95);
-            backdrop-filter: blur(20px);
-            -webkit-backdrop-filter: blur(20px);
-            border-top: 1px solid var(--card-border);
-            padding: 12px 16px;
-        }
+    .step-badge {
+        width: 28px;
+        height: 28px;
+        flex: 0 0 28px;
+        display: inline-flex;
+        align-items: center;
+        justify-content: center;
+        border-radius: 8px;
+        font-size: .9rem;
+    }
 
-        .btn-save-main {
-            background: linear-gradient(135deg, #f59e0b 0%, #d97706 100%);
-            color: #000;
-            font-weight: 700;
-            border: none;
-            border-radius: 14px;
-            padding: 12px;
-            font-size: 0.95rem;
-            transition: all 0.2s ease;
-            box-shadow: 0 4px 15px rgba(245, 158, 11, 0.25);
-        }
+    .badge-cyan { background: rgba(56,189,248,.15); color: #38bdf8; }
+    .badge-amber { background: rgba(245,158,11,.15); color: #f59e0b; }
+    .badge-indigo { background: rgba(129,140,248,.15); color: #818cf8; }
+    .badge-emerald { background: rgba(16,185,129,.15); color: #10b981; }
 
-        .btn-save-main:active {
-            transform: scale(0.98);
-        }
+    .config-item {
+        margin-bottom: 16px;
+    }
+    .config-item:last-child { margin-bottom: 0; }
 
-        /* Alert Toast Floating */
-        .alert-toast {
-            position: fixed;
-            top: 75px;
-            left: 16px;
-            right: 16px;
-            z-index: 1040;
-            border-radius: 14px;
-            border: 1px solid rgba(255, 255, 255, 0.1);
-            box-shadow: 0 15px 30px -5px rgba(0, 0, 0, 0.6);
-            backdrop-filter: blur(12px);
-        }
-    </style>
-</head>
-<body>
+    .field-label {
+        display: block;
+        color: #e2e8f0;
+        font-size: .85rem;
+        font-weight: 600;
+        margin-bottom: 3px;
+    }
 
-    <!-- Header Cố Định -->
-    <header class="app-header">
-        <div class="container p-0 d-flex align-items-center justify-content-between" style="max-width: 680px;">
-            <div class="d-flex align-items-center gap-2">
-                <a href="javascript:history.back()" class="btn-back-header" title="Quay lại">
-                    <i class="fa-solid fa-chevron-left"></i>
-                </a>
-                <div class="icon-box icon-amber">
-                    <i class="fa-solid fa-sliders"></i>
-                </div>
-                <div>
-                    <h1 class="h6 mb-0 fw-bold">Cấu hình Định mức</h1>
-                    <span class="text-muted" style="font-size: 0.72rem;">Quản lý chi phí & phụ cấp chấm công</span>
-                </div>
+    .config-desc {
+        font-size: 0.75rem;
+        color: var(--muted);
+        margin-bottom: 8px;
+        line-height: 1.3;
+    }
+
+    /* Custom Input Group (Thay thế Bootstrap) */
+    .input-group-custom {
+        display: flex;
+        align-items: stretch;
+        background: rgba(0,0,0,.20);
+        border: 1px solid rgba(255,255,255,.15);
+        border-radius: 12px;
+        overflow: hidden;
+        transition: all .25s ease;
+        min-height: 46px;
+    }
+
+    .input-group-custom:focus-within {
+        border-color: var(--accent-color);
+        box-shadow: 0 0 0 4px rgba(245,158,11,.15);
+        background: rgba(0,0,0,.36);
+    }
+
+    .input-group-custom input {
+        flex: 1;
+        width: 100%;
+        background: transparent;
+        border: none;
+        color: #38bdf8;
+        font-size: 1rem;
+        font-weight: 700;
+        padding: 10px 14px;
+        text-align: right;
+        outline: none;
+    }
+
+    .input-group-custom input:focus {
+        outline: none;
+    }
+
+    .input-group-custom .unit-badge {
+        display: flex;
+        align-items: center;
+        background: rgba(255,255,255,.04);
+        color: var(--muted);
+        font-size: 0.8rem;
+        font-weight: 700;
+        padding: 0 14px;
+        border-left: 1px solid rgba(255,255,255,.08);
+    }
+
+    .action-row {
+        position: sticky;
+        bottom: 10px;
+        z-index: 20;
+        display: flex;
+        gap: 10px;
+        margin-top: 18px;
+        padding: 10px;
+        border-radius: 16px;
+        background: rgba(15,23,42,.88);
+        border: 1px solid rgba(255,255,255,.10);
+        box-shadow: 0 12px 30px rgba(0,0,0,.38);
+        backdrop-filter: blur(14px);
+        -webkit-backdrop-filter: blur(14px);
+    }
+
+    .btn-submit,
+    .btn-cancel-action {
+        min-height: 50px;
+        border-radius: 14px;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        gap: 8px;
+        text-decoration: none;
+        font-weight: 800;
+        transition: all .2s ease;
+    }
+
+    .btn-submit {
+        flex: 2;
+        border: none;
+        padding: 12px 16px;
+        background: linear-gradient(135deg, #f59e0b 0%, #d97706 100%);
+        color: #fff;
+        font-size: .92rem;
+        letter-spacing: .02em;
+        box-shadow: 0 6px 20px rgba(245,158,11,.35);
+        cursor: pointer;
+    }
+
+    .btn-submit:hover {
+        background: linear-gradient(135deg, #d97706 0%, #b45309 100%);
+        box-shadow: 0 8px 24px rgba(245,158,11,.45);
+    }
+
+    .btn-submit:active { transform: translateY(1px); }
+
+    .btn-cancel-action {
+        flex: 1;
+        padding: 12px 14px;
+        background: rgba(255,255,255,.05);
+        border: 1px solid rgba(255,255,255,.16);
+        color: #cbd5e1;
+        font-size: .84rem;
+    }
+
+    .btn-cancel-action:hover {
+        background: rgba(255,255,255,.10);
+        color: #fff;
+    }
+
+    /* Toast Notification CSS */
+    .toast-container {
+        position: fixed;
+        top: 20px;
+        left: 50%;
+        transform: translateX(-50%) translateY(-100px);
+        z-index: 1040;
+        background: rgba(15,23,42,.95);
+        border: 1px solid var(--border-color);
+        box-shadow: 0 15px 30px rgba(0,0,0,.6);
+        border-radius: 14px;
+        padding: 12px 20px;
+        display: flex;
+        align-items: center;
+        gap: 10px;
+        font-size: 0.85rem;
+        font-weight: 600;
+        opacity: 0;
+        transition: all 0.4s cubic-bezier(0.175, 0.885, 0.32, 1.275);
+        backdrop-filter: blur(12px);
+    }
+
+    .toast-container.show {
+        transform: translateX(-50%) translateY(0);
+        opacity: 1;
+    }
+
+    .toast-success { color: #10b981; border-color: rgba(16,185,129,.3); }
+    .toast-error { color: #ef4444; border-color: rgba(239,68,68,.3); }
+
+    @media (max-width: 430px) {
+        .warranty-app { padding-left: 4px; padding-right: 4px; }
+        .warranty-shell { padding: 9px; border-radius: 20px; }
+        .step-card { padding: 14px; border-radius: 16px; }
+        .warranty-brand h1 { font-size: .92rem; }
+        .warranty-brand small { font-size: .68rem; }
+        .warranty-brand-icon { width: 44px; height: 44px; flex-basis: 44px; }
+        .action-row { bottom: 6px; padding: 8px; }
+        .btn-submit, .btn-cancel-action { min-height: 48px; }
+        .input-group-custom input { font-size: 0.95rem; }
+    }
+</style>
+{% endblock %}
+
+{% block content %}
+<div class="warranty-app">
+    <!-- Header -->
+    <div class="warranty-header">
+        <div class="warranty-brand">
+            <div class="warranty-brand-icon">
+                <i class="fa-solid fa-sliders"></i>
             </div>
-            <span class="badge bg-primary-subtle text-primary border border-primary-subtle rounded-pill px-2 py-1">DB Ready</span>
+            <div>
+                <h1>CẤU HÌNH ĐỊNH MỨC</h1>
+                <small>Quản lý chi phí & phụ cấp chấm công</small>
+            </div>
         </div>
-    </header>
-
-    <main class="container mt-3" style="max-width: 680px;">
-        
-        <!-- Banner Lưu ý -->
-        <div class="alert alert-info border-0 text-white mb-3 p-3 rounded-4 d-flex align-items-start gap-3" 
-             style="background: rgba(14, 165, 233, 0.1); border-left: 4px solid var(--accent-cyan) !important;">
-            <i class="fa-regular fa-lightbulb text-warning fs-5 mt-1"></i>
-            <div class="small" style="font-size: 0.82rem; line-height: 1.4;">
-                <strong>Lưu ý:</strong> Dữ liệu cấu hình được liên kết trực tiếp với bảng hệ thống. Mọi thay đổi sẽ được cập nhật tức thì vào công thức tính lương và chi phí lắp đặt.
-            </div>
-        </div>
-
-        <form id="configForm">
-
-            <!-- NHÓM 1: THIẾT BỊ (group_type = 'Thiết bị') -->
-            <div class="config-section">
-                <div class="section-header">
-                    <div class="section-title title-cyan">
-                        <div class="icon-box icon-cyan"><i class="fa-solid fa-print"></i></div>
-                        <span>1. Định mức Thiết bị</span>
-                    </div>
-                </div>
-
-                <div class="config-item">
-                    <div class="config-label">Đơn giá máy lớn</div>
-                    <div class="config-desc">Công lắp 1 máy lớn (chưa bao gồm quãng đường)</div>
-                    <div class="input-group input-group-custom">
-                        <input type="number" inputmode="numeric" class="form-control form-control-custom" name="don_gia_may_lon" value="{{ config.get('don_gia_may_lon', 80000) }}">
-                        <span class="input-group-text unit-badge">VNĐ</span>
-                    </div>
-                </div>
-
-                <div class="config-item">
-                    <div class="config-label">Máy ép &le; 20km</div>
-                    <div class="config-desc">Công máy ép khi &le; 20km. Hỗ trợ thêm phí không tính quãng đường</div>
-                    <div class="input-group input-group-custom">
-                        <input type="number" inputmode="numeric" class="form-control form-control-custom" name="may_ep_duoi_20km" value="{{ config.get('may_ep_duoi_20km', 80000) }}">
-                        <span class="input-group-text unit-badge">VNĐ</span>
-                    </div>
-                </div>
-
-                <div class="config-item">
-                    <div class="config-label">Máy ép &gt; 20km</div>
-                    <div class="config-desc">Công máy ép khi khoảng cách &gt; 20km</div>
-                    <div class="input-group input-group-custom">
-                        <input type="number" inputmode="numeric" class="form-control form-control-custom" name="may_ep_tren_20km" value="{{ config.get('may_ep_tren_20km', 50000) }}">
-                        <span class="input-group-text unit-badge">VNĐ</span>
-                    </div>
-                </div>
-            </div>
-
-            <!-- NHÓM 2: QUÃNG ĐƯỜNG (group_type = 'Khoảng cách') -->
-            <div class="config-section">
-                <div class="section-header">
-                    <div class="section-title title-amber">
-                        <div class="icon-box icon-amber"><i class="fa-solid fa-route"></i></div>
-                        <span>2. Định mức Quãng đường</span>
-                    </div>
-                </div>
-
-                <div class="config-item">
-                    <div class="config-label">Mốc km 1 (&le; 20km)</div>
-                    <div class="config-desc">Giá quãng đường mốc 1</div>
-                    <div class="input-group input-group-custom">
-                        <input type="number" inputmode="numeric" class="form-control form-control-custom" name="moc_km_1" value="{{ config.get('moc_km_1', 30000) }}">
-                        <span class="input-group-text unit-badge">VNĐ</span>
-                    </div>
-                </div>
-
-                <div class="config-item">
-                    <div class="config-label">Mốc km 2 (21&ndash;30km)</div>
-                    <div class="config-desc">Giá quãng đường mốc 2</div>
-                    <div class="input-group input-group-custom">
-                        <input type="number" inputmode="numeric" class="form-control form-control-custom" name="moc_km_2" value="{{ config.get('moc_km_2', 50000) }}">
-                        <span class="input-group-text unit-badge">VNĐ</span>
-                    </div>
-                </div>
-
-                <div class="config-item">
-                    <div class="config-label">Mốc km 3 (31&ndash;40km)</div>
-                    <div class="config-desc">Giá quãng đường mốc 3</div>
-                    <div class="input-group input-group-custom">
-                        <input type="number" inputmode="numeric" class="form-control form-control-custom" name="moc_km_3" value="{{ config.get('moc_km_3', 70000) }}">
-                        <span class="input-group-text unit-badge">VNĐ</span>
-                    </div>
-                </div>
-
-                <div class="config-item">
-                    <div class="config-label">Mốc km 4 (41&ndash;50km)</div>
-                    <div class="config-desc">Giá quãng đường mốc 4</div>
-                    <div class="input-group input-group-custom">
-                        <input type="number" inputmode="numeric" class="form-control form-control-custom" name="moc_km_4" value="{{ config.get('moc_km_4', 80000) }}">
-                        <span class="input-group-text unit-badge">VNĐ</span>
-                    </div>
-                </div>
-
-                <div class="config-item">
-                    <div class="config-label">Phí vượt 50km (mỗi km)</div>
-                    <div class="config-desc">Cộng thêm mỗi km sau 50km</div>
-                    <div class="input-group input-group-custom">
-                        <input type="number" inputmode="numeric" class="form-control form-control-custom" name="phi_vuot_50km" value="{{ config.get('phi_vuot_50km', 5000) }}">
-                        <span class="input-group-text unit-badge">VNĐ/Km</span>
-                    </div>
-                </div>
-            </div>
-
-            <!-- NHÓM 3: ĐI TỈNH (group_type = 'di_tinh') -->
-            <div class="config-section">
-                <div class="section-header">
-                    <div class="section-title title-indigo">
-                        <div class="icon-box icon-indigo"><i class="fa-solid fa-plane-departure"></i></div>
-                        <span>3. Phụ cấp Công tác Tỉnh</span>
-                    </div>
-                </div>
-
-                <div class="config-item">
-                    <div class="config-label">Phí công tác tỉnh</div>
-                    <div class="config-desc">Phí công tác tỉnh khi KTV đi công tác xa qua đêm</div>
-                    <div class="input-group input-group-custom">
-                        <input type="number" inputmode="numeric" class="form-control form-control-custom" name="di_tinh_phi_cong_tac" value="{{ config.get('di_tinh_phi_cong_tac', 500000) }}">
-                        <span class="input-group-text unit-badge">VNĐ</span>
-                    </div>
-                </div>
-
-                <div class="config-item">
-                    <div class="config-label">Tiền ở khách sạn / ngày</div>
-                    <div class="config-desc">Phụ cấp lưu trú khách sạn theo ngày</div>
-                    <div class="input-group input-group-custom">
-                        <input type="number" inputmode="numeric" class="form-control form-control-custom" name="di_tinh_khach_san" value="{{ config.get('di_tinh_khach_san', 350000) }}">
-                        <span class="input-group-text unit-badge">VNĐ/Ngày</span>
-                    </div>
-                </div>
-
-                <div class="config-item">
-                    <div class="config-label">Tiền ăn / ngày</div>
-                    <div class="config-desc">Phụ cấp tiền ăn uống theo ngày</div>
-                    <div class="input-group input-group-custom">
-                        <input type="number" inputmode="numeric" class="form-control form-control-custom" name="di_tinh_tien_an" value="{{ config.get('di_tinh_tien_an', 200000) }}">
-                        <span class="input-group-text unit-badge">VNĐ/Ngày</span>
-                    </div>
-                </div>
-            </div>
-
-            <!-- NHÓM 4: KHÁC (group_type = 'Khác') -->
-            <div class="config-section">
-                <div class="section-header">
-                    <div class="section-title title-emerald">
-                        <div class="icon-box icon-emerald"><i class="fa-solid fa-user-group"></i></div>
-                        <span>4. Phụ cấp Khác</span>
-                    </div>
-                </div>
-
-                <div class="config-item">
-                    <div class="config-label">Phụ cấp thợ phụ (nội thành)</div>
-                    <div class="config-desc">Tiền công cho mỗi người đi thêm khi lắp đặt trong nội thành</div>
-                    <div class="input-group input-group-custom">
-                        <input type="number" inputmode="numeric" class="form-control form-control-custom" name="tho_phu_noi_thanh" value="{{ config.get('tho_phu_noi_thanh', 80000) }}">
-                        <span class="input-group-text unit-badge">VNĐ/Người</span>
-                    </div>
-                </div>
-            </div>
-
-        </form>
-    </main>
-
-    <!-- Khối Nút Lưu Cố Định Ở Đáy -->
-    <div class="bottom-fixed-wrapper">
-        <div class="container p-0" style="max-width: 680px;">
-            <button type="button" id="btnSave" class="btn btn-save-main w-100 d-flex align-items-center justify-content-center gap-2">
-                <i class="fa-solid fa-floppy-disk"></i>
-                <span>Lưu Cấu Hình Định Mức</span>
-            </button>
+        <div class="status-badge">
+            <i class="fa-solid fa-check-circle"></i> DB Ready
         </div>
     </div>
 
-    <!-- Thông Báo Float Toast -->
-    <div id="statusAlert" class="alert alert-toast d-none animate__animated animate__fadeInDown" role="alert"></div>
+    <!-- Main Content -->
+    <div class="warranty-shell">
+        
+        <!-- Info Box -->
+        <div class="policy-box">
+            <i class="fa-regular fa-lightbulb"></i>
+            <p><strong>Lưu ý:</strong> Dữ liệu cấu hình được liên kết trực tiếp với bảng hệ thống. Mọi thay đổi sẽ được cập nhật tức thì vào công thức tính lương và chi phí lắp đặt.</p>
+        </div>
 
-    <script>
-        document.getElementById('btnSave').addEventListener('click', async function() {
-            const form = document.getElementById('configForm');
-            const btnSave = this;
-            const alertDiv = document.getElementById('statusAlert');
+        <form id="configForm">
+            <!-- NHÓM 1: THIẾT BỊ -->
+            <div class="step-card">
+                <div class="step-title title-cyan">
+                    <span class="step-badge badge-cyan"><i class="fa-solid fa-print"></i></span> 
+                    1. ĐỊNH MỨC THIẾT BỊ
+                </div>
+                
+                <div class="config-item">
+                    <label class="field-label">Đơn giá máy lớn</label>
+                    <div class="config-desc">Công lắp 1 máy lớn (chưa bao gồm quãng đường)</div>
+                    <div class="input-group-custom">
+                        <input type="number" inputmode="numeric" name="don_gia_may_lon" value="{{ config.get('don_gia_may_lon', 80000) }}">
+                        <span class="unit-badge">VNĐ</span>
+                    </div>
+                </div>
+
+                <div class="config-item">
+                    <label class="field-label">Máy ép &le; 20km</label>
+                    <div class="config-desc">Công máy ép khi &le; 20km. Hỗ trợ thêm phí không tính quãng đường</div>
+                    <div class="input-group-custom">
+                        <input type="number" inputmode="numeric" name="may_ep_duoi_20km" value="{{ config.get('may_ep_duoi_20km', 80000) }}">
+                        <span class="unit-badge">VNĐ</span>
+                    </div>
+                </div>
+
+                <div class="config-item">
+                    <label class="field-label">Máy ép &gt; 20km</label>
+                    <div class="config-desc">Công máy ép khi khoảng cách &gt; 20km</div>
+                    <div class="input-group-custom">
+                        <input type="number" inputmode="numeric" name="may_ep_tren_20km" value="{{ config.get('may_ep_tren_20km', 50000) }}">
+                        <span class="unit-badge">VNĐ</span>
+                    </div>
+                </div>
+            </div>
+
+            <!-- NHÓM 2: QUÃNG ĐƯỜNG -->
+            <div class="step-card">
+                <div class="step-title title-amber">
+                    <span class="step-badge badge-amber"><i class="fa-solid fa-route"></i></span> 
+                    2. ĐỊNH MỨC QUÃNG ĐƯỜNG
+                </div>
+
+                <div class="config-item">
+                    <label class="field-label">Mốc km 1 (&le; 20km)</label>
+                    <div class="config-desc">Giá quãng đường mốc 1</div>
+                    <div class="input-group-custom">
+                        <input type="number" inputmode="numeric" name="moc_km_1" value="{{ config.get('moc_km_1', 30000) }}">
+                        <span class="unit-badge">VNĐ</span>
+                    </div>
+                </div>
+
+                <div class="config-item">
+                    <label class="field-label">Mốc km 2 (21&ndash;30km)</label>
+                    <div class="config-desc">Giá quãng đường mốc 2</div>
+                    <div class="input-group-custom">
+                        <input type="number" inputmode="numeric" name="moc_km_2" value="{{ config.get('moc_km_2', 50000) }}">
+                        <span class="unit-badge">VNĐ</span>
+                    </div>
+                </div>
+
+                <div class="config-item">
+                    <label class="field-label">Mốc km 3 (31&ndash;40km)</label>
+                    <div class="config-desc">Giá quãng đường mốc 3</div>
+                    <div class="input-group-custom">
+                        <input type="number" inputmode="numeric" name="moc_km_3" value="{{ config.get('moc_km_3', 70000) }}">
+                        <span class="unit-badge">VNĐ</span>
+                    </div>
+                </div>
+
+                <div class="config-item">
+                    <label class="field-label">Mốc km 4 (41&ndash;50km)</label>
+                    <div class="config-desc">Giá quãng đường mốc 4</div>
+                    <div class="input-group-custom">
+                        <input type="number" inputmode="numeric" name="moc_km_4" value="{{ config.get('moc_km_4', 80000) }}">
+                        <span class="unit-badge">VNĐ</span>
+                    </div>
+                </div>
+
+                <div class="config-item">
+                    <label class="field-label">Phí vượt 50km (mỗi km)</label>
+                    <div class="config-desc">Cộng thêm mỗi km sau 50km</div>
+                    <div class="input-group-custom">
+                        <input type="number" inputmode="numeric" name="phi_vuot_50km" value="{{ config.get('phi_vuot_50km', 5000) }}">
+                        <span class="unit-badge">VNĐ/Km</span>
+                    </div>
+                </div>
+            </div>
+
+            <!-- NHÓM 3: ĐI TỈNH -->
+            <div class="step-card">
+                <div class="step-title title-indigo">
+                    <span class="step-badge badge-indigo"><i class="fa-solid fa-plane-departure"></i></span> 
+                    3. PHỤ CẤP CÔNG TÁC TỈNH
+                </div>
+
+                <div class="config-item">
+                    <label class="field-label">Phí công tác tỉnh</label>
+                    <div class="config-desc">Phí công tác tỉnh khi KTV đi công tác xa qua đêm</div>
+                    <div class="input-group-custom">
+                        <input type="number" inputmode="numeric" name="di_tinh_phi_cong_tac" value="{{ config.get('di_tinh_phi_cong_tac', 500000) }}">
+                        <span class="unit-badge">VNĐ</span>
+                    </div>
+                </div>
+
+                <div class="config-item">
+                    <label class="field-label">Tiền ở khách sạn / ngày</label>
+                    <div class="config-desc">Phụ cấp lưu trú khách sạn theo ngày</div>
+                    <div class="input-group-custom">
+                        <input type="number" inputmode="numeric" name="di_tinh_khach_san" value="{{ config.get('di_tinh_khach_san', 350000) }}">
+                        <span class="unit-badge">VNĐ/Ngày</span>
+                    </div>
+                </div>
+
+                <div class="config-item">
+                    <label class="field-label">Tiền ăn / ngày</label>
+                    <div class="config-desc">Phụ cấp tiền ăn uống theo ngày</div>
+                    <div class="input-group-custom">
+                        <input type="number" inputmode="numeric" name="di_tinh_tien_an" value="{{ config.get('di_tinh_tien_an', 200000) }}">
+                        <span class="unit-badge">VNĐ/Ngày</span>
+                    </div>
+                </div>
+            </div>
+
+            <!-- NHÓM 4: KHÁC -->
+            <div class="step-card">
+                <div class="step-title title-emerald">
+                    <span class="step-badge badge-emerald"><i class="fa-solid fa-user-group"></i></span> 
+                    4. PHỤ CẤP KHÁC
+                </div>
+
+                <div class="config-item">
+                    <label class="field-label">Phụ cấp thợ phụ (nội thành)</label>
+                    <div class="config-desc">Tiền công cho mỗi người đi thêm khi lắp đặt trong nội thành</div>
+                    <div class="input-group-custom">
+                        <input type="number" inputmode="numeric" name="tho_phu_noi_thanh" value="{{ config.get('tho_phu_noi_thanh', 80000) }}">
+                        <span class="unit-badge">VNĐ/Người</span>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Action Row -->
+            <div class="action-row">
+                <a href="javascript:history.back()" class="btn-cancel-action">
+                    Hủy bỏ
+                </a>
+                <button type="button" id="btnSave" class="btn-submit">
+                    <span><i class="fa-solid fa-floppy-disk"></i></span> LƯU CẤU HÌNH
+                </button>
+            </div>
+        </form>
+    </div>
+</div>
+
+<!-- Custom Toast -->
+<div id="statusToast" class="toast-container">
+    <i id="toastIcon" class="fa-solid"></i>
+    <span id="toastMessage"></span>
+</div>
+
+<script>
+    document.getElementById('btnSave').addEventListener('click', async function() {
+        const form = document.getElementById('configForm');
+        const btnSave = this;
+        const toast = document.getElementById('statusToast');
+        const toastIcon = document.getElementById('toastIcon');
+        const toastMessage = document.getElementById('toastMessage');
+        
+        // Trạng thái đang lưu
+        btnSave.disabled = true;
+        btnSave.innerHTML = '<span><i class="fa-solid fa-circle-notch fa-spin"></i></span> ĐANG LƯU...';
+
+        const formData = new FormData(form);
+
+        try {
+            const response = await fetch('/cham-cong/api/config/update', {
+                method: 'POST',
+                body: formData
+            });
+
+            const result = await response.json();
             
-            btnSave.disabled = true;
-            btnSave.innerHTML = '<i class="fa-solid fa-circle-notch fa-spin"></i> <span>Đang lưu...</span>';
-
-            const formData = new FormData(form);
-
-            try {
-                const response = await fetch('/cham-cong/api/config/update', {
-                    method: 'POST',
-                    body: formData
-                });
-
-                const result = await response.json();
-                
-                alertDiv.className = 'alert alert-toast animate__animated animate__fadeInDown';
-
-                if (response.ok && result.success) {
-                    alertDiv.classList.add('alert-success', 'bg-success', 'text-white');
-                    alertDiv.innerHTML = '<i class="fa-solid fa-circle-check me-2"></i> Cập nhật cấu hình thành công!';
-                } else {
-                    alertDiv.classList.add('alert-danger', 'bg-danger', 'text-white');
-                    alertDiv.innerHTML = '<i class="fa-solid fa-triangle-exclamation me-2"></i> ' + (result.message || 'Lỗi lưu cấu hình!');
-                }
-            } catch (error) {
-                alertDiv.className = 'alert alert-toast alert-danger bg-danger text-white animate__animated animate__fadeInDown';
-                alertDiv.innerHTML = '<i class="fa-solid fa-triangle-exclamation me-2"></i> Lỗi kết nối tới máy chủ!';
-            } finally {
-                btnSave.disabled = false;
-                btnSave.innerHTML = '<i class="fa-solid fa-floppy-disk"></i> <span>Lưu Cấu Hình Định Mức</span>';
-                
-                setTimeout(() => {
-                    alertDiv.classList.add('d-none');
-                }, 3000);
+            // Xóa class cũ
+            toast.className = 'toast-container show';
+            
+            if (response.ok && result.success) {
+                toast.classList.add('toast-success');
+                toastIcon.className = 'fa-solid fa-circle-check';
+                toastMessage.textContent = 'Cập nhật cấu hình thành công!';
+            } else {
+                toast.classList.add('toast-error');
+                toastIcon.className = 'fa-solid fa-triangle-exclamation';
+                toastMessage.textContent = result.message || 'Lỗi lưu cấu hình!';
             }
-        });
-    </script>
-</body>
-</html>
+        } catch (error) {
+            toast.className = 'toast-container show toast-error';
+            toastIcon.className = 'fa-solid fa-triangle-exclamation';
+            toastMessage.textContent = 'Lỗi kết nối tới máy chủ!';
+        } finally {
+            // Phục hồi nút bấm
+            btnSave.disabled = false;
+            btnSave.innerHTML = '<span><i class="fa-solid fa-floppy-disk"></i></span> LƯU CẤU HÌNH';
+            
+            // Tự động ẩn Toast sau 3 giây
+            setTimeout(() => {
+                toast.classList.remove('show');
+            }, 3000);
+        }
+    });
+</script>
+{% endblock %}

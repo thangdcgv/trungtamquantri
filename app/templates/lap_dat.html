@@ -8,118 +8,129 @@
 <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
 
 <style>
-    /* GHI ĐÈ DARK MODE MOBILE CONTAINER */
+    :root {
+        --bg-main: #0f172a;
+        --bg-card: #1e293b;
+        --text-main: #f8fafc;
+        --accent-color: #38bdf8;
+        --accent-hover: #0284c7;
+        --border-color: rgba(255, 255, 255, 0.12);
+    }
+
     body {
-        background-color: var(--bg-main, #0b0f19) !important;
-        color: var(--text-main, #f8fafc) !important;
+        background-color: var(--bg-main) !important;
+        color: var(--text-main) !important;
         font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif;
     }
 
     .app-container {
         max-width: 600px;
         margin: 0 auto;
-        padding-bottom: 2rem;
+        padding: 1rem 0.5rem 3rem 0.5rem;
     }
 
-    /* CARD VÀ BƯỚC THAO TÁC */
+    /* CARD CHÍNH CỦA APP */
     .card-custom {
-        background: var(--bg-card, #131b2e);
-        border: 1px solid rgba(255, 255, 255, 0.08);
-        border-radius: 20px;
-        box-shadow: 0 8px 32px rgba(0, 0, 0, 0.37);
-        backdrop-filter: blur(10px);
+        background: rgba(30, 41, 59, 0.7);
+        border: 1px solid var(--border-color);
+        border-radius: 24px;
+        box-shadow: 0 10px 40px rgba(0, 0, 0, 0.5);
+        backdrop-filter: blur(12px);
+        -webkit-backdrop-filter: blur(12px);
     }
 
+    /* TỪNG BƯỚC (STEP CARDS) */
     .step-card {
-        background: rgba(15, 23, 42, 0.5);
-        border: 1px solid rgba(255, 255, 255, 0.06);
-        border-radius: 16px;
-        padding: 16px;
-        margin-bottom: 14px;
-        transition: border-color 0.2s ease;
+        background: rgba(15, 23, 42, 0.6);
+        border: 1px solid var(--border-color);
+        border-radius: 18px;
+        padding: 20px;
+        margin-bottom: 20px;
+        box-shadow: 0 4px 6px rgba(0, 0, 0, 0.1);
     }
 
     .step-title {
-        font-size: 0.88rem;
+        font-size: 0.9rem;
         font-weight: 700;
         text-transform: uppercase;
         letter-spacing: 0.5px;
-        color: #38bdf8;
+        color: var(--accent-color);
         display: flex;
         align-items: center;
-        gap: 8px;
-        margin-bottom: 12px;
+        gap: 10px;
+        margin-bottom: 16px;
+        padding-bottom: 12px;
+        border-bottom: 1px dashed rgba(255, 255, 255, 0.1);
     }
 
     .step-badge {
-        width: 24px;
-        height: 24px;
-        border-radius: 50%;
+        width: 28px;
+        height: 28px;
+        border-radius: 8px;
         background: rgba(56, 189, 248, 0.15);
-        color: #38bdf8;
+        color: var(--accent-color);
         display: inline-flex;
         align-items: center;
         justify-content: center;
-        font-size: 0.75rem;
+        font-size: 0.85rem;
         font-weight: 800;
     }
 
     /* FORM INPUTS & SELECTS */
     .form-label {
         font-weight: 600;
-        color: #94a3b8;
-        font-size: 0.83rem;
-        margin-bottom: 6px;
+        color: #e2e8f0;
+        font-size: 0.85rem;
+        margin-bottom: 8px;
     }
 
     .form-control, .form-select {
-        background-color: #080d1a !important;
+        background-color: rgba(0, 0, 0, 0.2) !important;
         border: 1px solid rgba(255, 255, 255, 0.15) !important;
         color: #ffffff !important;
-        border-radius: 14px;
-        padding: 12px 14px;
-        font-size: 0.95rem;
+        border-radius: 12px;
+        padding: 12px 16px;
+        font-size: 1rem;
         font-weight: 500;
-        min-height: 48px;
+        transition: all 0.3s ease;
     }
 
     .form-control::placeholder {
-        color: #475569 !important;
+        color: #64748b !important;
     }
 
     .form-control:focus, .form-select:focus {
-        border-color: #38bdf8 !important;
-        box-shadow: 0 0 0 3px rgba(56, 189, 248, 0.2) !important;
+        border-color: var(--accent-color) !important;
+        box-shadow: 0 0 0 4px rgba(56, 189, 248, 0.15) !important;
+        background-color: rgba(0, 0, 0, 0.4) !important;
     }
 
     /* OPTION TOGGLE CARDS (Loại hình làm việc) */
     .option-card {
-        background: #080d1a;
-        border: 1px solid rgba(255, 255, 255, 0.12);
+        background: rgba(0, 0, 0, 0.2);
+        border: 1px solid rgba(255, 255, 255, 0.1);
         border-radius: 14px;
-        padding: 12px 8px;
+        padding: 14px 10px;
         cursor: pointer;
         display: flex;
         flex-direction: column;
         align-items: center;
         justify-content: center;
-        gap: 6px;
+        gap: 8px;
         user-select: none;
         transition: all 0.2s cubic-bezier(0.4, 0, 0.2, 1);
         text-align: center;
-        height: 100%;
-        min-height: 72px;
         position: relative;
     }
 
     .option-card i {
-        font-size: 1.25rem;
+        font-size: 1.4rem;
         color: #64748b;
         transition: color 0.2s ease;
     }
 
     .option-card label {
-        font-size: 0.8rem;
+        font-size: 0.85rem;
         font-weight: 600;
         color: #cbd5e1;
         cursor: pointer;
@@ -127,13 +138,14 @@
     }
 
     .option-card:has(.form-check-input:checked) {
-        border-color: #38bdf8;
-        background: rgba(56, 189, 248, 0.12);
-        box-shadow: 0 0 12px rgba(56, 189, 248, 0.15);
+        border-color: var(--accent-color);
+        background: rgba(56, 189, 248, 0.1);
+        transform: translateY(-2px);
     }
 
-    .option-card:has(.form-check-input:checked) i {
-        color: #38bdf8;
+    .option-card:has(.form-check-input:checked) i,
+    .option-card:has(.form-check-input:checked) label {
+        color: var(--accent-color);
     }
 
     .option-card .form-check-input {
@@ -143,106 +155,156 @@
         height: 0;
     }
 
-    /* STEPPER (+ / -) */
-    .qty-stepper {
+    /* BỘ CHỌN SỐ LƯỢNG (MÁY MÓC) TỐI ƯU MOBILE */
+    .machine-item {
         display: flex;
         align-items: center;
-        background: #080d1a;
-        border: 1px solid rgba(255, 255, 255, 0.15);
+        justify-content: space-between;
+        background: rgba(255, 255, 255, 0.03);
+        border: 1px solid rgba(255, 255, 255, 0.08);
         border-radius: 14px;
-        overflow: hidden;
-        height: 48px;
+        padding: 12px 16px;
+        margin-bottom: 10px;
     }
 
-    .qty-btn {
-        background: rgba(255, 255, 255, 0.05);
-        border: none;
-        color: #38bdf8;
-        width: 48px;
-        height: 100%;
-        font-size: 1.3rem;
-        font-weight: bold;
+    .machine-info {
+        display: flex;
+        align-items: center;
+        gap: 12px;
+    }
+
+    .machine-icon {
+        width: 36px;
+        height: 36px;
+        border-radius: 10px;
         display: flex;
         align-items: center;
         justify-content: center;
-        transition: background 0.15s ease;
+        font-size: 1.1rem;
+    }
+
+    .qty-stepper {
+        display: flex;
+        align-items: center;
+        background: rgba(0, 0, 0, 0.3);
+        border: 1px solid rgba(255, 255, 255, 0.15);
+        border-radius: 10px;
+        overflow: hidden;
+        height: 40px;
+        width: 120px;
+    }
+
+    .qty-btn {
+        width: 36px;
+        height: 100%;
+        background: transparent;
+        border: none;
+        color: var(--accent-color);
+        font-size: 1.2rem;
+        display: flex;
+        align-items: center;
+        justify-content: center;
         cursor: pointer;
+        transition: background 0.1s;
     }
 
     .qty-btn:active {
-        background: rgba(56, 189, 248, 0.25);
+        background: rgba(56, 189, 248, 0.2);
     }
 
     .qty-input {
+        flex-grow: 1;
+        width: 40px;
         border: none !important;
         text-align: center;
         font-weight: 700;
-        font-size: 1.05rem;
-        width: 100%;
+        font-size: 1.1rem;
         background: transparent !important;
         color: #ffffff !important;
+        padding: 0;
     }
 
-    /* UPLOAD ZONE */
+    /* Ẩn mũi tên mặc định của input number */
+    .qty-input::-webkit-outer-spin-button,
+    .qty-input::-webkit-inner-spin-button {
+        -webkit-appearance: none;
+        margin: 0;
+    }
+
+    /* UPLOAD ZONE & PREVIEW */
     .upload-zone {
-        border: 2px dashed rgba(56, 189, 248, 0.3);
-        background: rgba(8, 13, 26, 0.7);
+        border: 2px dashed rgba(56, 189, 248, 0.4);
+        background: rgba(0, 0, 0, 0.2);
         border-radius: 16px;
-        padding: 22px 14px;
+        padding: 30px 20px;
         text-align: center;
         cursor: pointer;
         transition: all 0.2s ease;
     }
 
     .upload-zone:active {
-        scale: 0.98;
-        border-color: #38bdf8;
+        transform: scale(0.98);
+        background: rgba(56, 189, 248, 0.05);
     }
 
     .image-preview-wrapper {
-        background: #020617;
+        background: rgba(0, 0, 0, 0.4);
         border: 1px solid rgba(255, 255, 255, 0.1);
         border-radius: 14px;
-        padding: 8px;
-        overflow: hidden;
+        padding: 10px;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        min-height: 200px;
     }
 
     #imagePreview {
         max-width: 100%;
-        max-height: 280px;
-        border-radius: 10px;
+        max-height: 300px;
+        border-radius: 8px;
         object-fit: contain;
         transition: transform 0.3s ease;
     }
 
     /* BUTTONS */
     .btn-gradient {
-        background: linear-gradient(135deg, #0284c7 0%, #6366f1 100%);
+        background: linear-gradient(135deg, #0284c7 0%, #0ea5e9 100%);
         border: none;
         color: #fff;
         font-weight: 700;
-        font-size: 1rem;
+        font-size: 1.05rem;
+        letter-spacing: 0.5px;
         border-radius: 14px;
-        min-height: 52px;
-        box-shadow: 0 6px 20px rgba(2, 132, 199, 0.35);
-        transition: transform 0.15s ease, box-shadow 0.15s ease;
+        padding: 16px;
+        box-shadow: 0 6px 20px rgba(2, 132, 199, 0.4);
+        transition: all 0.2s ease;
     }
 
     .btn-gradient:active {
-        transform: scale(0.98);
-        box-shadow: 0 2px 10px rgba(2, 132, 199, 0.2);
+        transform: translateY(2px);
+        box-shadow: 0 2px 10px rgba(2, 132, 199, 0.3);
     }
 
     .btn-outline-custom {
-        border: 1px solid rgba(255, 255, 255, 0.15);
+        border: 1px solid rgba(255, 255, 255, 0.2);
         color: #e2e8f0;
-        background: rgba(255, 255, 255, 0.04);
-        border-radius: 12px;
+        background: rgba(255, 255, 255, 0.05);
+        border-radius: 10px;
         font-weight: 600;
+        transition: all 0.2s;
     }
 
     .btn-outline-custom:active {
-        background: rgba(255, 255, 255, 0.12);
+        background: rgba(255, 255, 255, 0.15);
+    }
+
+    /* CÁC BLOCK ẨN HIỆN PHỤ TRỢ */
+    .conditional-block {
+        margin-top: 16px;
+        padding: 16px;
+        border-radius: 14px;
+        background: rgba(0, 0, 0, 0.2);
+        border: 1px solid rgba(255, 255, 255, 0.08);
     }
 
     .hidden { display: none !important; }
@@ -252,41 +314,37 @@
 {% block content %}
 <div class="app-container">
 
-    <!-- NÚT TÌM KIẾM HÓA ĐƠN SỬA -->
-    <div class="d-flex justify-content-between align-items-center mb-3">
-        <div class="d-flex align-items-center gap-2">
-            <div class="p-2 rounded-3 bg-info bg-opacity-10 text-info">
-                <i class="fa-solid fa-boxes-packing fs-5"></i>
+    <!-- HEADER / TRA CỨU HÓA ĐƠN SỬA -->
+    <div class="d-flex justify-content-between align-items-center mb-4 px-2">
+        <div class="d-flex align-items-center gap-3">
+            <div class="p-3 rounded-4" style="background: linear-gradient(135deg, rgba(56,189,248,0.2) 0%, rgba(2,132,199,0.2) 100%); border: 1px solid rgba(56,189,248,0.3);">
+                <i class="fa-solid fa-boxes-packing fs-4 text-info"></i>
             </div>
             <div>
-                <h6 class="m-0 fw-bold text-white">Chấm Công Lắp Đặt</h6>
-                <small class="text-muted" style="font-size: 0.75rem;">Nhập hồ sơ nghiệm thu & chi phí</small>
+                <h5 class="m-0 fw-bold text-white tracking-wide">Lắp Đặt & Bảo Hành</h5>
+                <small class="text-info" style="font-size: 0.8rem; font-weight: 500;">Báo cáo công việc - Phiếu thu</small>
             </div>
         </div>
 
-        <button class="btn btn-sm btn-outline-custom px-3 py-2 d-flex align-items-center gap-2" type="button" data-bs-toggle="collapse" data-bs-target="#searchInvoiceCollapse">
-            <i class="fa-solid fa-magnifying-glass text-info"></i>
+        <button class="btn btn-outline-custom px-3 py-2 d-flex align-items-center gap-2 shadow-sm" type="button" data-bs-toggle="collapse" data-bs-target="#searchInvoiceCollapse">
+            <i class="fa-solid fa-pen-to-square text-info"></i>
             <span class="small">Sửa HĐ</span>
         </button>
     </div>
 
-    <!-- KHỐI TRA CỨU HÓA ĐƠN (COLLAPSE) -->
-    <div class="collapse mb-3 {% if edit_data %}show{% endif %}" id="searchInvoiceCollapse">
-        <div class="card-custom p-3 border-warning border-opacity-25">
-            <div class="step-title text-warning mb-2">
-                <i class="fa-solid fa-pen-to-square"></i> Tra cứu hóa đơn cần sửa
+    <!-- KHỐI TRA CỨU HÓA ĐƠN -->
+    <div class="collapse mb-4 {% if edit_data %}show{% endif %}" id="searchInvoiceCollapse">
+        <div class="card-custom p-4 border-warning border-opacity-50" style="background: rgba(245, 158, 11, 0.05);">
+            <label class="form-label text-warning mb-3 fw-bold fs-6">
+                <i class="fa-solid fa-magnifying-glass me-2"></i> Tra cứu hóa đơn cần sửa
+            </label>
+            <div class="d-flex gap-2">
+                <input type="text" id="search_hd_input" class="form-control text-uppercase" placeholder="Nhập số HĐ (VD: 12345)" value="{{ edit_data.so_hoa_don if edit_data else '' }}">
+                <button type="button" id="btnSearchInvoice" class="btn btn-outline-custom fw-bold text-warning px-4">
+                    TÌM
+                </button>
             </div>
-            <div class="row g-2">
-                <div class="col-8">
-                    <input type="text" id="search_hd_input" class="form-control" placeholder="Nhập số HD (VD: 12345)" value="{{ edit_data.so_hoa_don if edit_data else '' }}">
-                </div>
-                <div class="col-4">
-                    <button type="button" id="btnSearchInvoice" class="btn btn-outline-custom w-100 h-100 fw-bold text-warning">
-                        <i class="fa-solid fa-search me-1"></i> Tìm
-                    </button>
-                </div>
-            </div>
-            <div id="searchResultMsg" class="mt-2 small"></div>
+            <div id="searchResultMsg" class="mt-3 small fw-medium"></div>
         </div>
     </div>
 
@@ -294,28 +352,31 @@
     <div class="card-custom p-3 p-sm-4">
 
         {% if edit_data %}
-        <div class="alert alert-warning py-2 px-3 mb-3 d-flex align-items-center justify-content-between rounded-3 border-0 bg-warning bg-opacity-10 text-warning">
-            <span class="small fw-bold"><i class="fa-solid fa-triangle-exclamation me-1"></i> Đang chỉnh sửa hóa đơn</span>
-            <span class="badge bg-warning text-dark font-monospace">{{ edit_data.so_hoa_don }}</span>
+        <div class="alert alert-warning py-3 px-3 mb-4 d-flex align-items-center justify-content-between rounded-4 border border-warning border-opacity-25" style="background: rgba(245, 158, 11, 0.1);">
+            <div class="d-flex align-items-center gap-2">
+                <i class="fa-solid fa-triangle-exclamation text-warning fs-5"></i>
+                <span class="small fw-bold text-warning">Đang sửa hóa đơn:</span>
+            </div>
+            <span class="badge bg-warning text-dark font-monospace fs-6 px-3 py-2 rounded-3">{{ edit_data.so_hoa_don }}</span>
         </div>
         {% endif %}
 
-        <form id="chamCongForm">
+        <form id="chamCongForm" autocomplete="off">
             <input type="hidden" name="edit_id" id="edit_id" value="{{ edit_data.id if edit_data else '' }}">
             <input type="hidden" name="image_rotation" id="image_rotation" value="0">
             <input type="hidden" name="existing_image_url" id="existing_image_url" value="{{ edit_data.hinh_anh if edit_data else '' }}">
 
             <!-- ADMIN CHẤM THAY -->
             {% if employees_list %}
-            <div class="mb-3 p-3 rounded-4 border border-warning border-opacity-30" style="background: rgba(245, 158, 11, 0.05);">
-                <label class="form-label text-warning d-flex align-items-center gap-2 mb-2">
-                    <i class="fa-solid fa-user-gear"></i> Chấm công thay (Quyền Admin)
+            <div class="step-card border-warning border-opacity-25" style="background: rgba(245, 158, 11, 0.03);">
+                <label class="form-label text-warning d-flex align-items-center gap-2 mb-3">
+                    <i class="fa-solid fa-user-shield fs-5"></i> Cấp Admin: Chấm công thay
                 </label>
-                <select class="form-select border-warning border-opacity-25" name="target_username" id="target_username">
-                    <option value="">🎯 Bản thân tự chấm</option>
+                <select class="form-select border-warning border-opacity-25 text-warning" name="target_username" id="target_username">
+                    <option value="" class="text-dark">🎯 Bản thân tự chấm</option>
                     {% for emp in employees_list %}
-                        <option value="{{ emp.username }}" {% if edit_data and edit_data.username == emp.username %}selected{% endif %}>
-                            👤 {{ emp.ho_ten }} ({{ emp.username }})
+                        <option value="{{ emp.username }}" class="text-dark" {% if edit_data and edit_data.username == emp.username %}selected{% endif %}>
+                            👤 {{ emp.ho_ten or emp.username }} ({{ emp.username }})
                         </option>
                     {% endfor %}
                 </select>
@@ -325,25 +386,29 @@
             <!-- BƯỚC 1: TẢI ẢNH CHỨNG TỪ -->
             <div class="step-card">
                 <div class="step-title">
-                    <span class="step-badge">1</span>
-                    <i class="fa-solid fa-camera"></i> Ảnh chứng từ / Hóa đơn
+                    <span class="step-badge">1</span> Tải biên bản / Hóa đơn
                 </div>
                 
                 <div class="upload-zone" onclick="document.getElementById('fileInput').click();">
-                    <i class="fa-solid fa-cloud-arrow-up fs-2 text-info mb-1"></i>
-                    <div class="fw-bold text-white small">Chạm để chụp hoặc chọn ảnh</div>
-                    <div class="text-muted extra-small mt-1" style="font-size: 0.75rem;">Hỗ trợ định dạng JPG, PNG</div>
-                    <input class="d-none" type="file" id="fileInput" name="file" accept=".jpg, .jpeg, .png" {% if not edit_data or not edit_data.hinh_anh %}required{% endif %}>
+                    <i class="fa-solid fa-camera fs-1 text-info mb-3"></i>
+                    <h6 class="fw-bold text-white mb-1">Chạm để chụp ảnh chứng từ</h6>
+                    <p class="text-muted mb-0" style="font-size: 0.8rem;">Tự động nén dung lượng trước khi gửi</p>
+                    <input class="d-none" type="file" id="fileInput" name="file" accept="image/*" capture="environment" {% if not edit_data or not edit_data.hinh_anh %}required{% endif %}>
                 </div>
                 
                 <div id="previewArea" class="mt-3 {% if not edit_data or not edit_data.hinh_anh %}hidden{% endif %}">
-                    <div class="d-flex justify-content-between align-items-center mb-2">
-                        <span class="small text-muted"><i class="fa-solid fa-eye me-1"></i> Xem trước:</span>
-                        <button type="button" class="btn btn-sm btn-outline-custom px-3" id="btnRotate">
-                            <i class="fa-solid fa-rotate-right me-1 text-info"></i> Xoay 90°
-                        </button>
+                    <div class="d-flex justify-content-between align-items-center mb-3 px-1">
+                        <span class="small fw-medium text-light"><i class="fa-solid fa-image text-info me-1"></i> Xem trước:</span>
+                        <div class="d-flex gap-2">
+                            <button type="button" class="btn btn-sm btn-outline-custom px-3 py-1" id="btnRotate">
+                                <i class="fa-solid fa-rotate-right text-info"></i> Xoay
+                            </button>
+                            <button type="button" class="btn btn-sm btn-outline-custom border-danger text-danger px-3 py-1" id="btnClearImg">
+                                <i class="fa-solid fa-trash"></i> Xóa
+                            </button>
+                        </div>
                     </div>
-                    <div class="image-preview-wrapper text-center">
+                    <div class="image-preview-wrapper text-center shadow-inner">
                         <img id="imagePreview" src="{{ edit_data.hinh_anh if edit_data else '' }}" alt="Preview Hóa Đơn">
                     </div>
                 </div>
@@ -352,11 +417,10 @@
             <!-- BƯỚC 2: LOẠI HÌNH LÀM VIỆC -->
             <div class="step-card">
                 <div class="step-title">
-                    <span class="step-badge">2</span>
-                    <i class="fa-solid fa-sliders"></i> Loại hình làm việc
+                    <span class="step-badge">2</span> Tùy chọn công việc
                 </div>
                 
-                <div class="row g-2">
+                <div class="row g-3">
                     <div class="col-4">
                         <div class="option-card">
                             <input class="form-check-input" type="checkbox" id="is_di_tinh" name="is_di_tinh" value="true" {% if edit_data and edit_data.is_di_tinh %}checked{% endif %}>
@@ -367,15 +431,15 @@
                     <div class="col-4">
                         <div class="option-card">
                             <input class="form-check-input" type="checkbox" id="is_ngoai_gio" name="is_ngoai_gio" value="true" {% if edit_data and edit_data.is_ngoai_gio %}checked{% endif %}>
-                            <i class="fa-solid fa-clock"></i>
-                            <label for="is_ngoai_gio">N.Giờ</label>
+                            <i class="fa-solid fa-moon"></i>
+                            <label for="is_ngoai_gio">Ngoài giờ</label>
                         </div>
                     </div>
                     <div class="col-4">
                         <div class="option-card">
                             <input class="form-check-input" type="checkbox" id="is_hotro_khac" name="is_hotro_khac" value="true" {% if edit_data and edit_data.is_hotro_khac %}checked{% endif %}>
-                            <i class="fa-solid fa-people-group"></i>
-                            <label for="is_hotro_khac">Đi Cùng</label>
+                            <i class="fa-solid fa-people-carry-box"></i>
+                            <label for="is_hotro_khac">Có thợ phụ</label>
                         </div>
                     </div>
                 </div>
@@ -384,168 +448,168 @@
             <!-- BƯỚC 3: CHI TIẾT ĐƠN HÀNG -->
             <div class="step-card">
                 <div class="step-title">
-                    <span class="step-badge">3</span>
-                    <i class="fa-solid fa-file-invoice-dollar"></i> Chi tiết đơn & Khoảng cách
+                    <span class="step-badge">3</span> Thông tin Đơn hàng
                 </div>
 
-                <div class="row g-2 mb-2">
-                    <div class="col-6">
-                        <label class="form-label">
-                            <i class="fa-solid fa-hashtag text-info me-1"></i> Số HĐ *
-                        </label>
-                        <input type="text" class="form-control" id="so_hoa_don" name="so_hoa_don" required placeholder="VD: 12345" value="{{ edit_data.so_hoa_don if edit_data else '' }}">
+                <div class="row g-3">
+                    <div class="col-12 col-sm-6">
+                        <label class="form-label">Số Hóa Đơn *</label>
+                        <div class="input-group">
+                            <span class="input-group-text bg-dark border-secondary text-info"><i class="fa-solid fa-hashtag"></i></span>
+                            <input type="text" class="form-control text-uppercase" id="so_hoa_don" name="so_hoa_don" required placeholder="VD: 12345" value="{{ edit_data.so_hoa_don if edit_data else '' }}">
+                        </div>
                     </div>
-                    <div class="col-6">
-                        <label class="form-label">
-                            <i class="fa-solid fa-route text-info me-1"></i> Quãng đường (km) *
-                        </label>
-                        <input type="number" class="form-control" name="quang_duong" id="quang_duong" value="{{ edit_data.quang_duong if edit_data else 0 }}" min="0" required>
+                    <div class="col-12 col-sm-6">
+                        <label class="form-label">Quãng đường (KM) *</label>
+                        <div class="input-group">
+                            <span class="input-group-text bg-dark border-secondary text-info"><i class="fa-solid fa-route"></i></span>
+                            <input type="number" step="0.1" inputmode="decimal" class="form-control" name="quang_duong" id="quang_duong" placeholder="Nhập số KM" value="{{ edit_data.quang_duong if edit_data else '' }}" min="0" required>
+                        </div>
                     </div>
                 </div>
             </div>
 
-            <!-- BƯỚC 4: SỐ LƯỢNG MÁY, ĐI TỈNH & PHỤ PHÍ -->
+            <!-- BƯỚC 4: SỐ LƯỢNG MÁY & PHỤ PHÍ -->
             <div class="step-card">
                 <div class="step-title">
-                    <span class="step-badge">4</span>
-                    <i class="fa-solid fa-cubes-stacked"></i> Máy móc & Phụ phí
+                    <span class="step-badge">4</span> Hàng hóa & Phụ phí
                 </div>
 
-                <!-- KHỐI MÁY MÓC -->
-                <div id="machineBlock">
-                    <div class="row g-2">
-                        <div class="col-4">
-                            <label class="form-label text-center d-block">
-                                <i class="fa-solid fa-print text-primary mb-1 d-block fs-6"></i> Máy Lớn
-                            </label>
-                            <div class="qty-stepper">
-                                <button type="button" class="qty-btn" onclick="adjustQty('combo_may_lon', -1)">-</button>
-                                <input type="number" class="qty-input" name="combo_may_lon" id="combo_may_lon" value="{{ edit_data.combo_may_lon if edit_data else 0 }}" min="0" readonly>
-                                <button type="button" class="qty-btn" onclick="adjustQty('combo_may_lon', 1)">+</button>
+                <!-- DANH SÁCH MÁY MÓC (DẠNG LIST) -->
+                <div id="machineBlock" class="mb-2">
+                    <!-- Máy lớn -->
+                    <div class="machine-item">
+                        <div class="machine-info">
+                            <div class="machine-icon bg-primary bg-opacity-10 text-primary">
+                                <i class="fa-solid fa-print"></i>
                             </div>
+                            <span class="fw-bold text-light">Máy Lớn</span>
                         </div>
-                        <div class="col-4">
-                            <label class="form-label text-center d-block">
-                                <i class="fa-solid fa-box text-success mb-1 d-block fs-6"></i> Máy Nhỏ
-                            </label>
-                            <div class="qty-stepper">
-                                <button type="button" class="qty-btn" onclick="adjustQty('combo_may_nho', -1)">-</button>
-                                <input type="number" class="qty-input" name="combo_may_nho" id="combo_may_nho" value="{{ edit_data.combo_may_nho if edit_data else 0 }}" min="0" readonly>
-                                <button type="button" class="qty-btn" onclick="adjustQty('combo_may_nho', 1)">+</button>
-                            </div>
+                        <div class="qty-stepper">
+                            <button type="button" class="qty-btn" onclick="adjustQty('combo_may_lon', -1)">-</button>
+                            <input type="number" inputmode="numeric" class="qty-input" name="combo_may_lon" id="combo_may_lon" value="{{ edit_data.combo_may_lon if edit_data else 0 }}" min="0">
+                            <button type="button" class="qty-btn" onclick="adjustQty('combo_may_lon', 1)">+</button>
                         </div>
-                        <div class="col-4">
-                            <label class="form-label text-center d-block">
-                                <i class="fa-solid fa-fire-flame-curved text-warning mb-1 d-block fs-6"></i> Máy Ép
-                            </label>
-                            <div class="qty-stepper">
-                                <button type="button" class="qty-btn" onclick="adjustQty('combo_may_ep', -1)">-</button>
-                                <input type="number" class="qty-input" name="combo_may_ep" id="combo_may_ep" value="{{ edit_data.combo_may_ep if edit_data else 0 }}" min="0" readonly>
-                                <button type="button" class="qty-btn" onclick="adjustQty('combo_may_ep', 1)">+</button>
-                            </div>
-                        </div>
-                    </div>
-                </div>
-
-                <!-- KHỐI ĐI TỈNH (Cấu hình chi phí đi tỉnh) -->
-                <div id="diTinhBlock" class="mt-3 p-3 rounded-3 hidden" style="background: rgba(16, 185, 129, 0.08); border: 1px dashed rgba(16, 185, 129, 0.4);">
-                    <label class="form-label text-success fw-bold d-flex align-items-center mb-2">
-                        <i class="fa-solid fa-map-location-dot me-2"></i> Chế độ Đi Tỉnh
-                    </label>
-                    <div class="mb-3 text-success small d-flex align-items-center">
-                        <i class="fa-solid fa-money-bill-wave me-2"></i> Phụ cấp thợ cố định:&nbsp;<strong> 500.000 VNĐ</strong>
                     </div>
                     
-                    <div class="row g-2">
+                    <!-- Máy Nhỏ -->
+                    <div class="machine-item">
+                        <div class="machine-info">
+                            <div class="machine-icon bg-success bg-opacity-10 text-success">
+                                <i class="fa-solid fa-box"></i>
+                            </div>
+                            <span class="fw-bold text-light">Máy Nhỏ</span>
+                        </div>
+                        <div class="qty-stepper">
+                            <button type="button" class="qty-btn" onclick="adjustQty('combo_may_nho', -1)">-</button>
+                            <input type="number" inputmode="numeric" class="qty-input" name="combo_may_nho" id="combo_may_nho" value="{{ edit_data.combo_may_nho if edit_data else 0 }}" min="0">
+                            <button type="button" class="qty-btn" onclick="adjustQty('combo_may_nho', 1)">+</button>
+                        </div>
+                    </div>
+
+                    <!-- Máy Ép -->
+                    <div class="machine-item">
+                        <div class="machine-info">
+                            <div class="machine-icon bg-warning bg-opacity-10 text-warning">
+                                <i class="fa-solid fa-fire-flame-curved"></i>
+                            </div>
+                            <span class="fw-bold text-light">Máy Ép</span>
+                        </div>
+                        <div class="qty-stepper">
+                            <button type="button" class="qty-btn" onclick="adjustQty('combo_may_ep', -1)">-</button>
+                            <input type="number" inputmode="numeric" class="qty-input" name="combo_may_ep" id="combo_may_ep" value="{{ edit_data.combo_may_ep if edit_data else 0 }}" min="0">
+                            <button type="button" class="qty-btn" onclick="adjustQty('combo_may_ep', 1)">+</button>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- KHỐI ĐI TỈNH -->
+                <div id="diTinhBlock" class="conditional-block border-success border-opacity-25 hidden">
+                    <label class="form-label text-success fw-bold d-flex align-items-center mb-3">
+                        <i class="fa-solid fa-plane-departure me-2"></i> Chế độ Đi Tỉnh
+                    </label>
+                    <div class="mb-3 text-success small d-flex align-items-center p-2 rounded bg-success bg-opacity-10">
+                        <i class="fa-solid fa-money-bill-wave me-2"></i> Phụ cấp thợ cố định:&nbsp;<strong>500.000đ</strong>
+                    </div>
+                    
+                    <div class="row g-3">
                         <div class="col-6">
-                            <label class="form-label text-success">
-                                <i class="fa-solid fa-utensils me-1"></i> Số ngày ăn
-                            </label>
-                            <div class="qty-stepper border-success border-opacity-25" style="background: rgba(16, 185, 129, 0.05);">
+                            <label class="form-label text-success"><i class="fa-solid fa-utensils me-1"></i> Số ngày ăn</label>
+                            <div class="qty-stepper w-100 border-success border-opacity-25 bg-dark">
                                 <button type="button" class="qty-btn text-success" onclick="adjustQty('so_ngay_an', -1)">-</button>
-                                <input type="number" class="qty-input text-success" name="so_ngay_an" id="so_ngay_an" value="{{ edit_data.so_ngay_an if edit_data else 0 }}" min="0" readonly>
+                                <input type="number" inputmode="numeric" class="qty-input text-success" name="so_ngay_an" id="so_ngay_an" value="{{ edit_data.so_ngay_an if edit_data else 0 }}" min="0">
                                 <button type="button" class="qty-btn text-success" onclick="adjustQty('so_ngay_an', 1)">+</button>
                             </div>
-                            <div class="text-muted mt-1 text-center" style="font-size: 0.7rem;">+ 200k / ngày</div>
+                            <div class="text-success mt-1 text-center opacity-75" style="font-size: 0.75rem;">+ 200k / ngày</div>
                         </div>
                         <div class="col-6">
-                            <label class="form-label text-success">
-                                <i class="fa-solid fa-bed me-1"></i> Số đêm KS
-                            </label>
-                            <div class="qty-stepper border-success border-opacity-25" style="background: rgba(16, 185, 129, 0.05);">
+                            <label class="form-label text-success"><i class="fa-solid fa-bed me-1"></i> Số đêm KS</label>
+                            <div class="qty-stepper w-100 border-success border-opacity-25 bg-dark">
                                 <button type="button" class="qty-btn text-success" onclick="adjustQty('so_dem_ks', -1)">-</button>
-                                <input type="number" class="qty-input text-success" name="so_dem_ks" id="so_dem_ks" value="{{ edit_data.so_dem_ks if edit_data else 0 }}" min="0" readonly>
+                                <input type="number" inputmode="numeric" class="qty-input text-success" name="so_dem_ks" id="so_dem_ks" value="{{ edit_data.so_dem_ks if edit_data else 0 }}" min="0">
                                 <button type="button" class="qty-btn text-success" onclick="adjustQty('so_dem_ks', 1)">+</button>
                             </div>
-                            <div class="text-muted mt-1 text-center" style="font-size: 0.7rem;">+ 350k / đêm</div>
+                            <div class="text-success mt-1 text-center opacity-75" style="font-size: 0.75rem;">+ 350k / đêm</div>
                         </div>
                     </div>
                 </div>
 
-                <!-- KHỐI ĐI CÙNG & PHỤ PHÍ KHÁC (Chỉ hiện khi chọn "Đi Cùng") -->
-                <div id="diCungBlock" class="mt-3 p-3 rounded-3 hidden" style="background: rgba(14, 165, 233, 0.08); border: 1px dashed rgba(56, 189, 248, 0.3);">
-                    <div class="row g-2">
+                <!-- KHỐI ĐI CÙNG & PHỤ PHÍ KHÁC -->
+                <div id="diCungBlock" class="conditional-block border-info border-opacity-25 hidden">
+                    <div class="row g-3">
                         <div class="col-6">
-                            <label class="form-label text-info">
-                                <i class="fa-solid fa-user-plus me-1"></i> Thợ phụ đi cùng
-                            </label>
-                            <div class="qty-stepper">
-                                <button type="button" class="qty-btn" onclick="adjustQty('so_nguoi_di_cung', -1)">-</button>
-                                <input type="number" class="qty-input" name="so_nguoi_di_cung" id="so_nguoi_di_cung" value="{{ edit_data.so_nguoi_di_cung if edit_data else 0 }}" min="0" readonly>
-                                <button type="button" class="qty-btn" onclick="adjustQty('so_nguoi_di_cung', 1)">+</button>
+                            <label class="form-label text-info"><i class="fa-solid fa-user-plus me-1"></i> Thợ phụ</label>
+                            <div class="qty-stepper w-100 bg-dark border-info border-opacity-25">
+                                <button type="button" class="qty-btn text-info" onclick="adjustQty('so_nguoi_di_cung', -1)">-</button>
+                                <input type="number" inputmode="numeric" class="qty-input text-info" name="so_nguoi_di_cung" id="so_nguoi_di_cung" value="{{ edit_data.so_nguoi_di_cung if edit_data else 0 }}" min="0">
+                                <button type="button" class="qty-btn text-info" onclick="adjustQty('so_nguoi_di_cung', 1)">+</button>
                             </div>
                         </div>
                         <div class="col-6">
-                            <label class="form-label text-info">
-                                <i class="fa-solid fa-receipt me-1"></i> Phụ phí (VNĐ)
-                            </label>
-                            <input type="number" class="form-control" name="phu_phi_phat_sinh" value="{{ edit_data.phu_phi_phat_sinh if edit_data else 0 }}" min="0" step="10000" placeholder="0">
+                            <label class="form-label text-info"><i class="fa-solid fa-receipt me-1"></i> Phí phát sinh</label>
+                            <input type="number" inputmode="numeric" class="form-control border-info border-opacity-25" name="phu_phi_phat_sinh" value="{{ edit_data.phu_phi_phat_sinh if edit_data else '' }}" min="0" step="10000" placeholder="0 đ">
                         </div>
                     </div>
                 </div>
 
-                <!-- KHỐI TIỀN NGOÀI GIỜ (Hiện khi bấm Ngoài giờ) -->
-                <div id="ngoaiGioBlock" class="mt-3 p-3 rounded-3 hidden" style="background: rgba(245, 158, 11, 0.08); border: 1px dashed rgba(245, 158, 11, 0.3);">
-                    <label class="form-label text-warning fw-bold">
-                        <i class="fa-solid fa-hand-holding-dollar me-1"></i> Tiền ngoài giờ thương lượng (VNĐ)
-                    </label>
-                    <input type="number" class="form-control border-warning border-opacity-25" name="gia_thuong_luong" value="{{ edit_data.gia_thuong_luong if edit_data else 200000 }}" min="0" step="50000">
+                <!-- KHỐI TIỀN NGOÀI GIỜ -->
+                <div id="ngoaiGioBlock" class="conditional-block border-warning border-opacity-25 hidden">
+                    <label class="form-label text-warning fw-bold"><i class="fa-solid fa-hand-holding-dollar me-1"></i> Tiền ngoài giờ (VNĐ)</label>
+                    <input type="number" inputmode="numeric" class="form-control border-warning border-opacity-25 bg-dark" name="gia_thuong_luong" value="{{ edit_data.gia_thuong_luong if edit_data else 200000 }}" min="0" step="10000">
                 </div>
             </div>
 
             <!-- BƯỚC 5: ĐỊA CHỈ & GHI CHÚ -->
             <div class="step-card">
                 <div class="step-title">
-                    <span class="step-badge">5</span>
-                    <i class="fa-solid fa-location-dot"></i> Địa chỉ / Ghi chú
+                    <span class="step-badge">5</span> Nội dung công việc
                 </div>
-                <textarea class="form-control" name="noi_dung" rows="2" required placeholder="Nhập địa chỉ giao / lắp đặt hoặc thông tin chi tiết...">{{ edit_data.noi_dung if edit_data else '' }}</textarea>
+                <label class="form-label">Địa chỉ giao hàng / Ghi chú kỹ thuật *</label>
+                <textarea class="form-control" name="noi_dung" rows="3" required placeholder="Nhập địa chỉ lắp đặt hoặc ghi chú công việc thực hiện...">{{ edit_data.noi_dung if edit_data else '' }}</textarea>
             </div>
 
             <!-- NÚT GỬI DUYỆT -->
-            <button type="submit" class="btn btn-gradient w-100 mt-2 d-flex align-items-center justify-content-center gap-2" id="btnSubmit">
+            <button type="submit" class="btn btn-gradient w-100 mt-2 d-flex align-items-center justify-content-center gap-3" id="btnSubmit">
                 {% if edit_data %}
-                    <i class="fa-solid fa-floppy-disk fs-5"></i>
+                    <i class="fa-solid fa-floppy-disk fs-4"></i>
                     <span>CẬP NHẬT HÓA ĐƠN</span>
                 {% else %}
-                    <i class="fa-solid fa-paper-plane fs-5"></i>
-                    <span>GỬI YÊU CẦU DUYỆT ĐƠN</span>
+                    <i class="fa-solid fa-paper-plane fs-4"></i>
+                    <span>GỬI YÊU CẦU DUYỆT</span>
                 {% endif %}
             </button>
         </form>
 
-        <div id="alertMsg" class="alert mt-3 hidden rounded-3 border-0"></div>
+        <div id="alertMsg" class="alert mt-4 hidden rounded-3 border-0 fw-medium"></div>
     </div>
 </div>
 {% endblock %}
 
 {% block scripts %}
-<!-- Bootstrap Bundle JS -->
 <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/js/bootstrap.bundle.min.js"></script>
 
 <script>
     document.addEventListener("DOMContentLoaded", function() {
-        // Active bottom nav item
         const navItems = document.querySelectorAll('.bottom-nav .nav-item');
         navItems.forEach(item => {
             if (item.getAttribute('href') === '/cham-cong/form') {
@@ -555,57 +619,69 @@
             }
         });
         
-        // Khởi tạo trạng thái giao diện theo config
         updateUI();
     });
 
-    // --- BỘ ĐẾM QUANTITY STEPPER (+ / -) ---
+    // --- STEPPER NUMERIC (+ / -) ---
     function adjustQty(inputId, change) {
         const input = document.getElementById(inputId);
         if (input) {
             let currentVal = parseInt(input.value) || 0;
             currentVal = Math.max(0, currentVal + change);
             input.value = currentVal;
+            
+            // Tạo hiệu ứng chớp nhẹ khi bấm nút
+            input.style.opacity = '0.5';
+            setTimeout(() => input.style.opacity = '1', 100);
         }
+    }
+
+    // --- AUTO-TRIM & UPPERCASE SO HOA DON ---
+    const soHoaDonInput = document.getElementById('so_hoa_don');
+    if (soHoaDonInput) {
+        soHoaDonInput.addEventListener('input', function() {
+            this.value = this.value.toUpperCase().replace(/\s+/g, '');
+        });
     }
 
     // --- TÌM KIẾM HÓA ĐƠN ĐỂ SỬA ---
     document.getElementById('btnSearchInvoice').addEventListener('click', async function() {
-        const hdInput = document.getElementById('search_hd_input').value.trim();
+        const hdInput = document.getElementById('search_hd_input').value.trim().toUpperCase();
         const msgDiv = document.getElementById('searchResultMsg');
         
         if (!hdInput) {
-            msgDiv.className = "mt-2 small text-danger";
-            msgDiv.innerHTML = "<i class='fa-solid fa-circle-exclamation me-1'></i> Chưa nhập số hóa đơn!";
+            msgDiv.className = "mt-3 small text-danger";
+            msgDiv.innerHTML = "<i class='fa-solid fa-circle-exclamation me-1'></i> Vui lòng nhập số hóa đơn!";
             return;
         }
 
         try {
-            msgDiv.className = "mt-2 small text-info";
-            msgDiv.innerHTML = "<i class='fa-solid fa-spinner fa-spin me-1'></i> Đang tra cứu...";
+            msgDiv.className = "mt-3 small text-info";
+            msgDiv.innerHTML = "<i class='fa-solid fa-spinner fa-spin me-1'></i> Đang tra cứu hệ thống...";
 
             const response = await fetch(`/cham-cong/api/search-invoice?so_hd=${encodeURIComponent(hdInput)}`);
             const result = await response.json();
 
             if (response.ok && result.success) {
-                msgDiv.className = "mt-2 small text-success";
-                msgDiv.innerHTML = `<i class='fa-solid fa-circle-check me-1'></i> Đã tìm thấy! Chuyển hướng...`;
+                msgDiv.className = "mt-3 small text-success";
+                msgDiv.innerHTML = `<i class='fa-solid fa-circle-check me-1'></i> Đã tìm thấy! Đang tải lại trang...`;
                 window.location.href = `/cham-cong/form?edit_id=${result.data.id}`;
             } else {
-                msgDiv.className = "mt-2 small text-danger";
-                msgDiv.innerHTML = `<i class='fa-solid fa-circle-xmark me-1'></i> ${result.message || "Không tìm thấy hóa đơn!"}`;
+                msgDiv.className = "mt-3 small text-danger";
+                msgDiv.innerHTML = `<i class='fa-solid fa-circle-xmark me-1'></i> ${result.message || "Không tìm thấy hóa đơn này!"}`;
             }
         } catch (err) {
-            msgDiv.className = "mt-2 small text-danger";
-            msgDiv.innerHTML = "<i class='fa-solid fa-triangle-exclamation me-1'></i> Lỗi kết nối hệ thống!";
+            msgDiv.className = "mt-3 small text-danger";
+            msgDiv.innerHTML = "<i class='fa-solid fa-triangle-exclamation me-1'></i> Lỗi kết nối đến máy chủ!";
         }
     });
 
-    // --- PREVIEW & XOAY ẢNH ---
+    // --- PREVIEW, XOAY VÀ XÓA ẢNH ---
     const fileInput = document.getElementById('fileInput');
     const previewArea = document.getElementById('previewArea');
     const imagePreview = document.getElementById('imagePreview');
     const btnRotate = document.getElementById('btnRotate');
+    const btnClearImg = document.getElementById('btnClearImg');
     let currentRotation = 0;
 
     fileInput.addEventListener('change', function(e) {
@@ -618,6 +694,9 @@
                 currentRotation = 0;
                 imagePreview.style.transform = `rotate(0deg)`;
                 document.getElementById('image_rotation').value = 0;
+                
+                // Cuộn xuống để xem ảnh dễ hơn
+                previewArea.scrollIntoView({ behavior: 'smooth', block: 'nearest' });
             }
             reader.readAsDataURL(file);
         }
@@ -629,7 +708,14 @@
         document.getElementById('image_rotation').value = currentRotation; 
     });
 
-    // --- ẨN/HIỆN KHỐI ĐIỀU KIỆN LOGIC CHẤM CÔNG ---
+    btnClearImg.addEventListener('click', function() {
+        fileInput.value = '';
+        imagePreview.src = '';
+        document.getElementById('existing_image_url').value = '';
+        previewArea.classList.add('hidden');
+    });
+
+    // --- TOGGLE CONDITIONAL BLOCKS ---
     const isDiTinh = document.getElementById('is_di_tinh');
     const isHotro = document.getElementById('is_hotro_khac');
     const isNgoaiGio = document.getElementById('is_ngoai_gio');
@@ -639,21 +725,18 @@
     const ngoaiGioBlock = document.getElementById('ngoaiGioBlock');
 
     function updateUI() {
-        // Khối Đi Tỉnh
         if (isDiTinh && isDiTinh.checked) {
             diTinhBlock.classList.remove('hidden');
         } else if (diTinhBlock) {
             diTinhBlock.classList.add('hidden');
         }
 
-        // Khối Đi Cùng (Hỗ trợ khác)
         if (isHotro && isHotro.checked) {
             diCungBlock.classList.remove('hidden');
         } else if (diCungBlock) {
             diCungBlock.classList.add('hidden');
         }
 
-        // Khối Ngoài Giờ
         if (isNgoaiGio && isNgoaiGio.checked) {
             ngoaiGioBlock.classList.remove('hidden');
         } else if (ngoaiGioBlock) {
@@ -665,6 +748,44 @@
     if (isHotro) isHotro.addEventListener('change', updateUI);
     if (isNgoaiGio) isNgoaiGio.addEventListener('change', updateUI);
 
+    // --- NÉN ẢNH CLIENT-SIDE TRƯỚC KHU GỬI ---
+    async function compressImageFile(file, maxWidth = 1600, quality = 0.8) {
+        return new Promise((resolve) => {
+            if (!file || !file.type.startsWith('image/')) return resolve(file);
+            
+            const image = new Image();
+            image.src = URL.createObjectURL(file);
+            image.onload = () => {
+                let width = image.width;
+                let height = image.height;
+
+                if (width > maxWidth) {
+                    height = Math.round((height * maxWidth) / width);
+                    width = maxWidth;
+                }
+
+                const canvas = document.createElement('canvas');
+                canvas.width = width;
+                canvas.height = height;
+                const ctx = canvas.getContext('2d');
+                ctx.drawImage(image, 0, 0, width, height);
+
+                canvas.toBlob((blob) => {
+                    if (blob) {
+                        const compressedFile = new File([blob], file.name, {
+                            type: 'image/jpeg',
+                            lastModified: Date.now()
+                        });
+                        resolve(compressedFile);
+                    } else {
+                        resolve(file);
+                    }
+                }, 'image/jpeg', quality);
+            };
+            image.onerror = () => resolve(file);
+        });
+    }
+
     // --- GỬI ĐƠN CHẤM CÔNG ---
     document.getElementById('chamCongForm').addEventListener('submit', async function(e) {
         e.preventDefault();
@@ -672,9 +793,16 @@
         const btnSubmit = document.getElementById('btnSubmit');
         const alertMsg = document.getElementById('alertMsg');
         btnSubmit.disabled = true;
-        btnSubmit.innerHTML = '<i class="fa-solid fa-spinner fa-spin me-2"></i> ĐANG GỬI DỮ LIỆU...';
+        btnSubmit.innerHTML = '<i class="fa-solid fa-spinner fa-spin me-2"></i> ĐANG XỬ LÝ & TẢI ẢNH...';
         
         const formData = new FormData(this);
+
+        // Nén ảnh tải lên nếu có chọn tệp mới
+        const selectedFile = fileInput.files[0];
+        if (selectedFile) {
+            const compressedFile = await compressImageFile(selectedFile);
+            formData.set('file', compressedFile);
+        }
 
         try {
             const response = await fetch('/cham-cong/api/submit', {
@@ -687,22 +815,22 @@
             
             if (response.ok && result.success) {
                 alertMsg.classList.add('alert-success', 'bg-success', 'bg-opacity-10', 'text-success');
-                alertMsg.innerHTML = `<i class="fa-solid fa-circle-check me-2"></i> ${result.message}`;
+                alertMsg.innerHTML = `<i class="fa-solid fa-circle-check me-2"></i> ${result.message || 'Đã lưu đơn thành công!'}`;
                 setTimeout(() => {
                     window.location.href = '/cham-cong/form';
                 }, 1200);
             } else {
                 alertMsg.classList.add('alert-danger', 'bg-danger', 'bg-opacity-10', 'text-danger');
-                alertMsg.innerHTML = `<i class="fa-solid fa-circle-exclamation me-2"></i> ${result.message || result.detail || 'Có lỗi xảy ra!'}`;
+                alertMsg.innerHTML = `<i class="fa-solid fa-circle-exclamation me-2"></i> ${result.message || result.detail || 'Có lỗi xảy ra trong quá trình xử lý!'}`;
                 btnSubmit.disabled = false;
-                btnSubmit.innerHTML = '{% if edit_data %}<i class="fa-solid fa-floppy-disk me-2"></i> CẬP NHẬT HÓA ĐƠN{% else %}<i class="fa-solid fa-paper-plane me-2"></i> GỬI YÊU CẦU DUYỆT ĐƠN{% endif %}';
+                btnSubmit.innerHTML = '{% if edit_data %}<i class="fa-solid fa-floppy-disk fs-4 me-2"></i> CẬP NHẬT HÓA ĐƠN{% else %}<i class="fa-solid fa-paper-plane fs-4 me-2"></i> GỬI YÊU CẦU DUYỆT{% endif %}';
             }
         } catch (error) {
             alertMsg.classList.remove('hidden', 'alert-success');
             alertMsg.classList.add('alert-danger', 'bg-danger', 'bg-opacity-10', 'text-danger');
             alertMsg.innerHTML = '<i class="fa-solid fa-triangle-exclamation me-2"></i> Lỗi kết nối tới máy chủ!';
             btnSubmit.disabled = false;
-            btnSubmit.innerHTML = '{% if edit_data %}<i class="fa-solid fa-floppy-disk me-2"></i> CẬP NHẬT HÓA ĐƠN{% else %}<i class="fa-solid fa-paper-plane me-2"></i> GỬI YÊU CẦU DUYỆT ĐƠN{% endif %}';
+            btnSubmit.innerHTML = '{% if edit_data %}<i class="fa-solid fa-floppy-disk fs-4 me-2"></i> CẬP NHẬT HÓA ĐƠN{% else %}<i class="fa-solid fa-paper-plane fs-4 me-2"></i> GỬI YÊU CẦU DUYỆT{% endif %}';
         }
     });
 </script>

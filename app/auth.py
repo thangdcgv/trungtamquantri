@@ -71,6 +71,7 @@ async def logout(request: Request):
         
     request.session.clear()
     return RedirectResponse(url="/auth/login", status_code=303)
+
 @router.get("/change-password")
 async def change_password_page(request: Request):
     if 'user_id' not in request.session:
@@ -91,8 +92,6 @@ async def change_password(request: Request, current_password: str = Form(...), n
         })
         
         if test_login and test_login.user:
-            # Cập nhật mật khẩu mới thông qua Supabase Auth Admin hoặc updateUser
-            # (Hoặc dùng hàm update user thông thường của supabase auth)
             supabase.auth.update_user({"password": new_password})
             
             return templates.TemplateResponse(request, "change_password.html", {
@@ -112,6 +111,7 @@ async def change_password(request: Request, current_password: str = Form(...), n
             "error": f"Lỗi đổi mật khẩu: {str(e)}", 
             "success": None
         })
+
 @router.get("/forgot-password")
 async def forgot_password_page(request: Request):
     return templates.TemplateResponse(request, "forgot_password.html", {"request": request, "message": None})
@@ -119,12 +119,20 @@ async def forgot_password_page(request: Request):
 @router.post("/forgot-password")
 async def forgot_password(request: Request, email: str = Form(...)):
     try:
+        # Tự động lấy base_url hiện tại (hoạt động tốt cả khi chạy localhost lẫn trên Hugging Face Space)
+        base_url = str(request.base_url).rstrip("/")
+        
         # Gọi API của Supabase để gửi email khôi phục mật khẩu
         supabase.auth.reset_password_for_email(email, {
-            "redirect_to": "http://localhost:8000/auth/update-password" # Đường dẫn trang đổi mật khẩu mới sau khi bấm email
+            "redirect_to": f"{base_url}/auth/update-password"
         })
         msg = "Nếu email tồn tại trong hệ thống, hướng dẫn khôi phục mật khẩu đã được gửi đi. Vui lòng kiểm tra hộp thư của bạn."
     except Exception as e:
         msg = f"Đã gửi yêu cầu khôi phục tới email: {email}"
         
     return templates.TemplateResponse(request, "forgot_password.html", {"request": request, "message": msg})
+
+@router.get("/update-password")
+async def update_password_page(request: Request):
+    # Trang này sẽ chứa form HTML và JavaScript để bắt token từ URL hash
+    return templates.TemplateResponse(request, "update_password.html", {"request": request})

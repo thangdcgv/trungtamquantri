@@ -3,20 +3,59 @@
 {% block title %}Chi Tiết Bảo Hành - {{ item.serial_number }}{% endblock %}
 
 {% block head %}
+<link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
 <style>
-    /* Card Container */
-    .warranty-card {
-        max-width: 900px;
+    :root {
+        --bg-main: #0f172a;
+        --bg-card: #1e293b;
+        --text-main: #f8fafc;
+        --border-color: rgba(255,255,255,.12);
+        --text-muted: #94a3b8;
+    }
+
+    body {
+        background-color: var(--bg-main) !important;
+        color: var(--text-main) !important;
+        font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif;
+    }
+
+    /* Ambient Glow Background */
+    body::before {
+        content: "";
+        position: fixed;
+        top: 0;
+        left: 50%;
+        transform: translateX(-50%);
+        width: 100%;
+        max-width: 600px;
+        height: 300px;
+        background: radial-gradient(circle, rgba(56, 189, 248, 0.08) 0%, rgba(15, 23, 42, 0) 70%);
+        pointer-events: none;
+        z-index: 0;
+    }
+
+    /* Container chuẩn hóa Mobile-first */
+    .dashboard-app {
+        max-width: 600px;
         margin: 0 auto;
-        background: #0f172a;
-        border: 1px solid rgba(255, 255, 255, 0.1);
-        border-radius: 18px;
+        padding: 1rem .5rem 3rem;
+        position: relative;
+        z-index: 1;
+    }
+
+    /* Card Container */
+    .detail-card {
+        background: rgba(30, 41, 59, 0.6);
+        border: 1px solid var(--border-color);
+        border-radius: 20px;
         padding: 1.25rem;
-        box-shadow: 0 25px 50px -12px rgba(0, 0, 0, 0.6);
+        box-shadow: 0 10px 30px rgba(0, 0, 0, 0.3);
+        backdrop-filter: blur(12px);
+        -webkit-backdrop-filter: blur(12px);
     }
 
     @media (min-width: 640px) {
-        .warranty-card { padding: 2rem; }
+        .detail-card { padding: 1.5rem; }
     }
 
     /* Top Header Bar */
@@ -26,44 +65,48 @@
         justify-content: space-between;
         margin-bottom: 1.5rem;
         padding-bottom: 1rem;
-        border-bottom: 1px solid rgba(255, 255, 255, 0.08);
+        border-bottom: 1px dashed rgba(255, 255, 255, 0.1);
         gap: 0.75rem;
     }
 
     .btn-back {
         display: inline-flex;
         align-items: center;
-        gap: 0.4rem;
+        gap: 0.5rem;
         background: rgba(255, 255, 255, 0.05);
-        color: #94a3b8;
+        color: var(--text-muted);
         border: 1px solid rgba(255, 255, 255, 0.1);
-        padding: 0.5rem 0.85rem;
+        padding: 0.5rem 0.8rem;
         border-radius: 10px;
         font-size: 0.85rem;
         font-weight: 600;
-        text-decoration: none;
+        text-decoration: none !important;
         transition: all 0.2s ease;
         white-space: nowrap;
     }
 
     .btn-back:hover {
         background: rgba(255, 255, 255, 0.12);
-        color: #f8fafc;
+        color: var(--text-main);
         border-color: rgba(255, 255, 255, 0.2);
     }
 
     .form-header-title {
-        font-size: 1.15rem;
+        font-size: 1.1rem;
         font-weight: 800;
-        color: #f8fafc;
+        color: var(--text-main);
         margin: 0;
         letter-spacing: 0.02em;
         text-align: center;
         flex-grow: 1;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        gap: 0.5rem;
     }
 
     @media (min-width: 640px) {
-        .form-header-title { font-size: 1.35rem; }
+        .form-header-title { font-size: 1.25rem; }
     }
 
     /* Policy Selection Box */
@@ -71,9 +114,9 @@
         display: grid;
         grid-template-columns: 1fr;
         gap: 1rem;
-        background: linear-gradient(145deg, rgba(30, 41, 59, 0.7), rgba(15, 23, 42, 0.8));
-        border: 1px solid rgba(56, 189, 248, 0.2);
-        border-radius: 14px;
+        background: rgba(0, 0, 0, 0.2);
+        border: 1px solid rgba(56, 189, 248, 0.3);
+        border-radius: 16px;
         padding: 1.15rem;
         margin-bottom: 1.5rem;
     }
@@ -89,17 +132,17 @@
         display: flex;
         align-items: center;
         justify-content: space-around;
-        background: #090d16;
-        border: 1px solid rgba(255, 255, 255, 0.08);
-        border-radius: 10px;
+        background: rgba(0, 0, 0, 0.25);
+        border: 1px solid var(--border-color);
+        border-radius: 12px;
         padding: 0.75rem 0.5rem;
     }
 
     /* Section Boxes */
     .section-box {
-        background: rgba(30, 41, 59, 0.25);
-        border: 1px solid rgba(255, 255, 255, 0.07);
-        border-radius: 14px;
+        background: rgba(0, 0, 0, 0.15);
+        border: 1px solid rgba(255, 255, 255, 0.06);
+        border-radius: 16px;
         padding: 1.15rem;
         margin-bottom: 1.5rem;
     }
@@ -109,21 +152,21 @@
     }
 
     .group-title {
-        font-size: 0.85rem;
+        font-size: 0.8rem;
         font-weight: 800;
         color: #38bdf8;
         margin-bottom: 1rem;
         display: flex;
         align-items: center;
         gap: 0.5rem;
-        letter-spacing: 0.04em;
+        letter-spacing: 0.05em;
         text-transform: uppercase;
     }
 
     /* Highlight Sub-Card */
     .warranty-subcard {
-        background: rgba(15, 23, 42, 0.5);
-        border: 1px solid rgba(255, 255, 255, 0.06);
+        background: rgba(255, 255, 255, 0.03);
+        border: 1px solid rgba(255, 255, 255, 0.05);
         border-radius: 12px;
         padding: 1rem;
         margin-bottom: 1rem;
@@ -132,13 +175,13 @@
     .sub-group-title {
         font-size: 0.75rem;
         font-weight: 700;
-        color: #94a3b8;
+        color: var(--text-muted);
         text-transform: uppercase;
         letter-spacing: 0.05em;
-        margin-bottom: 0.75rem;
+        margin-bottom: 0.85rem;
         display: flex;
         align-items: center;
-        gap: 0.35rem;
+        gap: 0.4rem;
     }
 
     /* Responsive Grids */
@@ -155,55 +198,55 @@
 
     .field-label {
         display: block;
-        font-size: 0.8rem;
-        font-weight: 600;
-        color: #cbd5e1;
+        font-size: 0.78rem;
+        font-weight: 700;
+        color: var(--text-muted);
         margin-bottom: 0.4rem;
+        text-transform: uppercase;
     }
 
     .form-control-custom {
         width: 100%;
-        background: #090d16;
-        border: 1px solid rgba(255, 255, 255, 0.12);
-        border-radius: 8px;
-        padding: 0.65rem 0.85rem;
-        color: #f8fafc;
-        font-size: 16px;
+        background: rgba(0, 0, 0, 0.25);
+        border: 1px solid var(--border-color);
+        border-radius: 10px;
+        padding: 0.7rem 0.85rem;
+        color: var(--text-main);
+        font-size: 16px; /* Chống zoom trên iOS */
         box-sizing: border-box;
-        transition: all 0.15s ease;
+        transition: all 0.2s ease;
+        outline: none;
     }
 
     @media (min-width: 640px) {
-        .form-control-custom { font-size: 0.88rem; }
+        .form-control-custom { font-size: 0.9rem; }
     }
 
     .form-control-custom:focus {
-        outline: none;
         border-color: #38bdf8;
-        box-shadow: 0 0 0 3px rgba(56, 189, 248, 0.15);
+        background: rgba(0, 0, 0, 0.4);
     }
 
     .form-control-custom[readonly] {
-        background: rgba(255, 255, 255, 0.03);
+        background: rgba(255, 255, 255, 0.02);
         color: #64748b;
         cursor: not-allowed;
-        border-color: rgba(255, 255, 255, 0.06);
+        border-color: rgba(255, 255, 255, 0.04);
     }
 
     /* Modern Integrated Input Spinner */
     .input-spinner-group {
         display: flex;
         align-items: center;
-        background: #090d16;
-        border: 1px solid rgba(255, 255, 255, 0.12);
-        border-radius: 8px;
+        background: rgba(0, 0, 0, 0.25);
+        border: 1px solid var(--border-color);
+        border-radius: 10px;
         overflow: hidden;
-        transition: border-color 0.15s ease;
+        transition: all 0.2s ease;
     }
 
     .input-spinner-group:focus-within {
         border-color: #38bdf8;
-        box-shadow: 0 0 0 3px rgba(56, 189, 248, 0.15);
     }
 
     .input-spinner-group input {
@@ -213,14 +256,15 @@
         text-align: center;
         font-weight: 700;
         color: #38bdf8;
+        padding: 0.7rem 0;
     }
 
     .btn-spin {
         background: rgba(255, 255, 255, 0.05);
-        color: #f8fafc;
+        color: var(--text-main);
         border: none;
-        min-width: 38px;
-        height: 38px;
+        min-width: 42px;
+        height: 100%;
         font-size: 1.1rem;
         font-weight: 700;
         cursor: pointer;
@@ -247,12 +291,12 @@
     .btn-submit {
         flex: 2;
         padding: 0.95rem;
-        background: linear-gradient(135deg, #0284c7 0%, #0369a1 100%);
+        background: linear-gradient(135deg, #0ea5e9 0%, #0284c7 100%);
         color: #ffffff;
-        font-weight: 700;
+        font-weight: 800;
         font-size: 0.95rem;
         border: none;
-        border-radius: 10px;
+        border-radius: 12px;
         cursor: pointer;
         box-shadow: 0 4px 12px rgba(2, 132, 199, 0.3);
         transition: all 0.2s ease;
@@ -262,11 +306,11 @@
         gap: 0.5rem;
     }
 
-    .btn-submit:active { transform: scale(0.99); }
+    .btn-submit:active { transform: scale(0.98); }
 
     @media (min-width: 640px) {
         .btn-submit:hover {
-            background: linear-gradient(135deg, #0369a1 0%, #075985 100%);
+            background: linear-gradient(135deg, #0284c7 0%, #0369a1 100%);
             box-shadow: 0 6px 16px rgba(2, 132, 199, 0.4);
         }
     }
@@ -276,211 +320,208 @@
         padding: 0.95rem;
         background: rgba(255, 255, 255, 0.05);
         border: 1px solid rgba(255, 255, 255, 0.1);
-        color: #94a3b8;
-        font-weight: 600;
+        color: var(--text-muted);
+        font-weight: 700;
         font-size: 0.9rem;
-        border-radius: 10px;
+        border-radius: 12px;
         text-align: center;
         text-decoration: none;
         transition: all 0.2s;
         display: flex;
         align-items: center;
         justify-content: center;
+        gap: 0.4rem;
     }
 
     .btn-cancel-action:hover {
         background: rgba(255, 255, 255, 0.1);
-        color: #f8fafc;
+        color: var(--text-main);
     }
 
     /* Log Box Terminal Style */
     .log-box {
-        background: #060911;
-        border: 1px solid rgba(255, 255, 255, 0.1);
-        border-radius: 10px;
-        padding: 0.85rem;
+        background: rgba(0, 0, 0, 0.4);
+        border: 1px solid rgba(255, 255, 255, 0.08);
+        border-radius: 12px;
+        padding: 1rem;
         max-height: 200px;
         overflow-y: auto;
         font-family: 'Fira Code', Monaco, Consolas, monospace;
-        font-size: 0.8rem;
+        font-size: 0.82rem;
         color: #38bdf8;
         white-space: pre-wrap;
         line-height: 1.6;
     }
 
-    .log-box::-webkit-scrollbar {
-        width: 6px;
-    }
-    .log-box::-webkit-scrollbar-thumb {
-        background: rgba(255, 255, 255, 0.15);
-        border-radius: 4px;
-    }
+    .log-box::-webkit-scrollbar { width: 6px; }
+    .log-box::-webkit-scrollbar-thumb { background: rgba(255, 255, 255, 0.15); border-radius: 4px; }
 
-    .badge-new { color: #22c55e !important; }
+    .badge-new { color: #10b981 !important; }
     .badge-used { color: #f59e0b !important; }
     .badge-locked {
-        font-size: 0.7rem;
+        font-size: 0.65rem;
         background: rgba(239, 68, 68, 0.15);
         color: #f87171;
         padding: 2px 6px;
-        border-radius: 4px;
-        margin-left: 4px;
+        border-radius: 6px;
+        margin-left: 6px;
+        vertical-align: middle;
     }
 </style>
 {% endblock %}
 
 {% block content %}
-<div class="warranty-card">
-    <!-- Top Navigation & Header Bar -->
-    <div class="header-bar">
-        <a href="javascript:history.back()" class="btn-back">
-            <span>←</span> Quay lại
-        </a>
-        <h1 class="form-header-title">📝 CHI TIẾT & CẬP NHẬT PHIẾU BẢO HÀNH</h1>
-        <div style="width: 80px;" class="d-none d-sm-block"></div>
-    </div>
-
-    <form id="updateWarrantyForm" action="/warranty/api/update/{{ item.id }}" method="POST">
-        <!-- Hidden inputs để lưu trữ trạng thái phân loại -->
-        <input type="hidden" name="category" id="db_category" value="{{ item.category }}">
-        <input type="hidden" name="condition" id="db_condition" value="{{ item.condition }}">
-        <input type="hidden" name="no_page_limit" id="db_no_page_limit" value="{{ 'true' if item.no_page_limit else 'false' }}">
-        <input type="hidden" name="cartridge_warranty_months" id="cartridge_warranty_months" value="{{ item.cartridge_warranty_months or 0 }}">
-
-        <!-- 1. Gói chính sách áp dụng -->
-        <div class="policy-box">
-            <div>
-                <label class="field-label">📋 Chọn chính sách bảo hành áp dụng</label>
-                <select name="applied_policy_name" id="applied_policy_name" class="form-control-custom" onchange="applyPolicyPreset(this.value)">
-                    {% for p in policies %}
-                        <option value="{{ p.policy_name }}" {% if p.policy_name == item.applied_policy_name %}selected{% endif %}>
-                            {{ p.policy_name }}
-                        </option>
-                    {% endfor %}
-                </select>
-            </div>
-            <div class="badge-status">
-                <div style="text-align: center;">
-                    <div style="font-size: 0.65rem; color: #94a3b8; text-transform: uppercase; letter-spacing: 0.05em;">PHÂN LOẠI</div>
-                    <div id="txt_category" style="font-size: 0.85rem; font-weight: 700; color: #38bdf8; margin-top: 2px;">
-                        📦 {{ item.category }}
-                    </div>
-                </div>
-                <div style="border-left: 1px solid rgba(255,255,255,0.12); height: 28px;"></div>
-                <div style="text-align: center;">
-                    <div style="font-size: 0.65rem; color: #94a3b8; text-transform: uppercase; letter-spacing: 0.05em;">TÌNH TRẠNG</div>
-                    <div id="txt_condition" 
-                        class="{% if item.condition == 'Mới' %}badge-new{% else %}badge-used{% endif %}" 
-                        style="font-size: 0.85rem; font-weight: 700; margin-top: 2px;">
-                        {% if item.condition == 'Mới' %}✨ Mới{% else %}🛠️ {{ item.condition }}{% endif %}
-                    </div>
-                </div>
-            </div>
-        </div>
-
-        <!-- 2. Thông tin khách hàng -->
-        <div class="section-box">
-            <div class="group-title">👤 THÔNG TIN KHÁCH HÀNG</div>
-            <div class="form-grid-2">
-                <div class="field-group">
-                    <label class="field-label">Tên khách hàng *</label>
-                    <input type="text" name="customer_name" class="form-control-custom" value="{{ item.customer_name }}" required placeholder="Nhập tên khách hàng">
-                </div>
-                <div class="field-group">
-                    <label class="field-label">Ngày mua máy</label>
-                    <input type="date" name="purchase_date" id="purchase_date" class="form-control-custom" value="{{ item.purchase_date }}">
-                </div>
-                <div class="field-group">
-                    <label class="field-label">Số điện thoại *</label>
-                    <input type="tel" name="phone_number" class="form-control-custom" value="{{ item.phone_number }}" required placeholder="Nhập số điện thoại">
-                </div>
-                <div class="field-group">
-                    <label class="field-label">Người cập nhật</label>
-                    <input type="text" name="staff_name" class="form-control-custom" value="{{ current_user.ho_ten if current_user is defined and current_user and current_user.ho_ten else 'Nguyễn Thắng' }}" readonly>
-                </div>
-            </div>
-        </div>
-
-        <!-- 3. Chi tiết thiết bị & Thời hạn bảo hành (Khóa cứng theo chính sách) -->
-        <div class="section-box">
-            <div class="group-title" id="warranty_detail_title">⚙️ CHI TIẾT BẢO HÀNH ({{ item.category | upper }})</div>
-            
-            <div class="warranty-subcard">
-                <div class="sub-group-title">📌 ĐỊNH DANH & THỜI HẠN BẢO HÀNH (QUẢN LÝ BỞI GÓI)</div>
-                <div class="form-grid-2">
-                    <div class="field-group">
-                        <label class="field-label">Model máy *</label>
-                        <input type="text" name="model_name" class="form-control-custom" value="{{ item.model_name }}" required>
-                    </div>
-                    <div class="field-group">
-                        <label class="field-label">Số Serial (S/N) <span class="badge-locked">🔒 CỐ ĐỊNH</span></label>
-                        <input type="text" name="serial_number" class="form-control-custom" value="{{ item.serial_number }}" readonly style="background: rgba(255,255,255,0.03); color: #64748b; cursor: not-allowed;">
-                    </div>
-                    <div class="field-group">
-                        <label class="field-label">BH Cơ máy (Tháng)</label>
-                        <!-- Khóa cứng readonly, phụ thuộc hoàn toàn vào gói chính sách -->
-                        <input type="number" name="warranty_months" id="warranty_months" class="form-control-custom" value="{{ item.warranty_months }}" readonly style="background: rgba(255,255,255,0.03); color: #38bdf8; font-weight: 700; cursor: not-allowed;">
-                    </div>
-                    <div class="field-group">
-                        <label class="field-label" id="head_warranty_label">
-                            {% if item.category == 'Máy Laser' %}BH Hộp mực (Tháng){% else %}BH Đầu phun (Tháng){% endif %}
-                        </label>
-                        <!-- Khóa cứng readonly, phụ thuộc hoàn toàn vào gói chính sách -->
-                        <input type="number" name="head_warranty_months" id="head_warranty_months" class="form-control-custom" value="{{ item.cartridge_warranty_months if item.category == 'Máy Laser' else item.head_warranty_months }}" readonly style="background: rgba(255,255,255,0.03); color: #38bdf8; font-weight: 700; cursor: not-allowed;">
-                    </div>
-                </div>
-            </div>
-
-            <!-- Chỉ số & Định mức trang in -->
-            <div class="warranty-subcard" style="margin-bottom: 0;">
-                <div class="sub-group-title">📊 QUẢN LÝ SỐ TRANG IN & ĐỊNH MỨC</div>
-                <div class="form-grid-2">
-                    <div class="field-group">
-                        <label class="field-label">Số trang ban đầu</label>
-                        <div class="input-spinner-group" id="initial_counter_wrapper">
-                            <button type="button" class="btn-spin" onclick="spin('initial_counter', -100)">-</button>
-                            <input type="number" name="initial_counter" id="initial_counter" class="form-control-custom" value="{{ item.initial_counter or 0 }}">
-                            <button type="button" class="btn-spin" onclick="spin('initial_counter', 100)">+</button>
-                        </div>
-                    </div>
-                    <div class="field-group">
-                        <label class="field-label">Số trang hiện tại (Mới nhất)</label>
-                        <div class="input-spinner-group">
-                            <button type="button" class="btn-spin" onclick="spin('current_counter', -100)">-</button>
-                            <input type="number" name="current_counter" id="current_counter" class="form-control-custom" value="{{ item.current_counter or item.initial_counter or 0 }}">
-                            <button type="button" class="btn-spin" onclick="spin('current_counter', 100)">+</button>
-                        </div>
-                    </div>
-                    <div class="field-group">
-                        <label class="field-label">Định mức Cơ (Trang)</label>
-                        <!-- Khóa cứng readonly, tự động cập nhật theo gói -->
-                        <input type="number" name="page_limit_body" id="page_limit_body" class="form-control-custom" value="{{ item.page_limit_body or 10000 }}" readonly style="background: rgba(255,255,255,0.03); color: #38bdf8; font-weight: 700; cursor: not-allowed;">
-                    </div>
-                    <div class="field-group">
-                        <label class="field-label">Định mức Đầu/Mực (Trang)</label>
-                        <!-- Khóa cứng readonly, tự động cập nhật theo gói -->
-                        <input type="number" name="page_limit_head" id="page_limit_head" class="form-control-custom" value="{{ item.page_limit_head or 3000 }}" readonly style="background: rgba(255,255,255,0.03); color: #38bdf8; font-weight: 700; cursor: not-allowed;">
-                    </div>
-                </div>
-            </div>
-        </div>
-
-        <!-- 4. Lịch sử Nhật ký Chỉnh sửa -->
-        <div class="section-box">
-            <div class="group-title">📜 NHẬT KÝ LỊCH SỬ THAY ĐỔI</div>
-            <div class="log-box">{{ item.edit_log if item.edit_log else "• Chưa có nhật ký chỉnh sửa." }}</div>
-        </div>
-
-        <!-- Action Row -->
-        <div class="action-row">
-            <a href="javascript:history.back()" class="btn-cancel-action">
-                Hủy bỏ
+<div class="dashboard-app">
+    <div class="detail-card">
+        <!-- Top Navigation & Header Bar -->
+        <div class="header-bar">
+            <a href="javascript:history.back()" class="btn-back">
+                <i class="fa-solid fa-chevron-left"></i> Quay lại
             </a>
-            <button type="submit" class="btn-submit">
-                <span>💾</span> LƯU CẬP NHẬT PHIẾU BẢO HÀNH
-            </button>
+            <h1 class="form-header-title">
+                <i class="fa-solid fa-file-shield" style="color: #38bdf8;"></i> CẬP NHẬT BẢO HÀNH
+            </h1>
+            <div style="width: 85px;" class="d-none d-sm-block"></div>
         </div>
-    </form>
+
+        <form id="updateWarrantyForm" action="/warranty/api/update/{{ item.id }}" method="POST">
+            <!-- Hidden inputs để lưu trữ trạng thái phân loại -->
+            <input type="hidden" name="category" id="db_category" value="{{ item.category }}">
+            <input type="hidden" name="condition" id="db_condition" value="{{ item.condition }}">
+            <input type="hidden" name="no_page_limit" id="db_no_page_limit" value="{{ 'true' if item.no_page_limit else 'false' }}">
+            <input type="hidden" name="cartridge_warranty_months" id="cartridge_warranty_months" value="{{ item.cartridge_warranty_months or 0 }}">
+
+            <!-- 1. Gói chính sách áp dụng -->
+            <div class="policy-box">
+                <div>
+                    <label class="field-label"><i class="fa-solid fa-clipboard-check"></i> Chọn chính sách bảo hành</label>
+                    <select name="applied_policy_name" id="applied_policy_name" class="form-control-custom" onchange="applyPolicyPreset(this.value)">
+                        {% for p in policies %}
+                            <option value="{{ p.policy_name }}" {% if p.policy_name == item.applied_policy_name %}selected{% endif %}>
+                                {{ p.policy_name }}
+                            </option>
+                        {% endfor %}
+                    </select>
+                </div>
+                <div class="badge-status">
+                    <div style="text-align: center; width: 50%;">
+                        <div style="font-size: 0.65rem; color: var(--text-muted); text-transform: uppercase; letter-spacing: 0.05em;">PHÂN LOẠI</div>
+                        <div id="txt_category" style="font-size: 0.85rem; font-weight: 700; color: #38bdf8; margin-top: 4px;">
+                            <i class="fa-solid fa-box-open"></i> {{ item.category }}
+                        </div>
+                    </div>
+                    <div style="border-left: 1px solid rgba(255,255,255,0.12); height: 28px;"></div>
+                    <div style="text-align: center; width: 50%;">
+                        <div style="font-size: 0.65rem; color: var(--text-muted); text-transform: uppercase; letter-spacing: 0.05em;">TÌNH TRẠNG</div>
+                        <div id="txt_condition" 
+                            class="{% if item.condition == 'Mới' %}badge-new{% else %}badge-used{% endif %}" 
+                            style="font-size: 0.85rem; font-weight: 700; margin-top: 4px;">
+                            {% if item.condition == 'Mới' %}<i class="fa-solid fa-star"></i> Mới{% else %}<i class="fa-solid fa-screwdriver-wrench"></i> {{ item.condition }}{% endif %}
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <!-- 2. Thông tin khách hàng -->
+            <div class="section-box">
+                <div class="group-title"><i class="fa-solid fa-user-tag"></i> THÔNG TIN KHÁCH HÀNG</div>
+                <div class="form-grid-2">
+                    <div class="field-group">
+                        <label class="field-label">Tên khách hàng *</label>
+                        <input type="text" name="customer_name" class="form-control-custom" value="{{ item.customer_name }}" required placeholder="Nhập tên khách hàng">
+                    </div>
+                    <div class="field-group">
+                        <label class="field-label">Ngày mua máy</label>
+                        <input type="date" name="purchase_date" id="purchase_date" class="form-control-custom" value="{{ item.purchase_date }}">
+                    </div>
+                    <div class="field-group">
+                        <label class="field-label">Số điện thoại *</label>
+                        <input type="tel" name="phone_number" class="form-control-custom" value="{{ item.phone_number }}" required placeholder="Nhập số điện thoại">
+                    </div>
+                    <div class="field-group">
+                        <label class="field-label">Người cập nhật</label>
+                        <input type="text" name="staff_name" class="form-control-custom" value="{{ current_user.ho_ten if current_user is defined and current_user and current_user.ho_ten else 'Nguyễn Thắng' }}" readonly>
+                    </div>
+                </div>
+            </div>
+
+            <!-- 3. Chi tiết thiết bị & Thời hạn bảo hành -->
+            <div class="section-box">
+                <div class="group-title" id="warranty_detail_title"><i class="fa-solid fa-gears"></i> CHI TIẾT BẢO HÀNH ({{ item.category | upper }})</div>
+                
+                <div class="warranty-subcard">
+                    <div class="sub-group-title"><i class="fa-solid fa-id-card"></i> ĐỊNH DANH & THỜI HẠN BẢO HÀNH</div>
+                    <div class="form-grid-2">
+                        <div class="field-group">
+                            <label class="field-label">Model máy *</label>
+                            <input type="text" name="model_name" class="form-control-custom" value="{{ item.model_name }}" required>
+                        </div>
+                        <div class="field-group">
+                            <label class="field-label">Số Serial (S/N) <span class="badge-locked"><i class="fa-solid fa-lock"></i> CỐ ĐỊNH</span></label>
+                            <input type="text" name="serial_number" class="form-control-custom" value="{{ item.serial_number }}" readonly>
+                        </div>
+                        <div class="field-group">
+                            <label class="field-label">BH Cơ máy (Tháng)</label>
+                            <input type="number" name="warranty_months" id="warranty_months" class="form-control-custom" value="{{ item.warranty_months }}" readonly style="color: #38bdf8; font-weight: 700;">
+                        </div>
+                        <div class="field-group">
+                            <label class="field-label" id="head_warranty_label">
+                                {% if item.category == 'Máy Laser' %}BH Hộp mực (Tháng){% else %}BH Đầu phun (Tháng){% endif %}
+                            </label>
+                            <input type="number" name="head_warranty_months" id="head_warranty_months" class="form-control-custom" value="{{ item.cartridge_warranty_months if item.category == 'Máy Laser' else item.head_warranty_months }}" readonly style="color: #38bdf8; font-weight: 700;">
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Chỉ số & Định mức trang in -->
+                <div class="warranty-subcard" style="margin-bottom: 0;">
+                    <div class="sub-group-title"><i class="fa-solid fa-chart-line"></i> QUẢN LÝ SỐ TRANG IN & ĐỊNH MỨC</div>
+                    <div class="form-grid-2">
+                        <div class="field-group">
+                            <label class="field-label">Số trang ban đầu</label>
+                            <div class="input-spinner-group" id="initial_counter_wrapper">
+                                <button type="button" class="btn-spin" onclick="spin('initial_counter', -100)"><i class="fa-solid fa-minus"></i></button>
+                                <input type="number" name="initial_counter" id="initial_counter" class="form-control-custom" value="{{ item.initial_counter or 0 }}">
+                                <button type="button" class="btn-spin" onclick="spin('initial_counter', 100)"><i class="fa-solid fa-plus"></i></button>
+                            </div>
+                        </div>
+                        <div class="field-group">
+                            <label class="field-label">Số trang hiện tại</label>
+                            <div class="input-spinner-group">
+                                <button type="button" class="btn-spin" onclick="spin('current_counter', -100)"><i class="fa-solid fa-minus"></i></button>
+                                <input type="number" name="current_counter" id="current_counter" class="form-control-custom" value="{{ item.current_counter or item.initial_counter or 0 }}">
+                                <button type="button" class="btn-spin" onclick="spin('current_counter', 100)"><i class="fa-solid fa-plus"></i></button>
+                            </div>
+                        </div>
+                        <div class="field-group">
+                            <label class="field-label">Định mức Cơ (Trang)</label>
+                            <input type="number" name="page_limit_body" id="page_limit_body" class="form-control-custom" value="{{ item.page_limit_body or 10000 }}" readonly style="color: #38bdf8; font-weight: 700;">
+                        </div>
+                        <div class="field-group">
+                            <label class="field-label">Định mức Đầu/Mực (Trang)</label>
+                            <input type="number" name="page_limit_head" id="page_limit_head" class="form-control-custom" value="{{ item.page_limit_head or 3000 }}" readonly style="color: #38bdf8; font-weight: 700;">
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <!-- 4. Lịch sử Nhật ký Chỉnh sửa -->
+            <div class="section-box">
+                <div class="group-title"><i class="fa-solid fa-clock-rotate-left"></i> NHẬT KÝ LỊCH SỬ THAY ĐỔI</div>
+                <div class="log-box">{{ item.edit_log if item.edit_log else "> Chưa có nhật ký chỉnh sửa hệ thống." }}</div>
+            </div>
+
+            <!-- Action Row -->
+            <div class="action-row">
+                <a href="javascript:history.back()" class="btn-cancel-action">
+                    <i class="fa-solid fa-xmark"></i> Hủy bỏ
+                </a>
+                <button type="submit" class="btn-submit">
+                    <i class="fa-solid fa-floppy-disk"></i> LƯU CẬP NHẬT
+                </button>
+            </div>
+        </form>
+    </div>
 </div>
 
 <!-- Thẻ JSON ẩn chứa danh sách chính sách (Chống lỗi Linter JS) -->
@@ -516,19 +557,19 @@
         document.getElementById('db_condition').value = condition;
         document.getElementById('db_no_page_limit').value = noLimit;
 
-        document.getElementById('txt_category').innerText = "📦 " + category;
+        document.getElementById('txt_category').innerHTML = '<i class="fa-solid fa-box-open"></i> ' + category;
         
         const condElem = document.getElementById('txt_condition');
         if (condition === "Mới") {
-            condElem.innerText = "✨ Mới";
+            condElem.innerHTML = '<i class="fa-solid fa-star"></i> Mới';
             condElem.className = "badge-new";
         } else {
-            condElem.innerText = "🛠️ " + condition;
+            condElem.innerHTML = '<i class="fa-solid fa-screwdriver-wrench"></i> ' + condition;
             condElem.className = "badge-used";
         }
 
-        document.getElementById('warranty_detail_title').innerText = 
-            `⚙️ CHI TIẾT BẢO HÀNH (${category.toUpperCase()})`;
+        document.getElementById('warranty_detail_title').innerHTML = 
+            `<i class="fa-solid fa-gears"></i> CHI TIẾT BẢO HÀNH (${category.toUpperCase()})`;
 
         const isLaser = (category.toLowerCase().includes("laser"));
         document.getElementById('head_warranty_label').innerText = isLaser ? "BH Hộp mực (Tháng)" : "BH Đầu phun (Tháng)";

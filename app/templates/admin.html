@@ -3,134 +3,305 @@
 {% block title %}Quản Trị Hệ Thống - Máy In Đại Thành{% endblock %}
 
 {% block head %}
-<!-- Bootstrap 5 CSS & FontAwesome Icons -->
-<link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css" rel="stylesheet">
-<link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
-
 <style>
-    /* BẮT BUỘC DARK MODE ĐỒNG BỘ */
+    :root {
+        --bg-main: #0f172a;
+        --bg-card: rgba(30,41,59,.70);
+        --border-color: rgba(255,255,255,.12);
+        --text-main: #f8fafc;
+        --muted: #94a3b8;
+        --accent-color: #38bdf8;
+        --accent-hover: #0284c7;
+    }
+
     body {
         background-color: var(--bg-main) !important;
         color: var(--text-main) !important;
+        font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif;
     }
 
-    /* CARD ĐIỀU HƯỚNG QUẢN TRỊ */
+    .admin-page {
+        max-width: 600px;
+        margin: 0 auto;
+        padding: 1rem .5rem 3rem;
+    }
+
+    .admin-header {
+        display: flex;
+        align-items: center;
+        gap: 12px;
+        margin-bottom: 18px;
+        padding: 0 4px;
+    }
+
+    .admin-header-icon {
+        width: 50px;
+        height: 50px;
+        flex: 0 0 50px;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        border-radius: 16px;
+        background: linear-gradient(135deg, rgba(56,189,248,.20), rgba(2,132,199,.20));
+        border: 1px solid rgba(56,189,248,.30);
+        color: var(--accent-color);
+        box-shadow: 0 6px 18px rgba(2,132,199,.12);
+    }
+
+    .admin-header-icon svg {
+        width: 24px;
+        height: 24px;
+        stroke-width: 2.2;
+    }
+
+    .admin-title {
+        margin: 0;
+        color: #fff;
+        font-size: 1rem;
+        font-weight: 800;
+        letter-spacing: .02em;
+    }
+
+    .admin-subtitle {
+        display: block;
+        margin-top: 3px;
+        color: var(--muted);
+        font-size: .74rem;
+        font-weight: 600;
+        line-height: 1.45;
+    }
+
+    .admin-shell {
+        background: var(--bg-card);
+        border: 1px solid var(--border-color);
+        border-radius: 24px;
+        box-shadow: 0 10px 40px rgba(0,0,0,.50);
+        backdrop-filter: blur(12px);
+        -webkit-backdrop-filter: blur(12px);
+        padding: 12px;
+    }
+
+    @media (min-width: 576px) {
+        .admin-shell { padding: 16px; }
+    }
+
+    .admin-grid {
+        display: grid;
+        grid-template-columns: 1fr;
+        gap: 14px;
+    }
+
     .admin-card {
-        background-color: var(--bg-card);
+        background: rgba(15,23,42,.60);
         border: 1px solid var(--border-color);
         border-radius: 18px;
-        padding: 24px;
-        transition: transform 0.2s ease, border-color 0.2s ease, box-shadow 0.2s ease;
+        padding: 18px;
         text-decoration: none !important;
         color: var(--text-main);
         display: flex;
         flex-direction: column;
-        justify-content: space-between;
-        height: 100%;
-        box-shadow: 0 8px 20px rgba(0, 0, 0, 0.4);
+        min-height: 170px;
+        position: relative;
+        overflow: hidden;
+        box-shadow: 0 4px 8px rgba(0,0,0,.12);
+        transition: transform .22s ease, border-color .22s ease, box-shadow .22s ease, background .22s ease;
+    }
+
+    .admin-card::before {
+        content: "";
+        position: absolute;
+        top: 0;
+        left: 16px;
+        right: 16px;
+        height: 2px;
+        border-radius: 0 0 3px 3px;
+        background: transparent;
+        transition: opacity .2s ease;
+        opacity: .7;
     }
 
     .admin-card:hover {
-        transform: translateY(-4px);
-        border-color: var(--primary-light);
-        box-shadow: 0 12px 28px rgba(56, 189, 248, 0.18);
-        color: #ffffff;
+        transform: translateY(-2px);
+        border-color: rgba(255,255,255,.22);
+        background: rgba(15,23,42,.78);
+        box-shadow: 0 10px 24px rgba(0,0,0,.30);
+        color: var(--text-main);
+    }
+
+    .admin-card-body {
+        display: flex;
+        flex-direction: column;
+        gap: 12px;
     }
 
     .icon-box {
-        width: 56px;
-        height: 56px;
-        border-radius: 14px;
+        width: 44px;
+        height: 44px;
+        border-radius: 12px;
         display: flex;
         align-items: center;
         justify-content: center;
-        font-size: 1.6rem;
-        margin-bottom: 16px;
+        flex-shrink: 0;
+        transition: transform .22s ease;
     }
 
-    .icon-users {
-        background: rgba(56, 189, 248, 0.15);
-        color: #38bdf8;
+    .icon-box svg {
+        width: 21px;
+        height: 21px;
+        stroke-width: 2.1;
     }
 
-    .icon-config {
-        background: rgba(245, 158, 11, 0.15);
-        color: #f59e0b;
+    .admin-card:hover .icon-box { transform: scale(1.04); }
+
+    .card-title {
+        font-size: .92rem;
+        font-weight: 800;
+        color: var(--text-main);
+        margin: 0;
+    }
+
+    .card-desc {
+        font-size: .78rem;
+        color: var(--muted);
+        line-height: 1.55;
+        margin: 5px 0 0;
     }
 
     .btn-action {
-        background: #090d16;
-        border: 1px solid rgba(255, 255, 255, 0.15);
+        margin-top: auto;
+        padding: .65rem .8rem;
+        min-height: 42px;
+        background: rgba(255,255,255,.035);
+        border: 1px solid rgba(255,255,255,.10);
         color: #cbd5e1;
-        border-radius: 10px;
-        padding: 10px 16px;
-        font-size: 0.9rem;
-        font-weight: 600;
-        display: inline-flex;
+        border-radius: 12px;
+        font-size: .78rem;
+        font-weight: 750;
+        display: flex;
         align-items: center;
-        gap: 8px;
-        margin-top: 20px;
-        width: 100%;
-        justify-content: center;
-        transition: all 0.2s ease;
+        justify-content: space-between;
+        gap: 10px;
+        transition: all .2s ease;
     }
 
-    .admin-card:hover .btn-action {
-        background: var(--primary);
-        border-color: var(--primary);
-        color: #ffffff;
+    .btn-action svg {
+        width: 16px;
+        height: 16px;
+        stroke-width: 2.2;
+        transition: transform .2s ease;
+    }
+
+    .admin-card:hover .btn-action svg { transform: translateX(4px); }
+
+    .accent-users::before { background: #38bdf8; }
+    .accent-users .icon-box {
+        background: rgba(56,189,248,.15);
+        color: #38bdf8;
+        border: 1px solid rgba(56,189,248,.25);
+    }
+    .accent-users:hover .btn-action {
+        background: rgba(56,189,248,.10);
+        border-color: rgba(56,189,248,.30);
+        color: #fff;
+    }
+
+    .accent-config::before { background: #f59e0b; }
+    .accent-config .icon-box {
+        background: rgba(245,158,11,.15);
+        color: #fbbf24;
+        border: 1px solid rgba(245,158,11,.25);
+    }
+    .accent-config:hover .btn-action {
+        background: rgba(245,158,11,.10);
+        border-color: rgba(245,158,11,.30);
+        color: #fff;
+    }
+
+    @media (max-width: 430px) {
+        .admin-page { padding-left: 4px; padding-right: 4px; }
+        .admin-shell { padding: 9px; border-radius: 20px; }
+        .admin-card { padding: 14px; border-radius: 16px; min-height: 160px; }
+        .admin-title { font-size: .92rem; }
+        .admin-subtitle { font-size: .68rem; }
+        .admin-header-icon { width: 44px; height: 44px; flex-basis: 44px; }
     }
 </style>
 {% endblock %}
 
 {% block content %}
-<div class="container-fluid px-0">
-    <!-- TIÊU ĐỀ TRANG -->
-    <div class="mb-4 pb-2 border-bottom border-secondary border-opacity-25">
-        <h5 class="fw-bold text-white mb-1 d-flex align-items-center gap-2">
-            <i class="fa-solid fa-user-shield text-info"></i> Quản Trị Hệ Thống
-        </h5>
-        <p class="text-secondary small m-0">Trung tâm điều hành tài khoản nhân viên & cấu hình định mức chấm công</p>
+<div class="admin-page">
+    <!-- Header Trang Admin (Giữ nguyên Icon SVG gốc) -->
+    <div class="admin-header">
+        <div class="admin-header-icon">
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor">
+                <path d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10z"></path>
+            </svg>
+        </div>
+        <div>
+            <h1 class="admin-title">QUẢN TRỊ HỆ THỐNG</h1>
+            <span class="admin-subtitle">Trung tâm điều hành tài khoản nhân viên & cấu hình định mức</span>
+        </div>
     </div>
 
-    <!-- DANH SÁCH MODULE QUẢN TRỊ -->
-    <div class="row g-3">
-        <!-- 1. QUẢN LÝ TÀI KHOẢN -->
-        <div class="col-12 col-md-6">
-            <a href="/admin/users" class="admin-card">
-                <div>
-                    <div class="icon-box icon-users">
-                        <i class="fa-solid fa-users-gear"></i>
+    <div class="admin-shell">
+        <!-- Lưới Các Module Quản Trị -->
+        <div class="admin-grid">
+            <!-- 1. Quản Lý Tài Khoản -->
+            <a href="/admin/users" class="admin-card accent-users">
+                <div class="admin-card-body">
+                    <div class="icon-box">
+                        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor">
+                            <path d="M17 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2"></path>
+                            <circle cx="9" cy="7" r="4"></circle>
+                            <path d="M23 21v-2a4 4 0 0 0-3-3.87"></path>
+                            <path d="M16 3.13a4 4 0 0 1 0 7.75"></path>
+                        </svg>
                     </div>
-                    <h6 class="fw-bold text-white mb-2 fs-5">Quản Lý Tài Khoản</h6>
-                    <p class="text-secondary small mb-0">
-                        Thêm mới tài khoản nhân viên, phân quyền truy cập, chỉnh sửa thông tin hoặc đặt lại mật khẩu người dùng.
-                    </p>
+                    <div>
+                        <h2 class="card-title">Quản Lý Tài Khoản</h2>
+                        <p class="card-desc">
+                            Thêm mới tài khoản nhân viên, phân quyền truy cập, chỉnh sửa thông tin hoặc đặt lại mật khẩu.
+                        </p>
+                    </div>
                 </div>
-                <div>
-                    <span class="btn-action">
-                        Quản lý người dùng <i class="fa-solid fa-arrow-right"></i>
-                    </span>
+                <div class="btn-action">
+                    <span>Quản lý người dùng</span>
+                    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor">
+                        <line x1="5" y1="12" x2="19" y2="12"></line>
+                        <polyline points="12 5 19 12 12 19"></polyline>
+                    </svg>
                 </div>
             </a>
-        </div>
 
-        <!-- 2. CẤU HÌNH CHẤM CÔNG -->
-        <div class="col-12 col-md-6">
-            <a href="/admin/config-cham-cong" class="admin-card">
-                <div>
-                    <div class="icon-box icon-config">
-                        <i class="fa-solid fa-sliders"></i>
+            <!-- 2. Cấu Hình Chấm Công -->
+            <a href="/admin/config-cham-cong" class="admin-card accent-config">
+                <div class="admin-card-body">
+                    <div class="icon-box">
+                        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor">
+                            <line x1="4" y1="21" x2="4" y2="14"></line>
+                            <line x1="4" y1="10" x2="4" y2="3"></line>
+                            <line x1="12" y1="21" x2="12" y2="12"></line>
+                            <line x1="12" y1="8" x2="12" y2="3"></line>
+                            <line x1="20" y1="21" x2="20" y2="16"></line>
+                            <line x1="20" y1="12" x2="20" y2="3"></line>
+                            <line x1="1" y1="14" x2="7" y2="14"></line>
+                            <line x1="9" y1="8" x2="15" y2="8"></line>
+                            <line x1="17" y1="16" x2="23" y2="16"></line>
+                        </svg>
                     </div>
-                    <h6 class="fw-bold text-white mb-2 fs-5">Cấu Hình Chấm Công</h6>
-                    <p class="text-secondary small mb-0">
-                        Điều chỉnh định mức đơn giá km, phụ phí đi tỉnh, làm ngoài giờ, trợ cấp thợ phụ và đơn giá lắp đặt máy móc.
-                    </p>
+                    <div>
+                        <h2 class="card-title">Cấu Hình Chấm Công</h2>
+                        <p class="card-desc">
+                            Điều chỉnh định mức đơn giá km, phụ phí đi tỉnh, làm ngoài giờ, trợ cấp thợ phụ và lắp đặt.
+                        </p>
+                    </div>
                 </div>
-                <div>
-                    <span class="btn-action">
-                        Thay đổi cấu hình <i class="fa-solid fa-arrow-right"></i>
-                    </span>
+                <div class="btn-action">
+                    <span>Thay đổi cấu hình</span>
+                    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor">
+                        <line x1="5" y1="12" x2="19" y2="12"></line>
+                        <polyline points="12 5 19 12 12 19"></polyline>
+                    </svg>
                 </div>
             </a>
         </div>

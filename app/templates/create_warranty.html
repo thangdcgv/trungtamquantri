@@ -3,364 +3,509 @@
 {% block title %}Tạo Phiếu Bảo Hành - Máy In Đại Thành{% endblock %}
 
 {% block head %}
+<link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
 <style>
-    /* Reset & Card Container */
-    .warranty-card {
-        max-width: 900px;
+    :root {
+        --bg-main: #0f172a;
+        --bg-card: #1e293b;
+        --text-main: #f8fafc;
+        --accent-color: #38bdf8;
+        --accent-hover: #0284c7;
+        --border-color: rgba(255,255,255,.12);
+        --muted: #94a3b8;
+    }
+
+    body {
+        background-color: var(--bg-main) !important;
+        color: var(--text-main) !important;
+        font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif;
+    }
+
+    .warranty-app {
+        max-width: 600px;
         margin: 0 auto;
-        background: #0f172a;
-        border: 1px solid rgba(255, 255, 255, 0.1);
-        border-radius: 18px;
-        padding: 1.25rem;
-        box-shadow: 0 25px 50px -12px rgba(0, 0, 0, 0.6);
+        padding: 1rem .5rem 3rem;
     }
 
-    @media (min-width: 640px) {
-        .warranty-card {
-            padding: 2rem;
-        }
+    .warranty-shell {
+        background: rgba(30,41,59,.70);
+        border: 1px solid var(--border-color);
+        border-radius: 24px;
+        box-shadow: 0 10px 40px rgba(0,0,0,.50);
+        backdrop-filter: blur(12px);
+        -webkit-backdrop-filter: blur(12px);
+        padding: 12px;
     }
 
-    /* Top Navigation & Header */
-    .header-bar {
+    @media (min-width: 576px) {
+        .warranty-shell { padding: 16px; }
+    }
+
+    .warranty-header {
         display: flex;
         align-items: center;
         justify-content: space-between;
-        margin-bottom: 1.5rem;
-        padding-bottom: 1rem;
-        border-bottom: 1px solid rgba(255, 255, 255, 0.08);
-        gap: 0.75rem;
+        gap: 12px;
+        margin-bottom: 18px;
+        padding: 0 4px;
     }
 
-    .btn-back {
+    .warranty-brand {
+        display: flex;
+        align-items: center;
+        gap: 12px;
+        min-width: 0;
+    }
+
+    .warranty-brand-icon {
+        width: 50px;
+        height: 50px;
+        flex: 0 0 50px;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        border-radius: 16px;
+        background: linear-gradient(135deg, rgba(56,189,248,.20), rgba(2,132,199,.20));
+        border: 1px solid rgba(56,189,248,.30);
+        color: var(--accent-color);
+        font-size: 1.35rem;
+        box-shadow: 0 6px 18px rgba(2,132,199,.12);
+    }
+
+    .warranty-brand h1 {
+        margin: 0;
+        color: #fff;
+        font-size: 1rem;
+        font-weight: 800;
+        letter-spacing: .02em;
+    }
+
+    .warranty-brand small {
+        display: block;
+        margin-top: 3px;
+        color: var(--accent-color);
+        font-size: .74rem;
+        font-weight: 600;
+    }
+
+    .excel-toggle {
+        flex: 0 0 auto;
+        border: 1px solid rgba(255,255,255,.18);
+        color: #e2e8f0;
+        background: rgba(255,255,255,.05);
+        border-radius: 11px;
+        padding: .55rem .75rem;
+        font-size: .76rem;
+        font-weight: 700;
+        cursor: pointer;
+        transition: all .2s ease;
         display: inline-flex;
         align-items: center;
-        gap: 0.4rem;
-        background: rgba(255, 255, 255, 0.05);
-        color: #94a3b8;
-        border: 1px solid rgba(255, 255, 255, 0.1);
-        padding: 0.5rem 0.85rem;
-        border-radius: 10px;
-        font-size: 0.85rem;
-        font-weight: 600;
-        text-decoration: none;
-        transition: all 0.2s ease;
+        gap: .4rem;
         white-space: nowrap;
     }
 
-    .btn-back:hover {
-        background: rgba(255, 255, 255, 0.12);
-        color: #f8fafc;
-        border-color: rgba(255, 255, 255, 0.2);
+    .excel-toggle:hover {
+        background: rgba(255,255,255,.10);
+        border-color: rgba(56,189,248,.35);
     }
 
-    .form-header-title {
-        font-size: 1.15rem;
-        font-weight: 800;
-        color: #f8fafc;
-        margin: 0;
-        letter-spacing: 0.02em;
-        text-align: center;
-        flex-grow: 1;
-    }
-
-    @media (min-width: 640px) {
-        .form-header-title { font-size: 1.35rem; }
-    }
-
-    /* Accordion Nhập Excel */
     .excel-accordion {
-        background: rgba(30, 41, 59, 0.3);
-        border: 1px dashed rgba(56, 189, 248, 0.35);
-        border-radius: 12px;
-        margin-bottom: 1.5rem;
+        margin-bottom: 16px;
+        background: rgba(245,158,11,.045);
+        border: 1px solid rgba(245,158,11,.24);
+        border-radius: 16px;
         overflow: hidden;
-        transition: border-color 0.2s ease;
-    }
-
-    .excel-accordion:hover {
-        border-color: rgba(56, 189, 248, 0.7);
     }
 
     .excel-header {
-        padding: 0.85rem 1rem;
-        font-size: 0.85rem;
-        font-weight: 700;
-        color: #38bdf8;
+        list-style: none;
+        padding: 13px 15px;
+        color: #fbbf24;
         cursor: pointer;
         display: flex;
         align-items: center;
-        gap: 0.5rem;
+        gap: 9px;
+        font-size: .82rem;
+        font-weight: 800;
         user-select: none;
     }
 
-    /* Policy Selection Box */
+    .excel-header::-webkit-details-marker { display: none; }
+
+    .excel-header span {
+        width: 24px;
+        height: 24px;
+        display: inline-flex;
+        align-items: center;
+        justify-content: center;
+        border-radius: 8px;
+        background: rgba(245,158,11,.10);
+        transition: transform .2s ease;
+    }
+
+    .excel-accordion[open] .excel-header span { transform: rotate(90deg); }
+
+    .excel-body {
+        padding: 14px;
+        border-top: 1px solid rgba(255,255,255,.08);
+    }
+
+    .main-form-card {
+        background: rgba(15,23,42,.58);
+        border: 1px solid var(--border-color);
+        border-radius: 20px;
+        padding: 14px;
+    }
+
+    @media (min-width: 576px) {
+        .main-form-card { padding: 16px; }
+    }
+
+    .step-card {
+        background: rgba(15,23,42,.60);
+        border: 1px solid var(--border-color);
+        border-radius: 18px;
+        padding: 18px;
+        margin-bottom: 16px;
+        box-shadow: 0 4px 8px rgba(0,0,0,.12);
+    }
+
+    .step-card:last-child { margin-bottom: 0; }
+
+    .step-title {
+        display: flex;
+        align-items: center;
+        gap: 10px;
+        color: var(--accent-color);
+        font-size: .88rem;
+        font-weight: 800;
+        text-transform: uppercase;
+        letter-spacing: .04em;
+        margin-bottom: 16px;
+        padding-bottom: 12px;
+        border-bottom: 1px dashed rgba(255,255,255,.10);
+    }
+
+    .step-badge {
+        width: 28px;
+        height: 28px;
+        flex: 0 0 28px;
+        display: inline-flex;
+        align-items: center;
+        justify-content: center;
+        border-radius: 8px;
+        background: rgba(56,189,248,.15);
+        color: var(--accent-color);
+        font-size: .78rem;
+        font-weight: 900;
+    }
+
+    .field-group { margin-bottom: 14px; }
+    .field-group:last-child { margin-bottom: 0; }
+
+    .field-label {
+        display: block;
+        color: #e2e8f0;
+        font-size: .82rem;
+        font-weight: 600;
+        margin-bottom: 7px;
+    }
+
+    .form-grid-2,
+    .form-grid-3 {
+        display: grid;
+        grid-template-columns: 1fr;
+        gap: 12px;
+    }
+
+    @media (min-width: 576px) {
+        .form-grid-2 { grid-template-columns: repeat(2, minmax(0,1fr)); }
+        .form-grid-3 { grid-template-columns: repeat(3, minmax(0,1fr)); }
+    }
+
+    .form-control-custom {
+        width: 100%;
+        box-sizing: border-box;
+        background: rgba(0,0,0,.20);
+        border: 1px solid rgba(255,255,255,.15);
+        color: #fff;
+        border-radius: 12px;
+        padding: 12px 14px;
+        min-height: 46px;
+        font-size: 16px;
+        font-weight: 500;
+        transition: all .25s ease;
+    }
+
+    @media (min-width: 576px) {
+        .form-control-custom { font-size: .92rem; }
+    }
+
+    .form-control-custom::placeholder { color: #64748b; }
+
+    .form-control-custom:focus {
+        outline: none;
+        border-color: var(--accent-color);
+        box-shadow: 0 0 0 4px rgba(56,189,248,.15);
+        background: rgba(0,0,0,.36);
+    }
+
+    .form-control-custom:disabled,
+    .form-control-custom[readonly] {
+        background: rgba(255,255,255,.035) !important;
+        color: #7dd3fc !important;
+        cursor: not-allowed;
+    }
+
     .policy-box {
         display: grid;
         grid-template-columns: 1fr;
-        gap: 1rem;
-        background: linear-gradient(145deg, rgba(30, 41, 59, 0.7), rgba(15, 23, 42, 0.8));
-        border: 1px solid rgba(56, 189, 248, 0.2);
-        border-radius: 14px;
-        padding: 1.15rem;
-        margin-bottom: 1.5rem;
+        gap: 12px;
+        margin-bottom: 16px;
+        padding: 16px;
+        border-radius: 18px;
+        background: rgba(56,189,248,.045);
+        border: 1px solid rgba(56,189,248,.20);
     }
 
-    @media (min-width: 640px) {
+    @media (min-width: 576px) {
         .policy-box {
-            grid-template-columns: 1.4fr 1fr;
+            grid-template-columns: minmax(0,1.35fr) minmax(0,.9fr);
             align-items: center;
         }
     }
 
     .badge-status {
-        display: flex;
+        display: grid;
+        grid-template-columns: 1fr auto 1fr;
         align-items: center;
-        justify-content: space-around;
-        background: #090d16;
-        border: 1px solid rgba(255, 255, 255, 0.08);
-        border-radius: 10px;
-        padding: 0.75rem 0.5rem;
-    }
-
-    /* Section Boxes */
-    .section-box {
-        background: rgba(30, 41, 59, 0.25);
-        border: 1px solid rgba(255, 255, 255, 0.07);
+        gap: 10px;
+        background: rgba(0,0,0,.22);
+        border: 1px solid rgba(255,255,255,.10);
         border-radius: 14px;
-        padding: 1.15rem;
-        margin-bottom: 1.5rem;
+        padding: 12px 10px;
     }
 
-    @media (min-width: 640px) {
-        .section-box { padding: 1.35rem; }
+    .badge-status-divider {
+        width: 1px;
+        height: 30px;
+        background: rgba(255,255,255,.12);
     }
 
-    .group-title {
-        font-size: 0.85rem;
-        font-weight: 800;
-        color: #38bdf8;
-        margin-bottom: 1rem;
-        display: flex;
-        align-items: center;
-        gap: 0.5rem;
-        letter-spacing: 0.04em;
-        text-transform: uppercase;
-    }
-
-    /* Highlight Card for Warranty Details */
-    .warranty-highlight-card {
-        background: rgba(15, 23, 42, 0.5);
-        border: 1px solid rgba(255, 255, 255, 0.06);
-        border-radius: 12px;
-        padding: 1rem;
-        margin-bottom: 1rem;
-    }
-
-    .sub-group-title {
-        font-size: 0.75rem;
-        font-weight: 700;
-        color: #94a3b8;
-        text-transform: uppercase;
-        letter-spacing: 0.05em;
-        margin-bottom: 0.75rem;
-        display: flex;
-        align-items: center;
-        gap: 0.35rem;
-    }
-
-    /* Responsive Grids */
-    .form-grid-2 {
-        display: grid;
-        grid-template-columns: 1fr;
-        gap: 1rem;
-    }
-
-    .form-grid-3 {
-        display: grid;
-        grid-template-columns: 1fr;
-        gap: 1rem;
-    }
-
-    @media (min-width: 640px) {
-        .form-grid-2 { grid-template-columns: repeat(2, 1fr); }
-        .form-grid-3 { grid-template-columns: repeat(3, 1fr); }
-    }
-
-    /* Field Controls */
-    .field-group { margin-bottom: 0.25rem; }
-    
-    .field-label {
-        display: block;
-        font-size: 0.8rem;
-        font-weight: 600;
-        color: #cbd5e1;
-        margin-bottom: 0.4rem;
-    }
-
-    .form-control-custom {
-        width: 100%;
-        background: #090d16;
-        border: 1px solid rgba(255, 255, 255, 0.12);
-        border-radius: 8px;
-        padding: 0.65rem 0.85rem;
-        color: #f8fafc;
-        font-size: 16px;
-        box-sizing: border-box;
-        transition: all 0.15s ease;
-    }
-
-    @media (min-width: 640px) {
-        .form-control-custom { font-size: 0.88rem; }
-    }
-
-    .form-control-custom:focus {
-        outline: none;
-        border-color: #38bdf8;
-        box-shadow: 0 0 0 3px rgba(56, 189, 248, 0.15);
-    }
-
-    .form-control-custom:disabled, .form-control-custom[readonly] {
-        background: rgba(255, 255, 255, 0.03);
+    .status-label {
         color: #64748b;
-        cursor: not-allowed;
+        font-size: .62rem;
+        font-weight: 800;
+        text-transform: uppercase;
+        letter-spacing: .07em;
     }
 
-    /* Modern Integrated Input Spinner */
-    .input-spinner-group {
-        display: flex;
-        align-items: center;
-        background: #090d16;
-        border: 1px solid rgba(255, 255, 255, 0.12);
-        border-radius: 8px;
-        overflow: hidden;
-        transition: border-color 0.15s ease;
-    }
-
-    .input-spinner-group:focus-within {
-        border-color: #38bdf8;
-        box-shadow: 0 0 0 3px rgba(56, 189, 248, 0.15);
-    }
-
-    .input-spinner-group input {
-        border: none !important;
-        background: transparent !important;
-        box-shadow: none !important;
-        text-align: center;
-        font-weight: 700;
-        color: #38bdf8;
-    }
-
-    .btn-spin {
-        background: rgba(255, 255, 255, 0.05);
-        color: #f8fafc;
-        border: none;
-        min-width: 38px;
-        height: 38px;
-        font-size: 1.1rem;
-        font-weight: 700;
-        cursor: pointer;
-        user-select: none;
-        display: flex;
-        align-items: center;
-        justify-content: center;
-        transition: background 0.15s;
-    }
-
-    .btn-spin:active { background: #0284c7; color: #fff; }
-    
-    @media (min-width: 640px) {
-        .btn-spin:hover { background: #0284c7; color: #fff; }
-    }
-
-    /* Action Buttons Row */
-    .action-row {
-        display: flex;
-        gap: 0.75rem;
-        margin-top: 1.5rem;
-    }
-
-    .btn-submit {
-        flex: 2;
-        padding: 0.95rem;
-        background: linear-gradient(135deg, #0284c7 0%, #0369a1 100%);
-        color: #ffffff;
-        font-weight: 700;
-        font-size: 0.95rem;
-        border: none;
-        border-radius: 10px;
-        cursor: pointer;
-        box-shadow: 0 4px 12px rgba(2, 132, 199, 0.3);
-        transition: all 0.2s ease;
-        display: flex;
-        align-items: center;
-        justify-content: center;
-        gap: 0.5rem;
-        text-decoration: none;
-    }
-
-    .btn-submit:active { transform: scale(0.99); }
-
-    @media (min-width: 640px) {
-        .btn-submit:hover {
-            background: linear-gradient(135deg, #0369a1 0%, #075985 100%);
-            box-shadow: 0 6px 16px rgba(2, 132, 199, 0.4);
-        }
-    }
-
-    .btn-cancel-action {
-        flex: 1;
-        padding: 0.95rem;
-        background: rgba(255, 255, 255, 0.05);
-        border: 1px solid rgba(255, 255, 255, 0.1);
-        color: #94a3b8;
-        font-weight: 600;
-        font-size: 0.9rem;
-        border-radius: 10px;
-        text-align: center;
-        text-decoration: none;
-        transition: all 0.2s;
-        display: flex;
-        align-items: center;
-        justify-content: center;
-    }
-
-    .btn-cancel-action:hover {
-        background: rgba(255, 255, 255, 0.1);
-        color: #f8fafc;
-    }
-
-    .btn-download-template {
-        background: #1e293b;
-        border: 1px solid #38bdf8;
-        color: #38bdf8;
-        margin-bottom: 0.75rem;
-    }
-
-    .btn-download-template:hover {
-        background: #0284c7;
-        color: #ffffff;
+    .status-value {
+        margin-top: 2px;
+        font-size: .82rem;
+        font-weight: 800;
     }
 
     .badge-new { color: #22c55e !important; }
     .badge-used { color: #f59e0b !important; }
+
+    .sub-card {
+        background: rgba(0,0,0,.16);
+        border: 1px solid rgba(255,255,255,.08);
+        border-radius: 14px;
+        padding: 14px;
+        margin-bottom: 12px;
+    }
+
+    .sub-card:last-child { margin-bottom: 0; }
+
+    .sub-title {
+        display: flex;
+        align-items: center;
+        gap: 7px;
+        margin-bottom: 12px;
+        color: #94a3b8;
+        font-size: .73rem;
+        font-weight: 800;
+        text-transform: uppercase;
+        letter-spacing: .06em;
+    }
+
+    .input-spinner-group {
+        display: flex;
+        align-items: center;
+        overflow: hidden;
+        min-height: 46px;
+        background: rgba(0,0,0,.25);
+        border: 1px solid rgba(255,255,255,.15);
+        border-radius: 12px;
+        transition: all .2s ease;
+    }
+
+    .input-spinner-group:focus-within {
+        border-color: var(--accent-color);
+        box-shadow: 0 0 0 4px rgba(56,189,248,.15);
+    }
+
+    .input-spinner-group input {
+        min-height: 44px;
+        border: none !important;
+        background: transparent !important;
+        box-shadow: none !important;
+        text-align: center;
+        color: #fff !important;
+        font-weight: 800;
+        flex: 1;
+    }
+
+    .btn-spin {
+        width: 44px;
+        height: 44px;
+        flex: 0 0 44px;
+        border: none;
+        background: transparent;
+        color: var(--accent-color);
+        font-size: 1.15rem;
+        font-weight: 800;
+        cursor: pointer;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        transition: background .15s ease;
+    }
+
+    .btn-spin:hover,
+    .btn-spin:active {
+        background: rgba(56,189,248,.14);
+    }
+
+    .action-row {
+        position: sticky;
+        bottom: 10px;
+        z-index: 20;
+        display: flex;
+        gap: 10px;
+        margin-top: 18px;
+        padding: 10px;
+        border-radius: 16px;
+        background: rgba(15,23,42,.88);
+        border: 1px solid rgba(255,255,255,.10);
+        box-shadow: 0 12px 30px rgba(0,0,0,.38);
+        backdrop-filter: blur(14px);
+        -webkit-backdrop-filter: blur(14px);
+    }
+
+    .btn-submit,
+    .btn-cancel-action {
+        min-height: 50px;
+        border-radius: 14px;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        gap: 8px;
+        text-decoration: none;
+        font-weight: 800;
+        transition: all .2s ease;
+    }
+
+    .btn-submit {
+        flex: 2;
+        border: none;
+        padding: 12px 16px;
+        background: linear-gradient(135deg, #0284c7 0%, #0ea5e9 100%);
+        color: #fff;
+        font-size: .92rem;
+        letter-spacing: .02em;
+        box-shadow: 0 6px 20px rgba(2,132,199,.35);
+        cursor: pointer;
+    }
+
+    .btn-submit:hover {
+        background: linear-gradient(135deg, #0369a1 0%, #0284c7 100%);
+        box-shadow: 0 8px 24px rgba(2,132,199,.45);
+    }
+
+    .btn-submit:active { transform: translateY(1px); }
+
+    .btn-cancel-action {
+        flex: 1;
+        padding: 12px 14px;
+        background: rgba(255,255,255,.05);
+        border: 1px solid rgba(255,255,255,.16);
+        color: #cbd5e1;
+        font-size: .84rem;
+    }
+
+    .btn-cancel-action:hover {
+        background: rgba(255,255,255,.10);
+        color: #fff;
+    }
+
+    .btn-download-template {
+        width: 100%;
+        border: 1px solid rgba(56,189,248,.45);
+        background: rgba(56,189,248,.08);
+        color: var(--accent-color);
+        border-radius: 12px;
+        padding: 10px 12px;
+        display: flex;
+        justify-content: center;
+        align-items: center;
+        text-decoration: none;
+        font-weight: 700;
+        margin-bottom: 12px;
+    }
+
+    .btn-download-template:hover {
+        background: var(--accent-hover);
+        color: #fff;
+    }
+
+    .hidden { display: none !important; }
+
+    @media (max-width: 430px) {
+        .warranty-app { padding-left: 4px; padding-right: 4px; }
+        .warranty-shell { padding: 9px; border-radius: 20px; }
+        .main-form-card { padding: 10px; border-radius: 18px; }
+        .step-card { padding: 14px; border-radius: 16px; }
+        .warranty-brand h1 { font-size: .92rem; }
+        .warranty-brand small { font-size: .68rem; }
+        .warranty-brand-icon { width: 44px; height: 44px; flex-basis: 44px; }
+        .excel-toggle span { display: none; }
+        .action-row { bottom: 6px; padding: 8px; }
+        .btn-submit, .btn-cancel-action { min-height: 48px; }
+    }
 </style>
 {% endblock %}
 
 {% block content %}
-<div class="warranty-card">
-    <!-- Top Navigation & Header Bar -->
-    <div class="header-bar">
-        <h1 class="form-header-title">➕ THÊM THÔNG TIN BẢO HÀNH</h1>
-        <div style="width: 80px;" class="d-none d-sm-block"></div>
+<div class="warranty-app">
+    <div class="warranty-header">
+        <div class="warranty-brand">
+            <div class="warranty-brand-icon">
+                <i class="fa-solid fa-shield-halved"></i>
+            </div>
+            <div>
+                <h1>THÊM THÔNG TIN BẢO HÀNH</h1>
+                <small>Tạo phiếu bảo hành - Máy In Đại Thành</small>
+            </div>
+        </div>
+        <button class="excel-toggle" type="button"
+                onclick="document.getElementById('excelImport').open = !document.getElementById('excelImport').open">
+            <i class="fa-solid fa-file-excel"></i>
+            <span>Nhập Excel</span>
+        </button>
     </div>
 
+    <div class="warranty-shell">
+
     <!-- 1. Import Excel Collapsible -->
-    <details class="excel-accordion">
+    <details class="excel-accordion" id="excelImport">
         <summary class="excel-header">
-            <span>❯</span> 📥 NHẬP PHIẾU HÀNG LOẠT TỪ EXCEL
+            <span>›</span> 📥 NHẬP PHIẾU HÀNG LOẠT TỪ EXCEL
         </summary>
-        <div style="padding: 1rem; border-top: 1px solid rgba(255,255,255,0.08);">
+        <div class="excel-body">
             <p style="font-size: 0.8rem; color: #94a3b8; margin-top: 0; margin-bottom: 0.75rem;">
                 Tải file Excel mẫu chuẩn đã được tích hợp danh sách chọn tự động để điền dữ liệu.
             </p>
@@ -376,7 +521,8 @@
         </div>
     </details>
 
-    <form id="createWarrantyForm" action="/warranty/api/create" method="POST">
+    <div class="main-form-card">
+        <form id="createWarrantyForm" action="/warranty/api/create" method="POST">
         <!-- Hidden inputs cho các thuộc tính phân loại DB -->
         <input type="hidden" name="category" id="db_category" value="Máy In Phun">
         <input type="hidden" name="condition" id="db_condition" value="Mới">
@@ -384,7 +530,9 @@
         <input type="hidden" name="cartridge_warranty_months" id="cartridge_warranty_months" value="0">
 
         <!-- 2. Chọn chính sách áp dụng -->
-        <div class="policy-box">
+        <div class="step-card" style="background: rgba(56,189,248,.035); border-color: rgba(56,189,248,.20);">
+            <div class="step-title"><span class="step-badge">1</span> CHÍNH SÁCH BẢO HÀNH</div>
+            <div class="policy-box" style="margin-bottom:0;">
             <div>
                 <label class="field-label">📋 Chọn chính sách bảo hành áp dụng *</label>
                 <select name="applied_policy_name" id="applied_policy_name" class="form-control-custom" onchange="applyPolicyPreset(this.value)">
@@ -408,11 +556,12 @@
                     <div id="txt_condition" class="badge-new" style="font-size: 0.85rem; font-weight: 700; margin-top: 2px;">✨ Mới</div>
                 </div>
             </div>
+            </div>
         </div>
 
         <!-- 3. Thông tin khách hàng -->
-        <div class="section-box">
-            <div class="group-title">👤 THÔNG TIN KHÁCH HÀNG</div>
+        <div class="step-card">
+            <div class="step-title"><span class="step-badge">2</span> THÔNG TIN KHÁCH HÀNG</div>
             <div class="form-grid-2">
                 <div class="field-group">
                     <label class="field-label">Tên khách hàng *</label>
@@ -434,12 +583,12 @@
         </div>
 
         <!-- 4. Chi tiết bảo hành (Khóa hoàn toàn theo Chính sách) -->
-        <div class="section-box">
-            <div class="group-title" id="warranty_detail_title">⚙️ CHI TIẾT BẢO HÀNH (MÁY IN PHUN - MỚI)</div>
+        <div class="step-card">
+            <div class="step-title"><span class="step-badge">3</span> <span id="warranty_detail_title">⚙️ CHI TIẾT BẢO HÀNH (MÁY IN PHUN - MỚI)</span></div>⚙️ CHI TIẾT BẢO HÀNH (MÁY IN PHUN - MỚI)</div>
             
             <!-- Thẻ con 1: Định danh thiết bị & Thời hạn bảo hành (Khóa theo gói) -->
-            <div class="warranty-highlight-card">
-                <div class="sub-group-title">📌 CẤU HÌNH MÁY & THỜI HẠN (TỰ ĐỘNG THEO GÓI)</div>
+            <div class="sub-card">
+                <div class="sub-title">📌 CẤU HÌNH MÁY & THỜI HẠN (TỰ ĐỘNG THEO GÓI)</div>
                 <div class="form-grid-2">
                     <div class="field-group">
                         <label class="field-label">Model máy *</label>
@@ -463,8 +612,8 @@
             </div>
 
             <!-- Thẻ con 2: Định mức số trang -->
-            <div class="warranty-highlight-card" style="margin-bottom: 0;">
-                <div class="sub-group-title">📊 ĐỊNH MỨC SỐ TRANG IN (TỰ ĐỘNG THEO GÓI)</div>
+            <div class="sub-card" style="margin-bottom: 0;">
+                <div class="sub-title">📊 ĐỊNH MỨC SỐ TRANG IN (TỰ ĐỘNG THEO GÓI)</div>
                 <div class="form-grid-3">
                     <div class="field-group">
                         <label class="field-label">Số trang máy đã in ban đầu</label>
@@ -498,7 +647,8 @@
                 <span>🚀</span> LƯU PHIẾU BẢO HÀNH
             </button>
         </div>
-    </form>
+        </form>
+    </div>
 </div>
 
 <!-- 1. Thẻ chứa dữ liệu JSON từ Backend (Tránh lỗi syntax Linter) -->
