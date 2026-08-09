@@ -2,12 +2,15 @@ from fastapi import APIRouter, Request
 from fastapi.templating import Jinja2Templates
 from datetime import datetime, timezone, timedelta
 from config import supabase
+from fastapi.responses import RedirectResponse
 
 router = APIRouter()
 templates = Jinja2Templates(directory="app/templates")
 
 @router.get("/")
 async def index(request: Request):
+    if 'user_id' not in request.session:
+        return RedirectResponse(url="/auth/login", status_code=303)
     warranties = []
     installations = []
     guides = []

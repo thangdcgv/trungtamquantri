@@ -16,6 +16,7 @@ async def get_current_admin(request: Request):
     role = request.session.get('role', 'User')
 
     if not user_id:
+        # Sử dụng trực tiếp RedirectResponse để điều hướng chuẩn xác nhất trong FastAPI
         raise HTTPException(
             status_code=status.HTTP_303_SEE_OTHER,
             headers={"Location": "/auth/login"}
