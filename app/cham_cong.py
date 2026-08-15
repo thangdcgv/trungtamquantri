@@ -4,13 +4,13 @@ import re
 from datetime import datetime, timezone
 from pathlib import Path
 from typing import Optional
-
-from fastapi import APIRouter, File, Form, Request, UploadFile, status, Query
+from zoneinfo import ZoneInfo 
+from fastapi import APIRouter, File, Form, Request, UploadFile, status, Query, Depends
 from fastapi.responses import HTMLResponse, JSONResponse, RedirectResponse
 from fastapi.templating import Jinja2Templates
 from PIL import Image, ImageOps
 from pydantic import BaseModel, Field, validator
-
+from app.auth import require_login
 from config import supabase  # Supabase client instance
 
 logger = logging.getLogger(__name__)
@@ -135,12 +135,14 @@ def check_duplicate_invoice(so_hd: str, edit_id: Optional[int] = None) -> tuple[
 
 
 def parse_datetime_field(item: dict):
-    """Chuyển đổi trường thoi_gian từ chuỗi sang datetime object"""
+    """Chuyển đổi trường thoi_gian từ chuỗi UTC sang datetime object theo giờ Việt Nam"""
     if item and isinstance(item.get("thoi_gian"), str):
         try:
-            item["thoi_gian"] = datetime.fromisoformat(item["thoi_gian"].replace("Z", "+00:00"))
-        except Exception:
-            pass
+            dt = datetime.fromisoformat(item["thoi_gian"].replace("Z", "+00:00"))
+            local_tz = ZoneInfo("Asia/Ho_Chi_Minh")
+            item["thoi_gian"] = dt.astimezone(local_tz)
+        except Exception as e:
+            logger.warning(f"Lỗi chuyển đổi múi giờ: {e}")
     return item
 
 
@@ -303,7 +305,10 @@ class DuyetPhieuSchema(BaseModel):
 
 @router.get("", response_class=HTMLResponse)
 @router.get("/", response_class=HTMLResponse)
-async def list_cham_cong(request: Request):
+async def list_cham_cong(
+    request: Request,
+    current_user: dict = Depends(require_login)
+):
     """Danh sách 5 phiếu chấm công mới nhất trong tháng"""
     try:
         now = datetime.now()
@@ -340,7 +345,8 @@ async def list_cham_cong(request: Request):
             context={
                 "request": request,
                 "recent_installations": recent_installations,
-                "item": item
+                "item": item,
+                "current_user": current_user
             }
         )
     except Exception as e:
@@ -349,7 +355,11 @@ async def list_cham_cong(request: Request):
 
 
 @router.get("/detail/{item_id}", response_class=HTMLResponse)
-async def detail_cham_cong(request: Request, item_id: int):
+async def detail_cham_cong(
+    request: Request,
+    item_id: int,
+    current_user: dict = Depends(require_login)
+):
     """Xem chi tiết phiếu chấm công"""
     try:
         res = supabase.table('cham_cong').select('*').eq('id', item_id).execute()
@@ -364,7 +374,8 @@ async def detail_cham_cong(request: Request, item_id: int):
             name="cham_cong_detail.html",
             context={
                 "request": request,
-                "item": item
+                "item": item,
+                "current_user": current_user
             }
         )
     except Exception as e:
@@ -373,15 +384,19 @@ async def detail_cham_cong(request: Request, item_id: int):
 
 
 @router.get("/form", response_class=HTMLResponse)
-async def get_form_cham_cong(request: Request, edit_id: Optional[int] = None):
+async def get_form_cham_cong(
+    request: Request,
+    current_user: dict = Depends(require_login),
+    edit_id: Optional[int] = None
+):
     """Giao diện tạo mới / chỉnh sửa phiếu chấm công"""
     try:
         cfg = get_config_cham_cong()
         edit_data = None
         employees_list = []
 
-        user_role = request.session.get("role", "User")
-        if user_role == "Admin":
+        user_role = str(current_user.get("role") or "User").strip()
+        if user_role in ("Admin", "Super Admin", "System Admin"):
             try:
                 emp_res = supabase.table("quan_tri_vien").select("username, ho_ten").execute()
                 if emp_res.data:
@@ -401,7 +416,8 @@ async def get_form_cham_cong(request: Request, edit_id: Optional[int] = None):
                 "request": request,
                 "config": cfg,
                 "edit_data": edit_data,
-                "employees_list": employees_list
+                "employees_list": employees_list,
+                "current_user": current_user
             }
         )
     except Exception as e:
@@ -410,7 +426,10 @@ async def get_form_cham_cong(request: Request, edit_id: Optional[int] = None):
 
 
 @router.get("/api/search-invoice")
-async def search_invoice(so_hd: str):
+async def search_invoice(
+    so_hd: str,
+    current_user: dict = Depends(require_login)
+):
     """API tra cứu hóa đơn theo số HD để chỉnh sửa"""
     try:
         so_hd_clean = re.sub(r'\s+', '', so_hd.strip().upper())
@@ -439,6 +458,7 @@ async def search_invoice(so_hd: str):
 @router.post("/api/submit")
 async def submit_cham_cong(
     request: Request,
+    current_user: dict = Depends(require_login),
     so_hoa_don: str = Form(...),
     noi_dung: str = Form(...),
     quang_duong: float = Form(0.0),
@@ -502,13 +522,13 @@ async def submit_cham_cong(
 
         parsed_edit_id = int(edit_id) if edit_id and edit_id.strip().isdigit() else None
         
-        session_user = request.session.get("username", "system_user")
-        session_fullname = request.session.get("ho_ten") or request.session.get("username", "system_user")
-        user_role = request.session.get("role", "User")
+        session_user = current_user.get("username", "system_user")
+        session_fullname = current_user.get("ho_ten") or current_user.get("username", "system_user")
+        user_role = str(current_user.get("role") or "User").strip()
 
         # Phân quyền: Chỉ Admin mới được phép chỉ định target_username
         if target_username and target_username.strip():
-            if user_role == "Admin":
+            if user_role in ("Admin", "Super Admin", "System Admin"):
                 target_user = target_username.strip()
                 try:
                     emp_res = supabase.table("quan_tri_vien").select("ho_ten").eq("username", target_user).limit(1).execute()
@@ -599,7 +619,7 @@ async def submit_cham_cong(
             "thoi_gian": datetime.now(timezone.utc).strftime("%Y-%m-%dT%H:%M:%SZ"),
             "so_hoa_don": final_hd,
             "noi_dung": noi_dung_final,
-            "quang_duong": float(quang_duong),  # Lưu giữ số KM thực tế thay vì ép về 0
+            "quang_duong": float(quang_duong),
             "combo": int(combo_may_lon) + int(combo_may_nho) + int(combo_may_ep),
             "thanh_tien": float(res_tinh.get("tong_tien", 0)),
             "device_cost": float(res_tinh.get("device_cost", 0)),
@@ -630,11 +650,16 @@ async def submit_cham_cong(
 
 
 @router.post("/api/duyet/{item_id}")
-async def duyet_phieu(request: Request, item_id: int, payload: DuyetPhieuSchema):
+async def duyet_phieu(
+    request: Request,
+    item_id: int,
+    payload: DuyetPhieuSchema,
+    current_user: dict = Depends(require_login)
+):
     """Phê duyệt / Từ chối phiếu (Chỉ dành cho Admin)"""
     try:
-        user_role = request.session.get("role", "User")
-        if user_role != "Admin":
+        user_role = str(current_user.get("role") or "User").strip()
+        if user_role not in ("Admin", "Super Admin", "System Admin"):
             return JSONResponse(
                 status_code=status.HTTP_403_FORBIDDEN,
                 content={"success": False, "message": "❌ Từ chối truy cập: Bạn không có quyền quản trị!"}
@@ -666,26 +691,32 @@ async def duyet_phieu(request: Request, item_id: int, payload: DuyetPhieuSchema)
 # ==========================================
 
 @router.get("/config-view", response_class=HTMLResponse)
-async def get_config_page(request: Request):
+async def get_config_page(
+    request: Request,
+    current_user: dict = Depends(require_login)
+):
     """Trang quản trị giao diện điều chỉnh định mức chấm công cho Admin"""
-    user_role = request.session.get("role", "User")
-    if user_role != "Admin":
+    user_role = str(current_user.get("role") or "User").strip()
+    if user_role not in ("Admin", "Super Admin", "System Admin"):
         return HTMLResponse(content="<h3>❌ Bạn không có quyền truy cập trang này!</h3>", status_code=403)
 
     cfg = get_config_cham_cong()
     return templates.TemplateResponse(
         request=request,
         name="config_cham_cong.html",
-        context={"request": request, "config": cfg}
+        context={"request": request, "config": cfg, "current_user": current_user}
     )
 
 
 @router.post("/api/config/update")
-async def update_config_cham_cong(request: Request):
+async def update_config_cham_cong(
+    request: Request,
+    current_user: dict = Depends(require_login)
+):
     """API lưu toàn bộ thông số định mức mới vào Supabase (Yêu cầu Admin)"""
     try:
-        user_role = request.session.get("role", "User")
-        if user_role != "Admin":
+        user_role = str(current_user.get("role") or "User").strip()
+        if user_role not in ("Admin", "Super Admin", "System Admin"):
             return JSONResponse(
                 status_code=status.HTTP_403_FORBIDDEN,
                 content={"success": False, "message": "❌ Bạn không có quyền thực hiện thao tác này!"}
@@ -715,9 +746,11 @@ async def update_config_cham_cong(request: Request):
             content={"success": False, "message": f"❌ Lỗi hệ thống: {str(e)}"}
         )
 
+
 @router.get("/list", response_class=HTMLResponse)
 async def view_danh_sach_cham_cong(
     request: Request,
+    current_user: dict = Depends(require_login),
     status_filter: Optional[str] = Query(None),
     search: Optional[str] = Query(None),
     thang: Optional[int] = Query(None),
@@ -727,8 +760,8 @@ async def view_danh_sach_cham_cong(
 ):
     """Giao diện danh sách đơn phân quyền theo User / Admin chuẩn 100% Schema DB"""
     try:
-        user_role = request.session.get("role", "User")
-        current_username = request.session.get("username", "")
+        user_role = str(current_user.get("role") or "User").strip()
+        current_username = current_user.get("username") or ""
 
         now = datetime.now()
         current_year = now.year
@@ -741,7 +774,7 @@ async def view_danh_sach_cham_cong(
         query = supabase.table("cham_cong").select("*")
 
         # 2. PHÂN QUYỀN: User thường chỉ xem đơn của chính mình
-        if user_role != "Admin":
+        if user_role not in ("Admin", "Super Admin", "System Admin"):
             query = query.eq("username", current_username)
 
         # 3. LỌC THEO TRẠNG THÁI
@@ -749,7 +782,7 @@ async def view_danh_sach_cham_cong(
             query = query.eq("trang_thai", status_filter)
 
         # 4. LỌC THEO KỸ THUẬT VIÊN (Chỉ dành cho Admin)
-        if ktv and ktv != "Tất cả" and user_role == "Admin":
+        if ktv and ktv != "Tất cả" and user_role in ("Admin", "Super Admin", "System Admin"):
             query = query.eq("username", ktv)
 
         # 5. LỌC THEO THÁNG & NĂM (Dựa vào cột thoi_gian)
@@ -764,7 +797,7 @@ async def view_danh_sach_cham_cong(
             else:
                 query = query.gte("thoi_gian", f"{selected_year}-01-01T00:00:00").lt("thoi_gian", f"{selected_year + 1}-01-01T00:00:00")
 
-        # 6. TÌM KIẾM TỪ KHÓA (Chuẩn hóa cột: username, ten, noi_dung, so_hoa_don)
+        # 6. TÌM KIẾM TỪ KHÓA
         if search and search.strip():
             clean_search = search.strip()
             query = query.or_(
@@ -777,6 +810,8 @@ async def view_danh_sach_cham_cong(
         # 7. TRUY VẤN VÀ SẮP XẾP GẦN NHẤT
         res = query.order("id", desc=True).limit(limit).execute()
         danh_sach = res.data or []
+        
+        logger.info(f"SỐ LƯỢNG ĐƠN LẤY ĐƯỢC: {len(danh_sach)}")
 
         # Parse iso format thoi_gian -> datetime
         for item in danh_sach:
@@ -785,9 +820,9 @@ async def view_danh_sach_cham_cong(
             except Exception as parse_err:
                 logger.warning(f"Lỗi parse datetime cho ID {item.get('id')}: {parse_err}")
 
-        # 8. LẤY DANH SÁCH KTV CHO DROPDOWN BỘ LỌC (Chuẩn hóa cột: username, ten)
+        # 8. LẤY DANH SÁCH KTV CHO DROPDOWN BỘ LỌC
         danh_sach_ktv = []
-        if user_role == "Admin":
+        if user_role in ("Admin", "Super Admin", "System Admin"):
             try:
                 ktv_res = supabase.table("cham_cong").select("username, ten").execute()
                 raw_ktv = ktv_res.data or []
@@ -801,28 +836,24 @@ async def view_danh_sach_cham_cong(
             except Exception as ktv_err:
                 logger.error(f"Lỗi tải danh sách KTV: {ktv_err}")
 
-        # 9. RENDER TEMPLATE (Chính xác tham số request)
-        context = {
-            "request": request,
-            "danh_sach": danh_sach,
-            "user_role": user_role,
-            "current_username": current_username,
-            "status_filter": status_filter or "Tất cả",
-            "search_query": search or "",
-            "selected_month": selected_month,
-            "selected_year": selected_year,
-            "selected_ktv": ktv or "Tất cả",
-            "limit": limit,
-            "danh_sach_ktv": danh_sach_ktv,
-            "current_year": current_year
-        }
-        
+        # 9. RENDER TEMPLATE (Đã sửa đủ tham số context)
         return templates.TemplateResponse(
             request=request,
-            name="danh_sach_cham_cong.html",
-            context=context
+            name="danh_sach_cham_cong.html",  # Hoặc tên file template danh sách thực tế của bạn
+            context={
+                "request": request,
+                "danh_sach": danh_sach,
+                "current_user": current_user,
+                "user_role": user_role,
+                "current_username": current_username,
+                "danh_sach_ktv": danh_sach_ktv,
+                "selected_month": selected_month,
+                "selected_year": selected_year,
+                "status_filter": status_filter or "",
+                "search": search or "",
+                "ktv": ktv or ""
+            }
         )
-
     except Exception as e:
-        logger.error(f"Lỗi tải danh sách chấm công: {e}", exc_info=True)
+        logger.error(f"Lỗi tải danh sách chấm công: {str(e)}")
         return HTMLResponse(content=f"<h3>Lỗi hệ thống: {str(e)}</h3>", status_code=500)

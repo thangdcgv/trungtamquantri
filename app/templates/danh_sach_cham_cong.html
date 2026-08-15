@@ -629,10 +629,14 @@
                                     <div class="d-flex flex-wrap gap-3 text-muted small">
                                         <span>
                                             <i class="fa-regular fa-clock me-1 text-info"></i>
-                                            {% if item.thoi_gian and item.thoi_gian.strftime %}
-                                                {{ item.thoi_gian.strftime('%d/%m/%Y %H:%M') }}
+                                            {% if item.thoi_gian %}
+                                                {% if item.thoi_gian is string %}
+                                                    {{ item.thoi_gian[8:10] }}/{{ item.thoi_gian[5:7] }}/{{ item.thoi_gian[0:4] }} {{ item.thoi_gian[11:16] }}
+                                                {% else %}
+                                                    {{ item.thoi_gian.strftime('%d/%m/%Y %H:%M') }}
+                                                {% endif %}
                                             {% else %}
-                                                {{ item.thoi_gian or 'N/A' }}
+                                                N/A
                                             {% endif %}
                                         </span>
                                         <span><i class="fa-solid fa-route me-1 text-warning"></i>{{ item.quang_duong or 0 }} KM</span>
@@ -660,29 +664,39 @@
                         </div>
 
                         <!-- Footer Actions dành riêng cho Admin -->
-                        {% if user_role == 'Admin' %}
-                            <div class="pt-2 border-top border-secondary-subtle d-flex justify-content-between align-items-center mt-2">
+                        {% if user_role in ['Admin', 'System Admin', 'SuperAdmin'] %}
+                        <div class="pt-2 border-top border-secondary-subtle d-flex justify-content-between align-items-center mt-2">
+                            <div class="d-flex gap-2">
+                                <!-- Nút Sửa dành cho Admin & System Admin -->
                                 <a href="/cham-cong/form?edit_id={{ item.id }}" class="btn btn-action-sm btn-outline-warning">
                                     <i class="fa-solid fa-pen-to-square me-1"></i> Sửa
                                 </a>
 
-                                <div class="d-flex gap-2">
-                                    {% if item.trang_thai != 'Từ chối' %}
-                                        <button class="btn btn-action-sm btn-outline-danger text-white" onclick="openApproveModal('{{ item.id }}', 'Từ chối', '{{ item.so_hoa_don }}')">
-                                            <i class="fa-solid fa-xmark me-1"></i> Từ chối
-                                        </button>
-                                    {% endif %}
-                                    {% if item.trang_thai != 'Đã duyệt' %}
-                                        <button class="btn btn-action-sm btn-success" onclick="quickApprove('{{ item.id }}', '{{ item.so_hoa_don }}')">
-                                            <i class="fa-solid fa-check me-1"></i> Duyệt nhanh
-                                        </button>
-                                        <button class="btn btn-action-sm btn-outline-warning" onclick="openApproveModal('{{ item.id }}', 'Đã duyệt', '{{ item.so_hoa_don }}')" title="Duyệt kèm ghi chú">
-                                            <i class="fa-solid fa-comment-medical"></i>
-                                        </button>
-                                    {% endif %}
-                                </div>
+                                <!-- Nút Xóa CHỈ DÀNH RIÊNG cho System Admin / SuperAdmin -->
+                                {% if user_role in ['System Admin', 'SuperAdmin'] %}
+                                    <button class="btn btn-action-sm btn-outline-danger" onclick="deleteItem('{{ item.id }}', '{{ item.so_hoa_don }}')" title="Xóa đơn">
+                                        <i class="fa-solid fa-trash-can me-1"></i> Xóa
+                                    </button>
+                                {% endif %}
                             </div>
-                        {% endif %}
+
+                            <div class="d-flex gap-2">
+                                {% if item.trang_thai != 'Từ chối' %}
+                                    <button class="btn btn-action-sm btn-outline-danger text-white" onclick="openApproveModal('{{ item.id }}', 'Từ chối', '{{ item.so_hoa_don }}')">
+                                        <i class="fa-solid fa-xmark me-1"></i> Từ chối
+                                    </button>
+                                {% endif %}
+                                {% if item.trang_thai != 'Đã duyệt' %}
+                                    <button class="btn btn-action-sm btn-success" onclick="quickApprove('{{ item.id }}', '{{ item.so_hoa_don }}')">
+                                        <i class="fa-solid fa-check me-1"></i> Duyệt nhanh
+                                    </button>
+                                    <button class="btn btn-action-sm btn-outline-warning" onclick="openApproveModal('{{ item.id }}', 'Đã duyệt', '{{ item.so_hoa_don }}')" title="Duyệt kèm ghi chú">
+                                        <i class="fa-solid fa-comment-medical"></i>
+                                    </button>
+                                {% endif %}
+                            </div>
+                        </div>
+                    {% endif %}
 
                     </div>
                 </div>

@@ -6,23 +6,42 @@ from config import supabase
 router = APIRouter(prefix="/admin", tags=["Admin"])
 templates = Jinja2Templates(directory="app/templates")
 
+# Trọng số phân quyền từ cao đến thấp
+ROLE_RANKS = {
+    "User": 1,
+    "Admin": 2,
+    "Super Admin": 3,
+    "System Admin": 4
+    
+}
+
+ALLOWED_ADMIN_ROLES = ["Admin", "System Admin", "Super Admin"]
+
+
+def can_manage_target_role(current_role: str, target_role: str) -> bool:
+    """
+    Kiểm tra xem current_role có quyền tác động lên target_role không.
+    Trả về True nếu được phép (trọng số lớn hơn hoặc bằng), False nếu vượt quyền.
+    """
+    return ROLE_RANKS.get(current_role, 1) >= ROLE_RANKS.get(target_role, 1)
+
 
 # ==========================================
-# DEPENDENCY KIỂM TRA QUYỀN ADMIN
+# DEPENDENCY KIỂM TRA QUYỀN QUẢN TRỊ
 # ==========================================
 async def get_current_admin(request: Request):
-    """Dependency bắt buộc phải đăng nhập và có quyền Admin"""
+    """Dependency bắt buộc phải đăng nhập và thuộc các nhóm quản trị"""
     user_id = request.session.get('user_id')
     role = request.session.get('role', 'User')
 
     if not user_id:
-        # Sử dụng trực tiếp RedirectResponse để điều hướng chuẩn xác nhất trong FastAPI
         raise HTTPException(
             status_code=status.HTTP_303_SEE_OTHER,
             headers={"Location": "/auth/login"}
         )
     
-    if role != 'Admin':
+    # Cho phép Admin, System Admin và Super Admin
+    if role not in ALLOWED_ADMIN_ROLES:
         raise HTTPException(
             status_code=status.HTTP_403_FORBIDDEN, 
             detail="⛔ Truy cập bị từ chối: Bạn không có quyền quản trị hệ thống!"
@@ -92,6 +111,11 @@ async def add_user(
         request.session["error_message"] = "Không thể kết nối đến cơ sở dữ liệu."
         return RedirectResponse(url="/admin/users", status_code=status.HTTP_303_SEE_OTHER)
 
+    # Kiểm tra xem người dùng có đủ quyền khởi tạo tài khoản ở cấp này không
+    if not can_manage_target_role(admin["role"], role):
+        request.session["error_message"] = f"Tài khoản cấp {admin['role']} không có quyền khởi tạo tài khoản quyền {role}."
+        return RedirectResponse(url="/admin/users", status_code=status.HTTP_303_SEE_OTHER)
+
     auth_id = None
     try:
         # Bước 1: Tạo tài khoản bên Supabase Auth
@@ -147,20 +171,30 @@ async def edit_user(
 ):
     try:
         if supabase:
-            # 1. Tra cứu auth_id
-            res = supabase.table('quan_tri_vien').select('auth_id').eq("id", user_id).execute()
+            # 1. Tra cứu thông tin hiện tại của tài khoản
+            res = supabase.table('quan_tri_vien').select('auth_id, role').eq("id", user_id).execute()
             if not res or not res.data:
                 raise Exception("Không tìm thấy tài khoản cần chỉnh sửa.")
 
-            auth_id = res.data[0].get('auth_id')
+            target_user = res.data[0]
+            target_auth_id = target_user.get('auth_id')
+            target_role = target_user.get('role', 'User')
 
-            # 2. Cập nhật mật khẩu bên Supabase Auth nếu người dùng có nhập
+            # 2. Kiểm tra xem người thao tác có quyền sửa tài khoản mục tiêu không
+            if not can_manage_target_role(admin["role"], target_role):
+                raise Exception(f"Bạn không có quyền chỉnh sửa tài khoản cấp {target_role}.")
+
+            # 3. Kiểm tra xem người thao tác có quyền gán role mới này không
+            if not can_manage_target_role(admin["role"], role):
+                raise Exception(f"Bạn không thể phân quyền cấp {role}.")
+
+            # 4. Cập nhật mật khẩu bên Supabase Auth nếu người dùng có nhập
             if new_password and new_password.strip():
                 if len(new_password.strip()) < 6:
                     raise Exception("Mật khẩu mới phải có ít nhất 6 ký tự.")
-                supabase.auth.admin.update_user_by_id(auth_id, {"password": new_password.strip()})
+                supabase.auth.admin.update_user_by_id(target_auth_id, {"password": new_password.strip()})
 
-            # 3. Cập nhật thông tin bảng quan_tri_vien
+            # 5. Cập nhật thông tin bảng quan_tri_vien
             update_payload = {
                 "ho_ten": ho_ten.strip(),
                 "chuc_danh": chuc_danh.strip() if chuc_danh else None,
@@ -179,6 +213,39 @@ async def edit_user(
     return RedirectResponse(url="/admin/users", status_code=status.HTTP_303_SEE_OTHER)
 
 
+@router.post("/users/update-role/{user_id}")
+async def update_user_role(
+    request: Request,
+    user_id: int,
+    role: str = Form(...),
+    admin: dict = Depends(get_current_admin)
+):
+    """Route xử lý cập nhật role trực tiếp từ select box trên bảng danh sách"""
+    try:
+        if supabase:
+            res = supabase.table('quan_tri_vien').select('role').eq("id", user_id).execute()
+            if not res or not res.data:
+                raise Exception("Không tìm thấy tài khoản cần đổi quyền.")
+
+            target_role = res.data[0].get('role', 'User')
+
+            # Kiểm tra quyền tác động lên role hiện tại
+            if not can_manage_target_role(admin["role"], target_role):
+                raise Exception(f"Bạn không có quyền thay đổi thông tin của tài khoản cấp {target_role}.")
+
+            # Kiểm tra quyền gán role mới
+            if not can_manage_target_role(admin["role"], role):
+                raise Exception(f"Bạn không có quyền nâng/gán tài khoản lên cấp {role}.")
+
+            supabase.table('quan_tri_vien').update({'role': role}).eq("id", user_id).execute()
+            request.session["success_message"] = f"Đã cập nhật quyền thành {role}!"
+
+    except Exception as e:
+        request.session["error_message"] = f"Đổi quyền thất bại: {str(e)}"
+
+    return RedirectResponse(url="/admin/users", status_code=status.HTTP_303_SEE_OTHER)
+
+
 @router.post("/users/delete/{user_id}")
 async def delete_user(
     request: Request, 
@@ -188,18 +255,23 @@ async def delete_user(
     try:
         if supabase:
             # 1. Lấy thông tin user cần xóa
-            res = supabase.table('quan_tri_vien').select('auth_id, email').eq("id", user_id).execute()
+            res = supabase.table('quan_tri_vien').select('auth_id, email, role').eq("id", user_id).execute()
             if not res or not res.data:
                 raise Exception("Tài khoản không tồn tại.")
 
             target_user = res.data[0]
             target_auth_id = target_user.get('auth_id')
+            target_role = target_user.get('role', 'User')
 
             # 2. CHẶN TỰ XÓA CHÍNH MÌNH
             if target_auth_id == admin["auth_id"]:
                 raise Exception("Bạn không thể tự xóa tài khoản quản trị đang đăng nhập!")
 
-            # 3. Xóa hồ sơ DB trước, sau đó xóa Auth
+            # 3. KIỂM TRA PHÂN CẤP QUYỀN XÓA
+            if not can_manage_target_role(admin["role"], target_role):
+                raise Exception(f"Bạn không có quyền xóa tài khoản cấp {target_role}.")
+
+            # 4. Xóa hồ sơ DB trước, sau đó xóa Auth
             supabase.table('quan_tri_vien').delete().eq("id", user_id).execute()
 
             if target_auth_id:
@@ -253,3 +325,4 @@ async def save_config_cham_cong(request: Request, admin: dict = Depends(get_curr
         request.session["error_message"] = f"Lưu cấu hình thất bại: {str(e)}"
         
     return RedirectResponse(url="/admin/config-cham-cong", status_code=status.HTTP_303_SEE_OTHER)
+

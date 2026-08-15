@@ -1,0 +1,564 @@
+<!DOCTYPE html>
+<html lang="vi" class="dark"></html>
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Quản Lý & Xuất Key Chipless - Máy In Đại Thành</title>
+    
+    <!-- TAILWIND CSS CDN & FONTAWESOME -->
+    <script src="https://cdn.tailwindcss.com"></script>
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+    
+    <!-- GOOGLE FONT (INTER & JETBRAINS MONO) -->
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&family=JetBrains+Mono:wght@500;700&display=swap" rel="stylesheet">
+
+    <script>
+        tailwind.config = {
+            darkMode: 'class',
+            theme: {
+                extend: {
+                    fontFamily: {
+                        sans: ['Inter', 'sans-serif'],
+                        mono: ['JetBrains Mono', 'monospace'],
+                    }
+                }
+            }
+        }
+    </script>
+
+    <style>
+        ::-webkit-scrollbar { width: 6px; height: 6px; }
+        ::-webkit-scrollbar-track { background: #0d1117; }
+        ::-webkit-scrollbar-thumb { background: #21262d; border-radius: 3px; }
+        ::-webkit-scrollbar-thumb:hover { background: #30363d; }
+    </style>
+</head>
+<body class="bg-slate-100 text-slate-800 font-sans p-6">
+
+    <div class="max-w-7xl mx-auto bg-white rounded-xl shadow-md p-6">
+        
+        <!-- HEADER -->
+        <div class="mb-6 border-b pb-4 flex justify-between items-center">
+            <div>
+                <h1 class="text-2xl font-bold text-slate-800 flex items-center gap-2">
+                    <i class="fa-solid fa-key text-blue-600"></i> Quản Lý Kho Key Chipless
+                </h1>
+                <p class="text-sm text-slate-500 mt-1">💡 Có thể nhập key hàng loạt, phân loại thiết bị và chỉnh sửa chi tiết từng dòng.</p>
+            </div>
+            <a href="/admin" class="text-sm bg-slate-100 hover:bg-slate-200 text-slate-700 px-3 py-2 rounded-lg font-medium transition">
+                ⬅️ Quay lại Admin
+            </a>
+        </div>
+
+        <!-- TABS NAVIGATION -->
+        <div class="flex border-b border-slate-200 mb-6">
+            <button id="tab-btn-import" onclick="switchTab('import')" class="py-2 px-4 font-semibold text-blue-600 border-b-2 border-blue-600 transition-all">
+                📥 Nhập Lô Key Mới
+            </button>
+            <button id="tab-btn-manage" onclick="switchTab('manage')" class="py-2 px-4 font-semibold text-slate-500 hover:text-blue-600 transition-all">
+                🛠️ Quản Lý Kho & Điều Chỉnh
+            </button>
+        </div>
+
+        <!-- ================================================================= -->
+        <!-- TAB 1: NHẬP MỚI -->
+        <!-- ================================================================= -->
+        <div id="tab-content-import" class="space-y-4">
+            <form id="form-import" onsubmit="handleCheckImport(event)" class="grid grid-cols-1 md:grid-cols-2 gap-6 bg-slate-50 p-4 rounded-lg border border-slate-200">
+                <div class="space-y-4">
+                    <div>
+                        <label class="block text-sm font-medium mb-1">Loại thiết bị <span class="text-red-500">*</span></label>
+                        <select id="loai_tb" class="w-full border rounded-lg p-2 bg-white focus:ring-2 focus:ring-blue-500 outline-none">
+                            {% for item in danh_sach_loai_tb %}
+                                <option value="{{ item }}">{{ item }}</option>
+                            {% endfor %}
+                        </select>
+                    </div>
+                    <div>
+                        <label class="block text-sm font-medium mb-1">Model máy <span class="text-red-500">*</span></label>
+                        <input type="text" id="ten_may" placeholder="VD: C5290, L18050, PRO-1000..." required
+                               class="w-full border rounded-lg p-2 uppercase focus:ring-2 focus:ring-blue-500 outline-none">
+                    </div>
+                    <div>
+                        <label class="block text-sm font-medium mb-1">Số lượt dùng trên mỗi Key</label>
+                        <input type="number" id="limit" value="1" min="1" 
+                               class="w-full border rounded-lg p-2 focus:ring-2 focus:ring-blue-500 outline-none">
+                    </div>
+                </div>
+
+                <div class="flex flex-col justify-between">
+                    <div>
+                        <label class="block text-sm font-medium mb-1">Danh sách mã Key (Mỗi dòng một mã)</label>
+                        <textarea id="list_keys" rows="7" placeholder="KEY123-ABC...&#10;KEY456-DEF..." required
+                                  class="w-full border rounded-lg p-2 font-mono text-sm focus:ring-2 focus:ring-blue-500 outline-none"></textarea>
+                    </div>
+                    <button type="submit" class="w-full mt-4 bg-blue-600 hover:bg-blue-700 text-white font-semibold py-2.5 rounded-lg shadow transition">
+                        📥 Kiểm tra & Nhập kho
+                    </button>
+                </div>
+            </form>
+        </div>
+
+        <!-- ================================================================= -->
+        <!-- TAB 2: QUẢN LÝ & THỐNG KÊ -->
+        <!-- ================================================================= -->
+        <div id="tab-content-manage" class="hidden space-y-6">
+            
+            <!-- Bộ lọc loại thiết bị -->
+            <div class="bg-slate-50 p-4 rounded-lg border border-slate-200">
+                <h3 class="text-sm font-bold text-slate-700 mb-2">🔍 Bộ lọc loại thiết bị</h3>
+                <div class="flex flex-wrap gap-4">
+                    {% for item in danh_sach_loai_tb %}
+                    <label class="inline-flex items-center gap-2 text-sm cursor-pointer">
+                        <input type="checkbox" value="{{ item }}" checked onchange="applyFilters()" class="filter-tb rounded text-blue-600">
+                        <span>{{ item }}</span>
+                    </label>
+                    {% endfor %}
+                </div>
+            </div>
+
+            <!-- PHẦN 1: BẢNG THỐNG KÊ TỒN KHO -->
+            <div>
+                <h3 class="text-lg font-bold mb-3 text-slate-800">📊 Thống kê tồn kho</h3>
+                <div class="overflow-x-auto rounded-lg border border-slate-200">
+                    <table class="w-full text-left border-collapse text-sm">
+                        <thead class="bg-slate-100 border-b font-semibold text-slate-700">
+                            <tr>
+                                <th class="p-3">STT</th>
+                                <th class="p-3">🛠️ Loại Thiết Bị</th>
+                                <th class="p-3">📋 Model Máy</th>
+                                <th class="p-3">🔑 Tổng Key</th>
+                                <th class="p-3">📉 Đã Dùng</th>
+                                <th class="p-3">✅ Còn Lại</th>
+                            </tr>
+                        </thead>
+                        <tbody id="summary-table-body">
+                            <!-- Render JS -->
+                        </tbody>
+                    </table>
+                </div>
+            </div>
+
+            <hr class="border-slate-200">
+
+            <!-- PHẦN 2: THAO TÁC HÀNG LOẠT -->
+            <div class="bg-slate-50 p-4 rounded-lg border border-slate-200">
+                <h3 class="text-lg font-bold mb-3 text-slate-800">⚡ Thao tác nhanh theo Model</h3>
+                <div class="grid grid-cols-1 md:grid-cols-2 gap-4 items-end">
+                    <div>
+                        <label class="block text-sm font-medium mb-1">Chọn dòng máy xử lý</label>
+                        <select id="bulk-select-model" onchange="renderDetailTable()" class="w-full border rounded-lg p-2 bg-white outline-none">
+                            <!-- Render JS -->
+                        </select>
+                    </div>
+
+                    <div class="flex gap-2">
+                        <div class="flex-1">
+                            <label class="block text-sm font-medium mb-1">Giới hạn mới</label>
+                            <input type="number" id="bulk-new-limit" value="1" min="1" class="w-full border rounded-lg p-2 outline-none">
+                        </div>
+                        <button onclick="handleBulkUpdateLimit()" class="bg-blue-600 hover:bg-blue-700 text-white font-medium px-4 py-2 rounded-lg transition self-end">
+                            🚀 Cập nhật Limit
+                        </button>
+                    </div>
+                </div>
+
+                <div class="mt-4 pt-4 border-t flex items-center justify-between flex-wrap gap-2">
+                    <div class="flex items-center gap-4">
+                        <label class="text-sm font-medium">Phạm vi xóa lô:</label>
+                        <select id="bulk-delete-type" class="border rounded-lg p-1.5 text-sm bg-white">
+                            <option value="safe">Chỉ xóa Key chưa dùng (An toàn)</option>
+                            <option value="all">Xóa tất cả Key của model này</option>
+                        </select>
+                    </div>
+                    <button onclick="handleBulkDelete()" class="bg-red-500 hover:bg-red-600 text-white font-medium px-4 py-2 rounded-lg text-sm transition">
+                        🗑️ Xác nhận xóa lô
+                    </button>
+                </div>
+            </div>
+
+            <hr class="border-slate-200">
+
+            <!-- PHẦN 3: CHI TIẾT & SỬA LẺ -->
+            <div>
+                <div class="flex justify-between items-center mb-3">
+                    <h3 class="text-lg font-bold text-slate-800">🔍 Chi tiết & Chỉnh sửa lẻ</h3>
+                    <button onclick="addNewRowToDetails()" class="bg-slate-700 hover:bg-slate-800 text-white text-xs px-3 py-1.5 rounded-lg">
+                        + Thêm dòng mới
+                    </button>
+                </div>
+                
+                <div class="overflow-x-auto rounded-lg border border-slate-200">
+                    <table class="w-full text-left border-collapse text-sm">
+                        <thead class="bg-slate-100 border-b font-semibold text-slate-700">
+                            <tr>
+                                <th class="p-2 border-r">Loại Thiết Bị</th>
+                                <th class="p-2 border-r">Model</th>
+                                <th class="p-2 border-r">Mã Key</th>
+                                <th class="p-2 border-r w-24">Limit</th>
+                                <th class="p-2 border-r w-24">Đã Dùng</th>
+                                <th class="p-2 border-r w-32">Trạng thái</th>
+                                <th class="p-2 text-center w-16">Thao tác</th>
+                            </tr>
+                        </thead>
+                        <tbody id="detail-table-body">
+                            <!-- Render JS Dynamic Inputs -->
+                        </tbody>
+                    </table>
+                </div>
+
+                <button onclick="handleSaveDetails()" class="mt-4 w-full bg-green-600 hover:bg-green-700 text-white font-bold py-2.5 rounded-lg shadow transition">
+                    💾 Lưu thay đổi lẻ
+                </button>
+            </div>
+
+        </div>
+
+    </div>
+
+    <!-- ================================================================= -->
+    <!-- MODAL XÁC NHẬN TRÙNG KEY (POPUP) -->
+    <!-- ================================================================= -->
+    <div id="modal-duplicate" class="fixed inset-0 bg-slate-900/50 backdrop-blur-sm hidden flex items-center justify-center p-4 z-50">
+        <div class="bg-white rounded-xl shadow-xl max-w-lg w-full p-6 space-y-4">
+            <h3 class="text-lg font-bold text-amber-600 flex items-center gap-2">
+                <i class="fa-solid fa-triangle-exclamation"></i> Phát hiện trùng lặp mã Key!
+            </h3>
+            <p id="modal-dup-msg" class="text-sm text-slate-600"></p>
+            
+            <div class="bg-amber-50 p-3 rounded-lg border border-amber-200 max-h-32 overflow-y-auto text-xs font-mono" id="modal-dup-list"></div>
+
+            <div class="grid grid-cols-3 gap-2 pt-2">
+                <button onclick="closeModal()" class="bg-slate-200 hover:bg-slate-300 text-slate-700 text-xs font-semibold py-2 rounded-lg">
+                    🚫 Hủy bỏ
+                </button>
+                <button onclick="confirmImport('skip')" class="bg-blue-600 hover:bg-blue-700 text-white text-xs font-semibold py-2 rounded-lg">
+                    ⏭️ Bỏ trùng & Nhập mới
+                </button>
+                <button onclick="confirmImport('all')" class="bg-amber-600 hover:bg-amber-700 text-white text-xs font-semibold py-2 rounded-lg">
+                    📝 Nhập tất cả
+                </button>
+            </div>
+        </div>
+    </div>
+
+    <!-- CLIENT SCRIPT LOGIC -->
+    <script>
+        let rawKeysData = JSON.parse('{{ raw_keys | tojson | safe }}');
+        let listLoaiTB = JSON.parse('{{ danh_sach_loai_tb | tojson | safe }}');
+        let pendingImportData = null;
+
+        // --- TAB SWITCHING ---
+        function switchTab(tab) {
+            const btnImport = document.getElementById('tab-btn-import');
+            const btnManage = document.getElementById('tab-btn-manage');
+            const contentImport = document.getElementById('tab-content-import');
+            const contentManage = document.getElementById('tab-content-manage');
+
+            if (tab === 'import') {
+                btnImport.className = "py-2 px-4 font-semibold text-blue-600 border-b-2 border-blue-600 transition-all";
+                btnManage.className = "py-2 px-4 font-semibold text-slate-500 hover:text-blue-600 transition-all";
+                contentImport.classList.remove('hidden');
+                contentManage.classList.add('hidden');
+            } else {
+                btnManage.className = "py-2 px-4 font-semibold text-blue-600 border-b-2 border-blue-600 transition-all";
+                btnImport.className = "py-2 px-4 font-semibold text-slate-500 hover:text-blue-600 transition-all";
+                contentManage.classList.remove('hidden');
+                contentImport.classList.add('hidden');
+                applyFilters();
+            }
+        }
+
+        // --- CHECK IMPORT & MODAL LOGIC ---
+        async function handleCheckImport(e) {
+            e.preventDefault();
+            const loai_tb = document.getElementById('loai_tb').value;
+            const ten_may = document.getElementById('ten_may').value;
+            const limit = parseInt(document.getElementById('limit').value) || 1;
+            const keysText = document.getElementById('list_keys').value;
+
+            const keysArr = keysText.split('\n').map(k => k.trim()).filter(k => k);
+
+            try {
+                const res = await fetch('/admin/api/kho-key/check-import', {
+                    method: 'POST',
+                    headers: {'Content-Type': 'application/json'},
+                    body: JSON.stringify({ loai_thiet_bi: loai_tb, ten_may: ten_may, gioi_han: limit, keys: keysArr })
+                });
+
+                const data = await res.json();
+                if(!res.ok) return alert(data.detail || "Có lỗi xảy ra");
+
+                pendingImportData = {
+                    loai_thiet_bi: loai_tb,
+                    ten_may: ten_may,
+                    gioi_han: limit,
+                    clean_keys: data.clean_keys,
+                    duplicates: data.duplicates
+                };
+
+                if (data.has_duplicates) {
+                    document.getElementById('modal-dup-msg').innerText = `Phát hiện ${data.duplicates.length}/${data.total_input} mã Key đã tồn tại trong hệ thống!`;
+                    document.getElementById('modal-dup-list').innerText = data.duplicates.join(', ');
+                    document.getElementById('modal-duplicate').classList.remove('hidden');
+                } else {
+                    confirmImport('all');
+                }
+            } catch (err) {
+                alert("Lỗi kết nối máy chủ: " + err);
+            }
+        }
+
+        function closeModal() {
+            document.getElementById('modal-duplicate').classList.add('hidden');
+            pendingImportData = null;
+        }
+
+        async function confirmImport(mode) {
+            if(!pendingImportData) return;
+
+            let keysToInsert = [];
+            if (mode === 'skip') {
+                keysToInsert = pendingImportData.clean_keys.filter(k => !pendingImportData.duplicates.includes(k));
+            } else {
+                keysToInsert = pendingImportData.clean_keys;
+            }
+
+            if (keysToInsert.length === 0) {
+                alert("Không có Key nào mới để thêm.");
+                closeModal();
+                return;
+            }
+
+            try {
+                const res = await fetch('/admin/api/kho-key/import', {
+                    method: 'POST',
+                    headers: {'Content-Type': 'application/json'},
+                    body: JSON.stringify({
+                        loai_thiet_bi: pendingImportData.loai_thiet_bi,
+                        ten_may: pendingImportData.ten_may,
+                        gioi_han: pendingImportData.gioi_han,
+                        keys_to_insert: keysToInsert
+                    })
+                });
+
+                if (res.ok) {
+                    alert(`✅ Đã thêm ${keysToInsert.length} Key thành công!`);
+                    window.location.reload();
+                } else {
+                    const err = await res.json();
+                    alert("Lỗi: " + err.detail);
+                }
+            } catch (err) {
+                alert("Lỗi khi kết nối server: " + err);
+            }
+        }
+
+        // --- MANAGEMENT & FILTERS LOGIC ---
+        function applyFilters() {
+            const checkedTypes = Array.from(document.querySelectorAll('.filter-tb:checked')).map(cb => cb.value);
+            const defaultLoai = listLoaiTB[0] || '';
+            const filteredData = rawKeysData.filter(item => checkedTypes.includes(item.loai_thiet_bi || defaultLoai));
+
+            const summaryMap = {};
+            filteredData.forEach(item => {
+                const loaiVal = item.loai_thiet_bi || defaultLoai;
+                const key = `${loaiVal} :: ${item.ten_may}`;
+                if (!summaryMap[key]) {
+                    summaryMap[key] = { loai_tb: loaiVal, ten_may: item.ten_may, tong: 0, da_dung: 0, con_lai: 0 };
+                }
+                summaryMap[key].tong += 1;
+                summaryMap[key].da_dung += (item.da_dung || 0);
+                summaryMap[key].con_lai += Math.max(0, (item.gioi_han || 1) - (item.da_dung || 0));
+            });
+
+            const tbody = document.getElementById('summary-table-body');
+            tbody.innerHTML = '';
+            let stt = 1;
+            
+            const selectModel = document.getElementById('bulk-select-model');
+            selectModel.innerHTML = '';
+
+            Object.values(summaryMap).forEach(row => {
+                tbody.innerHTML += `
+                    <tr class="border-b hover:bg-slate-50">
+                        <td class="p-3">${stt++}</td>
+                        <td class="p-3">${row.loai_tb}</td>
+                        <td class="p-3 font-semibold">${row.ten_may}</td>
+                        <td class="p-3 text-blue-600 font-bold">${row.tong}</td>
+                        <td class="p-3 text-red-500">${row.da_dung}</td>
+                        <td class="p-3 text-green-600 font-bold">${row.con_lai}</td>
+                    </tr>
+                `;
+                selectModel.innerHTML += `<option value="${row.loai_tb} :: ${row.ten_may}">${row.loai_tb} - ${row.ten_may}</option>`;
+            });
+
+            renderDetailTable();
+        }
+
+        // --- RENDER DETAIL TABLE FOR EDITING ---
+        function renderDetailTable() {
+            const selectedVal = document.getElementById('bulk-select-model').value;
+            const tbody = document.getElementById('detail-table-body');
+            tbody.innerHTML = '';
+
+            if(!selectedVal) return;
+
+            const defaultLoai = listLoaiTB[0] || '';
+            const [loai_tb, ten_may] = selectedVal.split(' :: ').map(s => s.trim());
+            const rows = rawKeysData.filter(x => (x.loai_thiet_bi || defaultLoai) === loai_tb && x.ten_may === ten_may);
+
+            rows.forEach((row) => {
+                tbody.innerHTML += createRowHTML(row);
+            });
+        }
+
+        function createRowHTML(row) {
+            const defaultLoai = listLoaiTB[0] || '';
+            const currentLoai = row.loai_thiet_bi || defaultLoai;
+            const loaiOptions = listLoaiTB.map(t => `<option value="${t}" ${t === currentLoai ? 'selected' : ''}>${t}</option>`).join('');
+            return `
+                <tr class="border-b detail-row" data-id="${row.id || ''}">
+                    <td class="p-1.5"><select class="row-loai border rounded p-1 w-full text-xs">${loaiOptions}</select></td>
+                    <td class="p-1.5"><input type="text" class="row-model border rounded p-1 w-full text-xs font-semibold" value="${row.ten_may || ''}"></td>
+                    <td class="p-1.5"><input type="text" class="row-key border rounded p-1 w-full text-xs font-mono" value="${row.ma_key || ''}"></td>
+                    <td class="p-1.5"><input type="number" oninput="autoUpdateRowStatus(this)" class="row-limit border rounded p-1 w-full text-xs" value="${row.gioi_han || 1}"></td>
+                    <td class="p-1.5"><input type="number" oninput="autoUpdateRowStatus(this)" class="row-dadung border rounded p-1 w-full text-xs" value="${row.da_dung || 0}"></td>
+                    <td class="p-1.5">
+                        <select class="row-trangthai border rounded p-1 w-full text-xs">
+                            <option value="Còn lượt" ${row.trang_thai === 'Còn lượt' ? 'selected' : ''}>Còn lượt</option>
+                            <option value="Hết lượt" ${row.trang_thai === 'Hết lượt' ? 'selected' : ''}>Hết lượt</option>
+                        </select>
+                    </td>
+                    <td class="p-1.5 text-center">
+                        <button onclick="this.closest('tr').remove()" class="text-red-500 hover:text-red-700 text-xs p-1"><i class="fa-solid fa-trash"></i></button>
+                    </td>
+                </tr>
+            `;
+        }
+
+        function addNewRowToDetails() {
+            const selectedVal = document.getElementById('bulk-select-model').value;
+            if(!selectedVal) return alert("Vui lòng chọn model trước!");
+            const [loai_tb, ten_may] = selectedVal.split(' :: ').map(s => s.trim());
+
+            const tbody = document.getElementById('detail-table-body');
+            tbody.innerHTML += createRowHTML({
+                id: null,
+                loai_thiet_bi: loai_tb,
+                ten_may: ten_may,
+                ma_key: '',
+                gioi_han: 1,
+                da_dung: 0,
+                trang_thai: 'Còn lượt'
+            });
+        }
+
+        // Tự động tính lại trạng thái (Còn lượt / Hết lượt) khi gõ số Limit hoặc Đã Dùng
+        function autoUpdateRowStatus(inputEl) {
+            const row = inputEl.closest('tr');
+            const limit = parseInt(row.querySelector('.row-limit').value) || 0;
+            const daDung = parseInt(row.querySelector('.row-dadung').value) || 0;
+            const selectStatus = row.querySelector('.row-trangthai');
+
+            if (daDung >= limit) {
+                selectStatus.value = "Hết lượt";
+            } else {
+                selectStatus.value = "Còn lượt";
+            }
+        }
+
+        // --- BULK ACTIONS & SAVE ---
+        async function handleBulkUpdateLimit() {
+            const selectedVal = document.getElementById('bulk-select-model').value;
+            const newLimit = parseInt(document.getElementById('bulk-new-limit').value) || 1;
+            if(!selectedVal) return;
+            const [loai_tb, ten_may] = selectedVal.split(' :: ').map(s => s.trim());
+
+            try {
+                const res = await fetch('/admin/api/kho-key/bulk-update-limit', {
+                    method: 'POST',
+                    headers: {'Content-Type': 'application/json'},
+                    body: JSON.stringify({ loai_thiet_bi: loai_tb, ten_may: ten_may, new_limit: newLimit })
+                });
+
+                if (res.ok) { 
+                    alert("✅ Cập nhật Limit thành công!"); 
+                    window.location.reload(); 
+                } else {
+                    const err = await res.json();
+                    alert("🚫 Lỗi: " + (err.detail || "Không thể cập nhật"));
+                }
+            } catch (err) {
+                alert("❌ Lỗi kết nối: " + err);
+            }
+        }
+
+        async function handleBulkDelete() {
+            const selectedVal = document.getElementById('bulk-select-model').value;
+            const typeDel = document.getElementById('bulk-delete-type').value;
+            if(!selectedVal) return;
+            const [loai_tb, ten_may] = selectedVal.split(' :: ').map(s => s.trim());
+
+            if(!confirm(`Xác nhận xóa lô key của ${ten_may}?`)) return;
+
+            try {
+                const res = await fetch('/admin/api/kho-key/bulk-delete', {
+                    method: 'POST',
+                    headers: {'Content-Type': 'application/json'},
+                    body: JSON.stringify({ loai_thiet_bi: loai_tb, ten_may: ten_may, type_del: typeDel })
+                });
+
+                if (res.ok) { 
+                    alert("🗑️ Đã dọn dẹp lô key thành công!"); 
+                    window.location.reload(); 
+                } else {
+                    const err = await res.json();
+                    alert("🚫 Lỗi: " + (err.detail || "Không thể xóa"));
+                }
+            } catch (err) {
+                alert("❌ Lỗi kết nối: " + err);
+            }
+        }
+
+        async function handleSaveDetails() {
+            const rows = Array.from(document.querySelectorAll('.detail-row'));
+            const payload = rows.map(r => {
+                const rawId = r.dataset.id ? r.dataset.id.trim() : "";
+                return {
+                    id: rawId !== "" ? parseInt(rawId) : null,
+                    loai_thiet_bi: r.querySelector('.row-loai').value,
+                    ten_may: r.querySelector('.row-model').value.trim(),
+                    ma_key: r.querySelector('.row-key').value.trim(),
+                    gioi_han: parseInt(r.querySelector('.row-limit').value) || 1,
+                    da_dung: parseInt(r.querySelector('.row-dadung').value) || 0,
+                    trang_thai: r.querySelector('.row-trangthai').value
+                };
+            });
+
+            try {
+                const res = await fetch('/admin/api/kho-key/save-batch-details', {
+                    method: 'POST',
+                    headers: {'Content-Type': 'application/json'},
+                    body: JSON.stringify(payload)
+                });
+
+                if(res.ok) { 
+                    alert("✅ Lưu chỉnh sửa thành công!"); 
+                    window.location.reload(); 
+                } else {
+                    const err = await res.json();
+                    alert("🚫 Lỗi khi lưu: " + (err.detail || "Vui lòng kiểm tra lại dữ liệu"));
+                }
+            } catch (err) {
+                alert("❌ Lỗi kết nối máy chủ: " + err);
+            }
+        }
+        document.addEventListener('DOMContentLoaded', () => {
+            applyFilters();
+        });
+    </script>
+</body>
+</html>

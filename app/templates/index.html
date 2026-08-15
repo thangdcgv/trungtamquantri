@@ -395,17 +395,19 @@
                                 HĐ: {{ item.so_hoa_don | default('N/A') }}
                             </span>
                             <span class="feed-meta">
-                                <span>Thời gian:</span>
-                                {% if item.thoi_gian %}
-                                    {% if item.thoi_gian is string %}
-                                        {{ item.thoi_gian[8:10] }}/{{ item.thoi_gian[5:7] }}/{{ item.thoi_gian[0:4] }} {{ item.thoi_gian[11:16] }}
-                                    {% else %}
-                                        {{ item.thoi_gian.strftime('%d/%m/%Y %H:%M') }}
-                                    {% endif %}
+                            <span>Thời gian:</span>
+                            {% if item.thoi_gian %}
+                                {% if item.thoi_gian is string %}
+                                    <!-- Fallback phòng hờ nếu là chuỗi thô -->
+                                    {{ item.thoi_gian[8:10] }}/{{ item.thoi_gian[5:7] }}/{{ item.thoi_gian[0:4] }} {{ item.thoi_gian[11:16] }}
                                 {% else %}
-                                    N/A
+                                    <!-- Luồng chính: Hiển thị chuẩn giờ Việt Nam đã được parse ở Backend -->
+                                    {{ item.thoi_gian.strftime('%d/%m/%Y %H:%M') }}
                                 {% endif %}
-                            </span>
+                            {% else %}
+                                N/A
+                            {% endif %}
+                        </span>
                         </div>
                         <div class="action-icon-link">
                             <i class="fa-solid fa-chevron-right"></i>

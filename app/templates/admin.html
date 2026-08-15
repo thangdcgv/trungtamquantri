@@ -5,306 +5,385 @@
 {% block head %}
 <style>
     :root {
+        /* Color System */
         --bg-main: #0f172a;
-        --bg-card: rgba(30,41,59,.70);
-        --border-color: rgba(255,255,255,.12);
+        --bg-card: rgba(30, 41, 59, 0.65);
+        --bg-card-hover: rgba(30, 41, 59, 0.85);
+        --border-color: rgba(255, 255, 255, 0.08);
+        --border-hover: rgba(255, 255, 255, 0.22);
+        
+        /* Typography Colors */
         --text-main: #f8fafc;
-        --muted: #94a3b8;
-        --accent-color: #38bdf8;
-        --accent-hover: #0284c7;
+        --text-muted: #94a3b8;
+        
+        /* Accents */
+        --accent-sky: #38bdf8;
+        --accent-amber: #f59e0b;
+        --accent-emerald: #10b981;
+        --accent-purple: #c084fc;
+        --accent-rose: #f87171;
+
+        /* FX & Layout */
+        --glass-blur: blur(16px);
+        --radius-lg: 24px;
+        --radius-md: 16px;
+        --radius-sm: 12px;
+        --transition-fast: 0.2s cubic-bezier(0.4, 0, 0.2, 1);
+        --transition-bounce: 0.3s cubic-bezier(0.34, 1.56, 0.64, 1);
     }
 
     body {
         background-color: var(--bg-main) !important;
         color: var(--text-main) !important;
-        font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif;
+        font-family: system-ui, -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Oxygen, Ubuntu, Cantarell, sans-serif;
+        -webkit-font-smoothing: antialiased;
     }
 
+    /* Container mở rộng tối đa không gian cho màn hình lớn */
     .admin-page {
-        max-width: 600px;
+        width: 100%;
+        max-width: 1400px;
         margin: 0 auto;
-        padding: 1rem .5rem 3rem;
+        padding: 2rem 1.5rem 4rem;
     }
 
-    .admin-header {
+    /* Header / Welcome Shell */
+    .welcome-shell {
+        background: var(--bg-card);
+        border: 1px solid var(--border-color);
+        border-radius: var(--radius-lg);
+        padding: 1.25rem 1.75rem;
+        margin-bottom: 1.75rem;
+        box-shadow: 0 10px 30px -10px rgba(0, 0, 0, 0.5);
+        backdrop-filter: var(--glass-blur);
+        -webkit-backdrop-filter: var(--glass-blur);
         display: flex;
         align-items: center;
-        gap: 12px;
-        margin-bottom: 18px;
-        padding: 0 4px;
+        justify-content: space-between;
+        gap: 1rem;
     }
 
-    .admin-header-icon {
-        width: 50px;
-        height: 50px;
-        flex: 0 0 50px;
+    .user-greeting {
+        font-size: 1.25rem;
+        font-weight: 700;
+        color: var(--text-main);
         display: flex;
         align-items: center;
-        justify-content: center;
-        border-radius: 16px;
-        background: linear-gradient(135deg, rgba(56,189,248,.20), rgba(2,132,199,.20));
-        border: 1px solid rgba(56,189,248,.30);
-        color: var(--accent-color);
-        box-shadow: 0 6px 18px rgba(2,132,199,.12);
+        gap: 0.75rem;
+        flex-wrap: wrap;
     }
 
-    .admin-header-icon svg {
-        width: 24px;
-        height: 24px;
-        stroke-width: 2.2;
+    /* Role Badges */
+    .role-badge {
+        font-size: 0.75rem;
+        font-weight: 700;
+        padding: 0.35rem 0.85rem;
+        border-radius: 9999px;
+        display: inline-flex;
+        align-items: center;
+        text-transform: uppercase;
+        letter-spacing: 0.05em;
+        line-height: 1;
     }
+    
+    .role-super-admin { background: rgba(248, 113, 113, 0.12); color: var(--accent-rose); border: 1px solid rgba(248, 113, 113, 0.3); }
+    .role-system-admin { background: rgba(192, 132, 252, 0.12); color: var(--accent-purple); border: 1px solid rgba(192, 132, 252, 0.3); }
+    .role-admin { background: rgba(56, 189, 248, 0.12); color: var(--accent-sky); border: 1px solid rgba(56, 189, 248, 0.3); }
+    .role-user { background: rgba(148, 163, 184, 0.12); color: var(--text-muted); border: 1px solid rgba(148, 163, 184, 0.3); }
 
-    .admin-title {
-        margin: 0;
-        color: #fff;
-        font-size: 1rem;
-        font-weight: 800;
-        letter-spacing: .02em;
-    }
-
-    .admin-subtitle {
-        display: block;
-        margin-top: 3px;
-        color: var(--muted);
-        font-size: .74rem;
-        font-weight: 600;
-        line-height: 1.45;
-    }
-
+    /* Shell bọc lưới Module */
     .admin-shell {
         background: var(--bg-card);
         border: 1px solid var(--border-color);
-        border-radius: 24px;
-        box-shadow: 0 10px 40px rgba(0,0,0,.50);
-        backdrop-filter: blur(12px);
-        -webkit-backdrop-filter: blur(12px);
-        padding: 12px;
+        border-radius: var(--radius-lg);
+        box-shadow: 0 20px 40px -15px rgba(0, 0, 0, 0.6);
+        backdrop-filter: var(--glass-blur);
+        -webkit-backdrop-filter: var(--glass-blur);
+        padding: 2rem;
     }
 
-    @media (min-width: 576px) {
-        .admin-shell { padding: 16px; }
-    }
-
+    /* Grid Tự động co giãn theo viewport */
     .admin-grid {
         display: grid;
-        grid-template-columns: 1fr;
-        gap: 14px;
+        grid-template-columns: repeat(auto-fill, minmax(320px, 1fr));
+        gap: 1.5rem;
     }
 
+    /* Card Component */
     .admin-card {
-        background: rgba(15,23,42,.60);
+        background: rgba(15, 23, 42, 0.5);
         border: 1px solid var(--border-color);
-        border-radius: 18px;
-        padding: 18px;
+        border-radius: var(--radius-md);
+        padding: 1.5rem;
         text-decoration: none !important;
         color: var(--text-main);
         display: flex;
         flex-direction: column;
-        min-height: 170px;
+        justify-content: space-between;
+        min-height: 220px;
         position: relative;
         overflow: hidden;
-        box-shadow: 0 4px 8px rgba(0,0,0,.12);
-        transition: transform .22s ease, border-color .22s ease, box-shadow .22s ease, background .22s ease;
+        transition: transform var(--transition-fast), 
+                    border-color var(--transition-fast), 
+                    box-shadow var(--transition-fast), 
+                    background var(--transition-fast);
     }
 
+    /* Đường viền accent định hình đầu thẻ */
     .admin-card::before {
         content: "";
         position: absolute;
         top: 0;
-        left: 16px;
-        right: 16px;
-        height: 2px;
-        border-radius: 0 0 3px 3px;
-        background: transparent;
-        transition: opacity .2s ease;
-        opacity: .7;
+        left: 1.5rem;
+        right: 1.5rem;
+        height: 3px;
+        border-radius: 0 0 4px 4px;
+        background: var(--card-accent, var(--accent-sky));
+        opacity: 0.8;
+        transition: opacity var(--transition-fast);
     }
 
     .admin-card:hover {
-        transform: translateY(-2px);
-        border-color: rgba(255,255,255,.22);
-        background: rgba(15,23,42,.78);
-        box-shadow: 0 10px 24px rgba(0,0,0,.30);
-        color: var(--text-main);
+        transform: translateY(-4px);
+        border-color: var(--border-hover);
+        background: var(--bg-card-hover);
+        box-shadow: 0 12px 30px -5px rgba(0, 0, 0, 0.5);
     }
 
-    .admin-card-body {
+    .admin-card-header {
         display: flex;
-        flex-direction: column;
-        gap: 12px;
+        align-items: flex-start;
+        gap: 1rem;
     }
 
     .icon-box {
-        width: 44px;
-        height: 44px;
-        border-radius: 12px;
+        width: 52px;
+        height: 52px;
+        border-radius: var(--radius-sm);
         display: flex;
         align-items: center;
         justify-content: center;
         flex-shrink: 0;
-        transition: transform .22s ease;
+        background: var(--icon-bg, rgba(56, 189, 248, 0.12));
+        color: var(--card-accent, var(--accent-sky));
+        border: 1px solid var(--icon-border, rgba(56, 189, 248, 0.25));
+        transition: transform var(--transition-bounce);
     }
 
     .icon-box svg {
-        width: 21px;
-        height: 21px;
-        stroke-width: 2.1;
+        width: 26px;
+        height: 26px;
+        stroke-width: 2;
     }
 
-    .admin-card:hover .icon-box { transform: scale(1.04); }
+    .admin-card:hover .icon-box {
+        transform: scale(1.08) rotate(3deg);
+    }
 
     .card-title {
-        font-size: .92rem;
-        font-weight: 800;
+        font-size: 1.125rem;
+        font-weight: 700;
         color: var(--text-main);
-        margin: 0;
+        margin: 0 0 0.35rem 0;
+        line-height: 1.3;
     }
 
     .card-desc {
-        font-size: .78rem;
-        color: var(--muted);
+        font-size: 0.875rem;
+        color: var(--text-muted);
         line-height: 1.55;
-        margin: 5px 0 0;
+        margin: 0;
     }
 
+    /* Action Button ở đáy thẻ */
     .btn-action {
-        margin-top: auto;
-        padding: .65rem .8rem;
-        min-height: 42px;
-        background: rgba(255,255,255,.035);
-        border: 1px solid rgba(255,255,255,.10);
+        margin-top: 1.5rem;
+        padding: 0.75rem 1rem;
+        background: rgba(255, 255, 255, 0.03);
+        border: 1px solid rgba(255, 255, 255, 0.08);
         color: #cbd5e1;
-        border-radius: 12px;
-        font-size: .78rem;
-        font-weight: 750;
+        border-radius: var(--radius-sm);
+        font-size: 0.875rem;
+        font-weight: 600;
         display: flex;
         align-items: center;
         justify-content: space-between;
-        gap: 10px;
-        transition: all .2s ease;
+        gap: 0.5rem;
+        transition: background var(--transition-fast), border-color var(--transition-fast), color var(--transition-fast);
     }
 
     .btn-action svg {
-        width: 16px;
-        height: 16px;
+        width: 18px;
+        height: 18px;
         stroke-width: 2.2;
-        transition: transform .2s ease;
+        transition: transform var(--transition-fast);
     }
 
-    .admin-card:hover .btn-action svg { transform: translateX(4px); }
-
-    .accent-users::before { background: #38bdf8; }
-    .accent-users .icon-box {
-        background: rgba(56,189,248,.15);
-        color: #38bdf8;
-        border: 1px solid rgba(56,189,248,.25);
-    }
-    .accent-users:hover .btn-action {
-        background: rgba(56,189,248,.10);
-        border-color: rgba(56,189,248,.30);
+    .admin-card:hover .btn-action {
+        background: var(--btn-hover-bg, rgba(56, 189, 248, 0.12));
+        border-color: var(--btn-hover-border, rgba(56, 189, 248, 0.35));
         color: #fff;
     }
 
-    .accent-config::before { background: #f59e0b; }
-    .accent-config .icon-box {
-        background: rgba(245,158,11,.15);
-        color: #fbbf24;
-        border: 1px solid rgba(245,158,11,.25);
-    }
-    .accent-config:hover .btn-action {
-        background: rgba(245,158,11,.10);
-        border-color: rgba(245,158,11,.30);
-        color: #fff;
+    .admin-card:hover .btn-action svg {
+        transform: translateX(4px);
     }
 
-    @media (max-width: 430px) {
-        .admin-page { padding-left: 4px; padding-right: 4px; }
-        .admin-shell { padding: 9px; border-radius: 20px; }
-        .admin-card { padding: 14px; border-radius: 16px; min-height: 160px; }
-        .admin-title { font-size: .92rem; }
-        .admin-subtitle { font-size: .68rem; }
-        .admin-header-icon { width: 44px; height: 44px; flex-basis: 44px; }
+    /* Card Variants (Scoped CSS Custom Properties) */
+    .accent-users {
+        --card-accent: var(--accent-sky);
+        --icon-bg: rgba(56, 189, 248, 0.12);
+        --icon-border: rgba(56, 189, 248, 0.25);
+        --btn-hover-bg: rgba(56, 189, 248, 0.12);
+        --btn-hover-border: rgba(56, 189, 248, 0.35);
+    }
+
+    .accent-config {
+        --card-accent: var(--accent-amber);
+        --icon-bg: rgba(245, 158, 11, 0.12);
+        --icon-border: rgba(245, 158, 11, 0.25);
+        --btn-hover-bg: rgba(245, 158, 11, 0.12);
+        --btn-hover-border: rgba(245, 158, 11, 0.35);
+    }
+
+    .accent-warranty {
+        --card-accent: var(--accent-emerald);
+        --icon-bg: rgba(16, 185, 129, 0.12);
+        --icon-border: rgba(16, 185, 129, 0.25);
+        --btn-hover-bg: rgba(16, 185, 129, 0.12);
+        --btn-hover-border: rgba(16, 185, 129, 0.35);
+    }
+
+    /* Variant mới: Quản Lý Kho Key (Purple Accent) */
+    .accent-key {
+        --card-accent: var(--accent-purple);
+        --icon-bg: rgba(192, 132, 252, 0.12);
+        --icon-border: rgba(192, 132, 252, 0.25);
+        --btn-hover-bg: rgba(192, 132, 252, 0.12);
+        --btn-hover-border: rgba(192, 132, 252, 0.35);
+    }
+
+    /* Responsive adjustments */
+    @media (max-width: 768px) {
+        .admin-page { padding: 1rem 0.75rem 2.5rem; }
+        .admin-shell { padding: 1.25rem; border-radius: var(--radius-md); }
+        .welcome-shell { padding: 1rem 1.25rem; border-radius: var(--radius-md); }
+        .admin-grid { grid-template-columns: 1fr; gap: 1rem; }
+        .admin-card { padding: 1.25rem; min-height: auto; }
     }
 </style>
 {% endblock %}
 
 {% block content %}
-<div class="admin-page">
-    <!-- Header Trang Admin (Giữ nguyên Icon SVG gốc) -->
-    <div class="admin-header">
-        <div class="admin-header-icon">
-            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor">
-                <path d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10z"></path>
-            </svg>
+<main class="admin-page">
+    <!-- Header Thông Tin Quản Trị Viên -->
+    <header class="welcome-shell">
+        <div class="user-greeting">
+            <span>Xin chào, {% if current_user %}{{ current_user.name }}{% else %}Quản trị viên{% endif %}!</span>
+            {% if current_user and current_user.role %}
+                <span class="role-badge role-{{ current_user.role | lower | replace(' ', '-') }}">
+                    {{ current_user.role }}
+                </span>
+            {% endif %}
+            <span aria-hidden="true">👋</span>
         </div>
-        <div>
-            <h1 class="admin-title">QUẢN TRỊ HỆ THỐNG</h1>
-            <span class="admin-subtitle">Trung tâm điều hành tài khoản nhân viên & cấu hình định mức</span>
-        </div>
-    </div>
+    </header>
 
-    <div class="admin-shell">
-        <!-- Lưới Các Module Quản Trị -->
+    <!-- Khung Danh Sách Các Module Chức Năng -->
+    <section class="admin-shell" aria-label="Trung tâm điều khiển">
         <div class="admin-grid">
-            <!-- 1. Quản Lý Tài Khoản -->
-            <a href="/admin/users" class="admin-card accent-users">
-                <div class="admin-card-body">
-                    <div class="icon-box">
-                        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor">
-                            <path d="M17 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2"></path>
-                            <circle cx="9" cy="7" r="4"></circle>
-                            <path d="M23 21v-2a4 4 0 0 0-3-3.87"></path>
-                            <path d="M16 3.13a4 4 0 0 1 0 7.75"></path>
-                        </svg>
+            
+            <!-- Module 1: Quản Lý Kho Key Chipless (MỚI THÊM) -->
+            <a href="/admin/kho-key" class="admin-card accent-key">
+                <div>
+                    <div class="admin-card-header">
+                        <div class="icon-box" aria-hidden="true">
+                            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor">
+                                <circle cx="7.5" cy="15.5" r="4.5"></circle>
+                                <path d="m10.7 12.3 8.8-8.8m-3.5 0h3.5v3.5m-3.5 0.5 2 2"></path>
+                            </svg>
+                        </div>
+                        <div>
+                            <h2 class="card-title">Quản Lý Kho Key</h2>
+                            <p class="card-desc">
+                                Nhập lô Key mới hàng loạt, lọc kiểm tra tồn kho theo loại thiết bị, điều chỉnh giới hạn lượt dùng và chỉnh sửa chi tiết.
+                            </p>
+                        </div>
                     </div>
-                    <div>
-                        <h2 class="card-title">Quản Lý Tài Khoản</h2>
-                        <p class="card-desc">
-                            Thêm mới tài khoản nhân viên, phân quyền truy cập, chỉnh sửa thông tin hoặc đặt lại mật khẩu.
-                        </p>
+                </div>
+                <div class="btn-action">
+                    <span>Truy cập kho key</span>
+                    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" aria-hidden="true">
+                        <line x1="5" y1="12" x2="19" y2="12"></line>
+                        <polyline points="12 5 19 12 12 19"></polyline>
+                    </svg>
+                </div>
+            </a>
+
+            <!-- Module 2: Quản Lý Tài Khoản -->
+            <a href="/admin/users" class="admin-card accent-users">
+                <div>
+                    <div class="admin-card-header">
+                        <div class="icon-box" aria-hidden="true">
+                            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor">
+                                <path d="M17 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2"></path>
+                                <circle cx="9" cy="7" r="4"></circle>
+                                <path d="M23 21v-2a4 4 0 0 0-3-3.87"></path>
+                                <path d="M16 3.13a4 4 0 0 1 0 7.75"></path>
+                            </svg>
+                        </div>
+                        <div>
+                            <h2 class="card-title">Quản Lý Tài Khoản</h2>
+                            <p class="card-desc">
+                                Thêm mới tài khoản nhân viên, phân quyền truy cập theo cấp bậc, chỉnh sửa thông tin hoặc đặt lại mật khẩu.
+                            </p>
+                        </div>
                     </div>
                 </div>
                 <div class="btn-action">
                     <span>Quản lý người dùng</span>
-                    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor">
+                    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" aria-hidden="true">
                         <line x1="5" y1="12" x2="19" y2="12"></line>
                         <polyline points="12 5 19 12 12 19"></polyline>
                     </svg>
                 </div>
             </a>
 
-            <!-- 2. Cấu Hình Chấm Công -->
+            <!-- Module 3: Cấu Hình Chấm Công -->
             <a href="/admin/config-cham-cong" class="admin-card accent-config">
-                <div class="admin-card-body">
-                    <div class="icon-box">
-                        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor">
-                            <line x1="4" y1="21" x2="4" y2="14"></line>
-                            <line x1="4" y1="10" x2="4" y2="3"></line>
-                            <line x1="12" y1="21" x2="12" y2="12"></line>
-                            <line x1="12" y1="8" x2="12" y2="3"></line>
-                            <line x1="20" y1="21" x2="20" y2="16"></line>
-                            <line x1="20" y1="12" x2="20" y2="3"></line>
-                            <line x1="1" y1="14" x2="7" y2="14"></line>
-                            <line x1="9" y1="8" x2="15" y2="8"></line>
-                            <line x1="17" y1="16" x2="23" y2="16"></line>
-                        </svg>
-                    </div>
-                    <div>
-                        <h2 class="card-title">Cấu Hình Chấm Công</h2>
-                        <p class="card-desc">
-                            Điều chỉnh định mức đơn giá km, phụ phí đi tỉnh, làm ngoài giờ, trợ cấp thợ phụ và lắp đặt.
-                        </p>
+                <div>
+                    <div class="admin-card-header">
+                        <div class="icon-box" aria-hidden="true">
+                            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor">
+                                <line x1="4" y1="21" x2="4" y2="14"></line>
+                                <line x1="4" y1="10" x2="4" y2="3"></line>
+                                <line x1="12" y1="21" x2="12" y2="12"></line>
+                                <line x1="12" y1="8" x2="12" y2="3"></line>
+                                <line x1="20" y1="21" x2="20" y2="16"></line>
+                                <line x1="20" y1="12" x2="20" y2="3"></line>
+                                <line x1="1" y1="14" x2="7" y2="14"></line>
+                                <line x1="9" y1="8" x2="15" y2="8"></line>
+                                <line x1="17" y1="16" x2="23" y2="16"></line>
+                            </svg>
+                        </div>
+                        <div>
+                            <h2 class="card-title">Cấu Hình Chấm Công</h2>
+                            <p class="card-desc">
+                                Điều chỉnh định mức đơn giá km, phụ phí đi tỉnh, làm ngoài giờ, trợ cấp thợ phụ và các thông số lắp đặt.
+                            </p>
+                        </div>
                     </div>
                 </div>
                 <div class="btn-action">
                     <span>Thay đổi cấu hình</span>
-                    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor">
+                    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" aria-hidden="true">
                         <line x1="5" y1="12" x2="19" y2="12"></line>
                         <polyline points="12 5 19 12 12 19"></polyline>
                     </svg>
                 </div>
             </a>
+
         </div>
-    </div>
-</div>
+    </section>
+</main>
 {% endblock %}

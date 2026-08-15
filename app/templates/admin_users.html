@@ -5,26 +5,50 @@
 {% block head %}
 <style>
     /* ==========================================
+       GLOBAL DESIGN TOKENS
+       ========================================== */
+    :root {
+        --bg-main: #0f172a;
+        --bg-card: rgba(30, 41, 59, 0.65);
+        --bg-card-hover: rgba(30, 41, 59, 0.85);
+        --border: 1px solid rgba(255, 255, 255, 0.1);
+        --border-focus: #38bdf8;
+        
+        --text-main: #f8fafc;
+        --text-muted: #94a3b8;
+        --primary: #0284c7;
+        --primary-light: #38bdf8;
+        
+        --radius-lg: 16px;
+        --radius-md: 12px;
+        --radius-sm: 8px;
+        
+        --transition: 0.2s cubic-bezier(0.4, 0, 0.2, 1);
+    }
+
+    /* ==========================================
        CONTAINER & HEADER
        ========================================== */
     .admin-container {
         width: 100%;
-        max-width: 100%;
+        max-width: 1400px;
+        margin: 0 auto;
+        padding: 1.5rem;
+        box-sizing: border-box;
     }
 
     .admin-header {
         display: flex;
         justify-content: space-between;
         align-items: center;
-        margin-bottom: 1.5rem;
+        margin-bottom: 1.25rem;
         padding-bottom: 1rem;
-        border-bottom: 1px solid var(--border-color);
-        flex-wrap: wrap;
+        border-bottom: var(--border);
         gap: 1rem;
     }
 
     .admin-header-title h1 {
-        font-size: 1.35rem;
+        font-size: clamp(1.25rem, 2vw, 1.6rem);
         font-weight: 800;
         color: var(--text-main);
         letter-spacing: -0.015em;
@@ -35,16 +59,23 @@
     }
 
     .admin-header-title h1 svg {
-        color: var(--primary-light, #38bdf8);
+        color: var(--primary-light);
         width: 26px;
         height: 26px;
         stroke-width: 2.2;
+        flex-shrink: 0;
     }
 
     .admin-header-title p {
-        font-size: 0.82rem;
+        font-size: 0.88rem;
         color: var(--text-muted);
-        margin: 0.25rem 0 0 0;
+        margin: 0.25rem 0 0;
+    }
+
+    .admin-header-actions {
+        display: flex;
+        align-items: center;
+        gap: 0.65rem;
     }
 
     /* ==========================================
@@ -52,30 +83,32 @@
        ========================================== */
     .stats-grid {
         display: grid;
-        grid-template-columns: repeat(auto-fit, minmax(220px, 1fr));
+        grid-template-columns: repeat(auto-fit, minmax(240px, 1fr));
         gap: 1.25rem;
-        margin-bottom: 1.5rem;
+        margin-bottom: 1.25rem;
     }
 
     .stat-card {
-        background: var(--bg-card, rgba(30, 41, 59, 0.5));
-        border: 1px solid var(--border-color);
+        background: var(--bg-card);
+        border: var(--border);
         backdrop-filter: blur(10px);
-        border-radius: var(--radius-md, 12px);
-        padding: 1.15rem 1.35rem;
+        -webkit-backdrop-filter: blur(10px);
+        border-radius: var(--radius-md);
+        padding: 1.25rem 1.5rem;
         display: flex;
         align-items: center;
         justify-content: space-between;
-        transition: border-color 0.2s ease, transform 0.2s ease;
+        transition: transform var(--transition), border-color var(--transition);
     }
 
     .stat-card:hover {
         transform: translateY(-2px);
-        border-color: rgba(255, 255, 255, 0.15);
+        border-color: rgba(255, 255, 255, 0.2);
+        background: var(--bg-card-hover);
     }
 
     .stat-info .stat-label {
-        font-size: 0.72rem;
+        font-size: 0.75rem;
         text-transform: uppercase;
         letter-spacing: 0.06em;
         color: var(--text-muted);
@@ -83,7 +116,7 @@
     }
 
     .stat-info .stat-value {
-        font-size: 1.6rem;
+        font-size: clamp(1.4rem, 2.2vw, 1.85rem);
         font-weight: 800;
         color: var(--text-main);
         margin-top: 0.2rem;
@@ -91,15 +124,16 @@
     }
 
     .stat-icon-wrapper {
-        width: 44px;
-        height: 44px;
-        border-radius: 12px;
+        width: 48px;
+        height: 48px;
+        border-radius: var(--radius-md);
         display: flex;
         align-items: center;
         justify-content: center;
         background: rgba(56, 189, 248, 0.12);
-        color: #38bdf8;
+        color: var(--primary-light);
         border: 1px solid rgba(56, 189, 248, 0.2);
+        flex-shrink: 0;
     }
 
     .stat-icon-wrapper svg {
@@ -109,21 +143,24 @@
     }
 
     /* ==========================================
-       BUTTONS & ACTION CONTROLS
+       BUTTONS & CONTROLS
        ========================================== */
     .btn-custom {
         display: inline-flex;
         align-items: center;
         justify-content: center;
-        gap: 0.45rem;
-        padding: 0.6rem 1.15rem;
+        gap: 0.5rem;
+        padding: 0.65rem 1.2rem;
         border-radius: 10px;
-        font-size: 0.84rem;
+        font-size: 0.88rem;
         font-weight: 600;
         cursor: pointer;
-        transition: all 0.2s ease;
+        transition: all var(--transition);
         text-decoration: none !important;
         border: 1px solid transparent;
+        white-space: nowrap;
+        min-height: 42px;
+        box-sizing: border-box;
     }
 
     .btn-primary-gradient {
@@ -141,7 +178,7 @@
 
     .btn-glass {
         background: rgba(255, 255, 255, 0.04);
-        border: 1px solid var(--border-color);
+        border: var(--border);
         color: var(--text-main);
     }
 
@@ -155,46 +192,47 @@
        MAIN PANEL & TABLE
        ========================================== */
     .panel-card {
-        background: var(--bg-card, rgba(30, 41, 59, 0.5));
-        border: 1px solid var(--border-color);
+        background: var(--bg-card);
+        border: var(--border);
         backdrop-filter: blur(12px);
-        border-radius: var(--radius-lg, 16px);
+        -webkit-backdrop-filter: blur(12px);
+        border-radius: var(--radius-lg);
         overflow: hidden;
         box-shadow: 0 8px 24px rgba(0, 0, 0, 0.25);
     }
 
     .toolbar-wrapper {
         padding: 1.1rem 1.35rem;
-        border-bottom: 1px solid var(--border-color);
+        border-bottom: var(--border);
         display: flex;
         justify-content: space-between;
         align-items: center;
         gap: 1rem;
-        flex-wrap: wrap;
     }
 
     .search-box-custom {
         position: relative;
         flex: 1;
-        max-width: 420px;
-        min-width: 260px;
+        max-width: 480px;
+        width: 100%;
     }
 
     .search-input-custom {
         width: 100%;
         background: rgba(15, 23, 42, 0.6);
-        border: 1px solid var(--border-color);
-        padding: 0.6rem 0.9rem 0.6rem 2.5rem;
+        border: var(--border);
+        padding: 0.7rem 0.9rem 0.7rem 2.6rem;
         border-radius: 10px;
         color: var(--text-main);
-        font-size: 0.85rem;
-        transition: all 0.2s ease;
+        font-size: 0.9rem;
+        transition: all var(--transition);
+        box-sizing: border-box;
     }
 
     .search-input-custom:focus {
-        border-color: var(--primary, #38bdf8);
+        border-color: var(--border-focus);
         outline: none;
-        background: rgba(15, 23, 42, 0.85);
+        background: rgba(15, 23, 42, 0.9);
         box-shadow: 0 0 0 3px rgba(56, 189, 248, 0.15);
     }
 
@@ -209,45 +247,47 @@
     }
 
     .search-icon-custom svg {
-        width: 16px;
-        height: 16px;
+        width: 18px;
+        height: 18px;
         stroke-width: 2;
     }
 
-    /* Modern Data Table */
     .table-responsive {
         width: 100%;
         overflow-x: auto;
+        -webkit-overflow-scrolling: touch;
     }
 
     .modern-table {
         width: 100%;
+        min-width: 760px;
         border-collapse: separate;
         border-spacing: 0;
         text-align: left;
-        font-size: 0.85rem;
+        font-size: 0.9rem;
     }
 
     .modern-table th {
-        background: rgba(15, 23, 42, 0.5);
+        background: rgba(15, 23, 42, 0.75);
         color: var(--text-muted);
         font-weight: 700;
         text-transform: uppercase;
-        font-size: 0.72rem;
+        font-size: 0.75rem;
         letter-spacing: 0.07em;
-        padding: 0.9rem 1.25rem;
-        border-bottom: 1px solid var(--border-color);
+        padding: 1rem 1.1rem;
+        border-bottom: var(--border);
+        white-space: nowrap;
     }
 
     .modern-table td {
-        padding: 1rem 1.25rem;
-        border-bottom: 1px solid var(--border-color);
+        padding: 1rem 1.1rem;
+        border-bottom: var(--border);
         vertical-align: middle;
         color: var(--text-main);
     }
 
     .modern-table tbody tr {
-        transition: background 0.15s ease;
+        transition: background var(--transition);
     }
 
     .modern-table tbody tr:hover {
@@ -258,17 +298,17 @@
         border-bottom: none;
     }
 
-    /* User Profile Meta */
+    /* Profile Meta */
     .user-profile-meta {
         display: flex;
         align-items: center;
-        gap: 0.85rem;
+        gap: 0.8rem;
     }
 
     .avatar-circle {
-        width: 38px;
-        height: 38px;
-        border-radius: 10px;
+        width: 40px;
+        height: 40px;
+        border-radius: var(--radius-sm);
         background: linear-gradient(135deg, #0284c7 0%, #6366f1 100%);
         color: #ffffff;
         display: flex;
@@ -283,62 +323,65 @@
     .user-name {
         font-weight: 700;
         color: var(--text-main);
-        font-size: 0.88rem;
+        font-size: 0.9rem;
         line-height: 1.3;
     }
 
     .user-handle {
-        font-size: 0.76rem;
+        font-size: 0.78rem;
         color: var(--text-muted);
     }
 
-    /* Role Select Control */
+    /* Select Role */
     .select-role-custom {
-        background: rgba(15, 23, 42, 0.6);
-        border: 1px solid var(--border-color);
+        background: rgba(15, 23, 42, 0.8);
+        border: var(--border);
         color: var(--text-main);
-        padding: 0.4rem 0.65rem;
-        border-radius: 8px;
-        font-size: 0.78rem;
+        padding: 0.5rem 0.75rem;
+        border-radius: var(--radius-sm);
+        font-size: 0.82rem;
         font-weight: 600;
         cursor: pointer;
-        transition: border-color 0.2s ease;
+        transition: border-color var(--transition);
+        width: 100%;
+        max-width: 140px;
     }
 
     .select-role-custom:focus {
-        border-color: var(--primary, #38bdf8);
+        border-color: var(--border-focus);
         outline: none;
     }
 
-    /* Action Buttons in Table */
+    /* Action Buttons */
     .actions-flex {
         display: flex;
-        gap: 0.4rem;
+        gap: 0.45rem;
         justify-content: flex-end;
+        white-space: nowrap;
     }
 
     .btn-action-icon {
-        padding: 0.4rem 0.75rem;
-        border-radius: 8px;
-        font-size: 0.78rem;
+        padding: 0.5rem 0.8rem;
+        border-radius: var(--radius-sm);
+        font-size: 0.82rem;
         font-weight: 600;
         cursor: pointer;
         border: 1px solid transparent;
-        transition: all 0.2s ease;
+        transition: all var(--transition);
         display: inline-flex;
         align-items: center;
-        gap: 0.3rem;
+        gap: 0.35rem;
     }
 
     .btn-action-edit {
         background: rgba(56, 189, 248, 0.12);
-        color: #38bdf8;
+        color: var(--primary-light);
         border-color: rgba(56, 189, 248, 0.25);
     }
 
     .btn-action-edit:hover {
-        background: rgba(56, 189, 248, 0.22);
-        border-color: rgba(56, 189, 248, 0.4);
+        background: rgba(56, 189, 248, 0.25);
+        color: #ffffff;
     }
 
     .btn-action-delete {
@@ -348,23 +391,25 @@
     }
 
     .btn-action-delete:hover {
-        background: rgba(239, 68, 68, 0.22);
-        border-color: rgba(239, 68, 68, 0.4);
+        background: rgba(239, 68, 68, 0.25);
+        color: #ffffff;
     }
 
     /* ==========================================
-       MODAL POPUPS
+       MODALS
        ========================================== */
     .modal-overlay {
         position: fixed;
-        top: 0; left: 0; width: 100%; height: 100%;
+        inset: 0;
         background: rgba(0, 0, 0, 0.75);
         backdrop-filter: blur(8px);
+        -webkit-backdrop-filter: blur(8px);
         display: none;
         align-items: center;
         justify-content: center;
         z-index: 1050;
         padding: 1rem;
+        box-sizing: border-box;
     }
 
     .modal-overlay.active {
@@ -373,13 +418,16 @@
 
     .modal-card {
         background: #0f172a;
-        border: 1px solid var(--border-color);
-        border-radius: 18px;
+        border: var(--border);
+        border-radius: var(--radius-lg);
         width: 100%;
         max-width: 580px;
         box-shadow: 0 25px 50px -12px rgba(0, 0, 0, 0.7);
         animation: modalSlideUp 0.25s cubic-bezier(0.16, 1, 0.3, 1);
         overflow: hidden;
+        display: flex;
+        flex-direction: column;
+        max-height: 90vh;
     }
 
     @keyframes modalSlideUp {
@@ -388,17 +436,18 @@
     }
 
     .modal-header {
-        padding: 1.15rem 1.5rem;
-        border-bottom: 1px solid var(--border-color);
+        padding: 1.1rem 1.35rem;
+        border-bottom: var(--border);
         display: flex;
         justify-content: space-between;
         align-items: center;
         background: rgba(255, 255, 255, 0.02);
+        flex-shrink: 0;
     }
 
     .modal-title {
         font-weight: 700;
-        font-size: 1rem;
+        font-size: 1.05rem;
         color: var(--text-main);
         display: flex;
         align-items: center;
@@ -410,10 +459,10 @@
         border: none;
         color: var(--text-muted);
         cursor: pointer;
-        padding: 0.3rem;
+        padding: 0.35rem;
         border-radius: 6px;
         display: flex;
-        transition: all 0.2s ease;
+        transition: all var(--transition);
     }
 
     .modal-close-btn:hover {
@@ -422,9 +471,9 @@
     }
 
     .modal-body {
-        padding: 1.5rem;
-        max-height: 75vh;
+        padding: 1.35rem;
         overflow-y: auto;
+        -webkit-overflow-scrolling: touch;
     }
 
     .form-grid-layout {
@@ -436,13 +485,9 @@
     .form-field-full { grid-column: span 2; }
     .form-field-half { grid-column: span 1; }
 
-    @media (max-width: 640px) {
-        .form-field-half { grid-column: span 2; }
-    }
-
     .field-label {
         display: block;
-        font-size: 0.78rem;
+        font-size: 0.82rem;
         color: var(--text-muted);
         font-weight: 600;
         margin-bottom: 0.35rem;
@@ -451,60 +496,253 @@
     .input-control {
         width: 100%;
         background: rgba(15, 23, 42, 0.8);
-        border: 1px solid var(--border-color);
-        padding: 0.6rem 0.85rem;
-        border-radius: 10px;
+        border: var(--border);
+        padding: 0.7rem 0.9rem;
+        border-radius: var(--radius-sm);
         color: var(--text-main);
-        font-size: 0.85rem;
+        font-size: 0.88rem;
         box-sizing: border-box;
-        transition: all 0.2s ease;
+        transition: all var(--transition);
     }
 
     .input-control:focus {
-        border-color: var(--primary, #38bdf8);
+        border-color: var(--border-focus);
         outline: none;
         background: rgba(15, 23, 42, 1);
         box-shadow: 0 0 0 3px rgba(56, 189, 248, 0.15);
     }
 
     .modal-footer {
-        padding: 1rem 1.5rem;
-        border-top: 1px solid var(--border-color);
+        padding: 1rem 1.35rem;
+        border-top: var(--border);
         display: flex;
         justify-content: flex-end;
-        gap: 0.65rem;
+        gap: 0.6rem;
         background: rgba(0, 0, 0, 0.2);
+        flex-shrink: 0;
+    }
+
+    /* ==========================================
+       TABLET/LAPTOP LAYOUT TUNING
+       ========================================== */
+    @media (min-width: 1200px) {
+        .admin-container {
+            padding: 1.75rem;
+        }
+
+        .modern-table th,
+        .modern-table td {
+            padding: 1rem 1.15rem;
+        }
+    }
+
+    /* ==========================================
+       RESPONSIVE BREAKPOINTS (ĐÃ TỐI ƯU)
+       ========================================== */
+
+    @media (max-width: 1199px) {
+        .admin-container { padding: 1.25rem; }
+        .stats-grid { grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 1rem; }
+        .toolbar-wrapper { padding: 1rem 1.15rem; }
+        .modern-table { min-width: 700px; }
+    }
+
+    @media (max-width: 768px) {
+        .admin-container { padding: 1rem; }
+        .admin-header { align-items: flex-start; flex-direction: column; gap: 1rem; }
+        .admin-header-actions { width: 100%; justify-content: space-between; }
+        .toolbar-wrapper { flex-direction: column; align-items: stretch; gap: 1rem; }
+        .search-box-custom { max-width: 100%; }
+        
+        .form-grid-layout { grid-template-columns: 1fr; }
+        .form-field-half, .form-field-full { grid-column: span 1; }
+        .modal-footer { flex-direction: column-reverse; }
+        .modal-footer .btn-custom { width: 100%; text-align: center; }
+
+        /* KỸ THUẬT TABLE TO CARDS CHO MOBILE */
+        .modern-table {
+            min-width: 100%;
+            display: block;
+        }
+        .modern-table thead {
+            display: none; /* Ẩn header trên điện thoại */
+        }
+        .modern-table tbody {
+            display: block;
+            width: 100%;
+        }
+        .modern-table tbody tr {
+            display: flex;
+            flex-direction: column;
+            background: rgba(30, 41, 59, 0.4);
+            margin-bottom: 1rem;
+            border-radius: var(--radius-md);
+            border: var(--border);
+            padding: 0.5rem;
+            box-shadow: 0 4px 6px rgba(0, 0, 0, 0.1);
+        }
+        .modern-table td {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            padding: 0.75rem;
+            border-bottom: 1px dashed rgba(255, 255, 255, 0.1);
+            text-align: right;
+            gap: 1rem;
+        }
+        .modern-table td:last-child {
+            border-bottom: none;
+            justify-content: space-between; /* Giữ tiêu đề "Thao Tác" và cụm nút cách xa nhau */
+        }
+        /* Hiển thị tiêu đề cột từ thuộc tính data-label */
+        .modern-table td::before {
+            content: attr(data-label);
+            font-weight: 700;
+            font-size: 0.75rem;
+            text-transform: uppercase;
+            color: var(--text-muted);
+            text-align: left;
+            flex-shrink: 0;
+        }
+        
+        /* Căn chỉnh lại nội dung trong Card */
+        .user-profile-meta { justify-content: flex-end; text-align: right; }
+        .user-info-text { text-align: right; }
+        .select-role-custom { max-width: 160px; }
+        .actions-flex { justify-content: flex-end; width: 100%; }
+        
+        /* Đảm bảo vùng bấm (touch target) trên mobile đủ lớn */
+        .btn-action-icon, .select-role-custom {
+            min-height: 40px;
+        }
+    }
+
+    @media (max-width: 560px) {
+        .admin-container { padding: 0.75rem; }
+        .stats-grid { grid-template-columns: 1fr; }
+        .admin-header-actions { flex-direction: column; align-items: stretch; }
+        .admin-header-actions .btn-custom,
+        .admin-header-actions a.btn-glass { width: 100%; justify-content: center; }
+        
+        /* Chỉnh lại avatar và tên nếu không gian quá hẹp */
+        .user-profile-meta { flex-direction: row-reverse; }
+        .avatar-circle { width: 36px; height: 36px; }
+    }
+    /* ==========================================
+       TỐI ƯU LẠI DIỆN TÍCH HEADER TITLE
+       ========================================== */
+    
+    /* Ép Icon và Text nằm ngang gọn gàng */
+    .admin-title-row {
+        display: flex;
+        align-items: center;
+        gap: 0.5rem; /* Thu hẹp khoảng cách giữa icon và cụm chữ */
+    }
+
+    /* Thu nhỏ kích thước Icon */
+    .admin-title-icon svg {
+        color: var(--primary-light);
+        width: 40px; /* Kích thước cũ thường là 26px */
+        height: 40px;
+        stroke-width: 2;
+        flex-shrink: 0;
+    }
+
+    /* Thu nhỏ Tiêu đề H1 */
+    .admin-header-title h1 {
+        font-size: clamp(1.05rem, 1.5vw, 1.25rem); /* Giảm đáng kể so với bản cũ */
+        font-weight: 700;
+        color: var(--text-main);
+        letter-spacing: -0.01em;
+        margin: 0;
+        line-height: 1.2;
+    }
+
+    /* Thu nhỏ mô tả phụ */
+    .admin-header-title p {
+        font-size: 0.75rem; /* Nhỏ hơn, tiết kiệm chiều dọc */
+        color: var(--text-muted);
+        margin: 0.15rem 0 0 0; /* Ép sát lên thẻ H1 */
+        line-height: 1.2;
+    }
+
+    /* Tùy chọn: Giảm luôn khoảng trống của toàn bộ thanh Header để form hiện lên cao hơn */
+    .admin-header {
+        margin-bottom: 0.85rem; 
+        padding-bottom: 1.75rem;
+        gap: 0.75rem;
     }
 </style>
 {% endblock %}
 
 {% block content %}
+<!-- Lấy Role của người dùng đang đăng nhập từ Session -->
+{% set current_role = request.session.get('role', 'User') %}
+
 <div class="admin-container">
     <!-- Header Trang -->
     <div class="admin-header">
         <div class="admin-header-title">
-            <h1>
-                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor">
-                    <path d="M17 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2"></path>
-                    <circle cx="9" cy="7" r="4"></circle>
-                    <path d="M23 21v-2a4 4 0 0 0-3-3.87"></path>
-                    <path d="M16 3.13a4 4 0 0 1 0 7.75"></path>
-                </svg>
-                Quản Lý Tài Khoản & Phân Quyền
-            </h1>
-            <p>Hệ thống nhân sự và phân quyền kiểm soát vận hành nội bộ Máy In Đại Thành</p>
+            <div class="admin-title-row">
+                <div class="admin-title-icon">
+                    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor">
+                        <path d="M17 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2"></path>
+                        <circle cx="9" cy="7" r="4"></circle>
+                        <path d="M23 21v-2a4 4 0 0 0-3-3.87"></path>
+                        <path d="M16 3.13a4 4 0 0 1 0 7.75"></path>
+                    </svg>
+                </div>
+
+                <div class="admin-title-text">
+                    <h1>Tài Khoản</h1>
+                    <p>Quản lý nhân sự</p>
+                </div>
+            </div>
         </div>
-        <div style="display: flex; gap: 0.65rem; flex-wrap: wrap;">
-            <button onclick="openModal('addModal')" class="btn-custom btn-primary-gradient">
-                <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><line x1="12" y1="5" x2="12" y2="19"></line><line x1="5" y1="12" x2="19" y2="12"></line></svg>
-                <span>Thêm Tài Khoản Mới</span>
+
+        <div class="admin-header-actions">
+            <button
+                type="button"
+                onclick="openModal('addModal')"
+                class="btn-custom btn-primary-gradient"
+            >
+                <svg width="16" height="16" viewBox="0 0 24 24" fill="none"
+                    stroke="currentColor" stroke-width="2.5">
+                    <line x1="12" y1="5" x2="12" y2="19"></line>
+                    <line x1="5" y1="12" x2="19" y2="12"></line>
+                </svg>
+                <span>Thêm tài khoản</span>
             </button>
+
             <a href="/admin" class="btn-custom btn-glass">
-                <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><line x1="19" y1="12" x2="5" y2="12"></line><polyline points="12 19 5 12 12 5"></polyline></svg>
-                <span>Quay Lại Quản Trị</span>
+                <svg width="16" height="16" viewBox="0 0 24 24" fill="none"
+                    stroke="currentColor" stroke-width="2">
+                    <line x1="19" y1="12" x2="5" y2="12"></line>
+                    <polyline points="12 19 5 12 12 5"></polyline>
+                </svg>
+                <span>Quay lại</span>
             </a>
         </div>
     </div>
+
+    <!-- Tính toán thống kê theo từng Role -->
+    {% set super_count = namespace(value=0) %}
+    {% set sys_count = namespace(value=0) %}
+    {% set admin_count = namespace(value=0) %}
+    {% set user_count = namespace(value=0) %}
+    {% if users %}
+        {% for u in users %}
+            {% if u.role == 'Super Admin' %}
+                {% set super_count.value = super_count.value + 1 %}
+            {% elif u.role == 'System Admin' %}
+                {% set sys_count.value = sys_count.value + 1 %}
+            {% elif u.role == 'Admin' %}
+                {% set admin_count.value = admin_count.value + 1 %}
+            {% else %}
+                {% set user_count.value = user_count.value + 1 %}
+            {% endif %}
+        {% endfor %}
+    {% endif %}
 
     <!-- Thống Kê Tổng Quan -->
     <div class="stats-grid">
@@ -514,59 +752,62 @@
                 <div class="stat-value" id="statTotalUsers">{{ users | length if users else 0 }}</div>
             </div>
             <div class="stat-icon-wrapper">
-                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor">
-                    <path d="M17 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2"></path>
-                    <circle cx="9" cy="7" r="4"></circle>
-                </svg>
+                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor"><path d="M17 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2"></path><circle cx="9" cy="7" r="4"></circle></svg>
             </div>
         </div>
 
         <div class="stat-card">
             <div class="stat-info">
-                <div class="stat-label">Quản Trị Viên (Admin)</div>
+                <div class="stat-label">QUẢN TRỊ CẤP CAO</div>
+                <div class="stat-value" style="color: #f43f5e;">
+                    {{ super_count.value + sys_count.value }}
+                </div>
+            </div>
+            <div class="stat-icon-wrapper" style="background: rgba(244, 63, 94, 0.12); color: #f43f5e; border-color: rgba(244, 63, 94, 0.25);">
+                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor"><path d="M12 2L2 7l10 5 10-5-10-5zM2 17l10 5 10-5M2 12l10 5 10-5"></path></svg>
+            </div>
+        </div>
+
+        <div class="stat-card">
+            <div class="stat-info">
+                <div class="stat-label">Quản Trị Viên</div>
                 <div class="stat-value" style="color: #c084fc;">
-                    {% set admin_count = namespace(value=0) %}
-                    {% if users %}
-                        {% for u in users %}{% if u.role == 'Admin' %}{% set admin_count.value = admin_count.value + 1 %}{% endif %}{% endfor %}
-                    {% endif %}
                     {{ admin_count.value }}
                 </div>
             </div>
             <div class="stat-icon-wrapper" style="background: rgba(192, 132, 252, 0.12); color: #c084fc; border-color: rgba(192, 132, 252, 0.25);">
-                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor">
-                    <path d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10z"></path>
-                </svg>
+                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor"><path d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10z"></path></svg>
             </div>
         </div>
 
         <div class="stat-card">
             <div class="stat-info">
-                <div class="stat-label">Tài Khoản Thường (User)</div>
+                <div class="stat-label">Tài Khoản Thường</div>
                 <div class="stat-value" style="color: #38bdf8;">
-                    {{ (users | length) - admin_count.value if users else 0 }}
+                    {{ user_count.value }}
                 </div>
             </div>
             <div class="stat-icon-wrapper" style="background: rgba(56, 189, 248, 0.12); color: #38bdf8; border-color: rgba(56, 189, 248, 0.25);">
-                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor">
-                    <path d="M20 21v-2a4 4 0 0 0-4-4H8a4 4 0 0 0-4 4v2"></path>
-                    <circle cx="12" cy="7" r="4"></circle>
-                </svg>
+                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor"><path d="M20 21v-2a4 4 0 0 0-4-4H8a4 4 0 0 0-4 4v2"></path><circle cx="12" cy="7" r="4"></circle></svg>
             </div>
         </div>
     </div>
 
     <!-- Bảng Dữ Liệu Nhân Sự -->
     <div class="panel-card">
-        <!-- Thanh Tìm Kiếm Trực Tiếp -->
+        <!-- Toolbar Search & Counter -->
         <div class="toolbar-wrapper">
             <div class="search-box-custom">
                 <span class="search-icon-custom">
-                    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor"><circle cx="11" cy="11" r="8"></circle><line x1="21" y1="21" x2="16.65" y2="16.65"></line></svg>
+                    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor">
+                        <circle cx="11" cy="11" r="8"></circle>
+                        <line x1="21" y1="21" x2="16.65" y2="16.65"></line>
+                    </svg>
                 </span>
-                <input type="text" id="userSearchInput" class="search-input-custom" placeholder="Tìm kiếm nhanh theo tên, username, email..." onkeyup="filterUsers()">
+                <input type="text" id="userSearchInput" class="search-input-custom" placeholder="Tìm kiếm theo tên, email..." onkeyup="filterUsers()">
             </div>
-            <div style="font-size: 0.82rem; color: var(--text-muted); font-weight: 500;">
-                Hiển thị: <strong id="totalCount" style="color: var(--text-main);">{{ users | length if users else 0 }}</strong> nhân sự
+            <div class="total-count-badge">
+                Hiển thị: <strong id="totalCount">{{ users | length if users else 0 }}</strong> nhân sự
             </div>
         </div>
 
@@ -575,68 +816,89 @@
             <table class="modern-table" id="usersTable">
                 <thead>
                     <tr>
-                        <th>Nhân Sự</th>
-                        <th>Chức Danh & SĐT</th>
-                        <th>Email</th>
-                        <th>Quyền Hạn</th>
-                        <th style="text-align: right;">Thao Tác</th>
+                        <th class="col-user">Nhân Sự</th>
+                        <th class="col-title">Chức Danh & SĐT</th>
+                        <th class="col-email">Email</th>
+                        <th class="col-role">Quyền Hạn</th>
+                        <th class="col-actions">Thao Tác</th>
                     </tr>
                 </thead>
+                <!-- ... (Phần trên giữ nguyên) ... -->
                 <tbody>
                     {% if users %}
                         {% for u in users %}
+                        {% set can_manage = true %}
+                        {% if current_role == 'Admin' and u.role in ['System Admin', 'Super Admin'] %}
+                            {% set can_manage = false %}
+                        {% elif current_role == 'Super Admin' and u.role == 'System Admin' %}
+                            {% set can_manage = false %}
+                        {% endif %}
+
                         <tr class="user-row" data-search="{{ u.ho_ten | lower if u.ho_ten }} {{ u.username | lower if u.username }} {{ u.email | lower if u.email }}">
-                            <td>
+                            <!-- THÊM data-label CHO TỪNG TD -->
+                            <td class="col-user" data-label="Nhân Sự">
                                 <div class="user-profile-meta">
                                     <div class="avatar-circle">
                                         {{ u.ho_ten[:1] | upper if u.ho_ten else 'U' }}
                                     </div>
-                                    <div>
+                                    <div class="user-info-text">
                                         <div class="user-name">{{ u.ho_ten | default('Chưa cập nhật') }}</div>
                                         <div class="user-handle">@{{ u.username }}</div>
                                     </div>
                                 </div>
                             </td>
-                            <td>
-                                <div style="font-weight: 600; color: var(--text-main);">{{ u.chuc_danh | default('Nhân viên kỹ thuật') }}</div>
-                                <div style="font-size: 0.76rem; color: var(--text-muted);">{{ u.so_dien_thoai | default('Chưa cập nhật SĐT') }}</div>
+                            <td class="col-title" data-label="Chức Danh & SĐT">
+                                <div class="job-title">{{ u.chuc_danh | default('Nhân viên kỹ thuật') }}</div>
+                                <div class="phone-number">{{ u.so_dien_thoai | default('Chưa cập nhật SĐT') }}</div>
                             </td>
-                            <td style="color: var(--text-muted); font-size: 0.82rem;">
-                                {{ u.email | default('N/A') }}
+                            <td class="col-email" data-label="Email">
+                                <span class="email-text" title="{{ u.email }}">{{ u.email | default('N/A') }}</span>
                             </td>
-                            <td>
-                                <form action="/admin/users/update-role/{{ u.id }}" method="POST" style="display: inline;">
-                                    <select name="role" class="select-role-custom" onchange="this.form.submit()">
-                                        <option value="User" {% if u.role == 'User' %}selected{% endif %}>User (Kỹ thuật viên)</option>
-                                        <option value="Admin" {% if u.role == 'Admin' %}selected{% endif %}>Admin (Quản trị viên)</option>
-                                    </select>
-                                </form>
-                            </td>
-                            <td style="text-align: right;">
-                                <div class="actions-flex">
-                                    <button type="button" class="btn-action-icon btn-action-edit" data-user='{{ u | tojson | safe }}' onclick='openEditModalFromBtn(this)'>
-                                        <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M11 4H4a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2v-7"></path><path d="M18.5 2.5a2.121 2.121 0 0 1 3 3L12 15l-4 1 1-4 9.5-9.5z"></path></svg>
-                                        <span>Sửa</span>
-                                    </button>
-                                    <form action="/admin/users/delete/{{ u.id }}" method="POST" onsubmit="return confirm('Cảnh báo: Bạn có chắc chắn muốn xóa tài khoản này khỏi hệ thống không?');" style="display: inline;">
-                                        <button type="submit" class="btn-action-icon btn-action-delete">
-                                            <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polyline points="3 6 5 6 21 6"></polyline><path d="M19 6v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6m3 0V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2"></path></svg>
-                                            <span>Xóa</span>
-                                        </button>
+                            <td class="col-role" data-label="Quyền Hạn">
+                                {% if can_manage %}
+                                    <form action="/admin/users/update-role/{{ u.id }}" method="POST" class="role-form">
+                                        <select name="role" class="select-role-custom" onchange="this.form.submit()">
+                                            <option value="User" {% if u.role == 'User' %}selected{% endif %}>User</option>
+                                            <option value="Admin" {% if u.role == 'Admin' %}selected{% endif %}>Admin</option>
+                                            {% if current_role in ['System Admin', 'Super Admin'] %}
+                                                <option value="System Admin" {% if u.role == 'System Admin' %}selected{% endif %}>System Admin</option>
+                                            {% endif %}
+                                            {% if current_role == 'Super Admin' %}
+                                                <option value="Super Admin" {% if u.role == 'Super Admin' %}selected{% endif %}>Super Admin</option>
+                                            {% endif %}
+                                        </select>
                                     </form>
-                                </div>
+                                {% else %}
+                                    <span class="badge-role-locked">🔒 {{ u.role }}</span>
+                                {% endif %}
+                            </td>
+                            <td class="col-actions" data-label="Thao Tác">
+                                {% if can_manage %}
+                                    <div class="actions-flex">
+                                        <button type="button" class="btn-action-icon btn-action-edit" data-user='{{ u | tojson | safe }}' onclick='openEditModalFromBtn(this)'>
+                                            <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M11 4H4a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2v-7"></path><path d="M18.5 2.5a2.121 2.121 0 0 1 3 3L12 15l-4 1 1-4 9.5-9.5z"></path></svg>
+                                            <span>Sửa</span>
+                                        </button>
+                                        <form action="/admin/users/delete/{{ u.id }}" method="POST" onsubmit="return confirm('Cảnh báo: Bạn có chắc chắn muốn xóa tài khoản này khỏi hệ thống không?');" class="delete-form">
+                                            <button type="submit" class="btn-action-icon btn-action-delete">
+                                                <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polyline points="3 6 5 6 21 6"></polyline><path d="M19 6v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6m3 0V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2"></path></svg>
+                                                <span>Xóa</span>
+                                            </button>
+                                        </form>
+                                    </div>
+                                {% else %}
+                                    <span class="no-permission-text">Không có quyền</span>
+                                {% endif %}
                             </td>
                         </tr>
                         {% endfor %}
                     {% else %}
                         <tr>
-                            <td colspan="5" style="text-align: center; padding: 3.5rem 1rem; color: var(--text-muted);">
-                                <svg width="38" height="38" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" style="margin-bottom: 0.5rem; opacity: 0.5;"><circle cx="12" cy="12" r="10"></circle><line x1="12" y1="8" x2="12" y2="12"></line><line x1="12" y1="16" x2="12.01" y2="16"></line></svg>
-                                <div>Chưa có tài khoản nào được khởi tạo trong cơ sở dữ liệu.</div>
-                            </td>
+                            <td colspan="5" class="empty-table-cell">Chưa có tài khoản nào được khởi tạo trong cơ sở dữ liệu.</td>
                         </tr>
                     {% endif %}
                 </tbody>
+<!-- ... (Phần dưới giữ nguyên) ... -->
             </table>
         </div>
     </div>
@@ -647,12 +909,9 @@
     <div class="modal-card">
         <div class="modal-header">
             <div class="modal-title">
-                <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="#38bdf8" stroke-width="2.5"><line x1="12" y1="5" x2="12" y2="19"></line><line x1="5" y1="12" x2="19" y2="12"></line></svg>
                 <span>Khởi Tạo Tài Khoản Mới</span>
             </div>
-            <button class="modal-close-btn" onclick="closeModal('addModal')">
-                <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><line x1="18" y1="6" x2="6" y2="18"></line><line x1="6" y1="6" x2="18" y2="18"></line></svg>
-            </button>
+            <button class="modal-close-btn" onclick="closeModal('addModal')">✕</button>
         </div>
         <form action="/admin/users/add" method="POST">
             <div class="modal-body">
@@ -684,8 +943,14 @@
                     <div class="form-field-full">
                         <label class="field-label">Phân quyền hệ thống</label>
                         <select name="role" class="input-control">
-                            <option value="User">User (Kỹ thuật viên - Quyền hạn tiêu chuẩn)</option>
-                            <option value="Admin">Admin (Quản trị viên - Toàn quyền hệ thống)</option>
+                            <option value="User">User (Kỹ thuật viên)</option>
+                            <option value="Admin">Admin (Quản trị viên)</option>
+                            {% if current_role in ['System Admin', 'Super Admin'] %}
+                                <option value="Super Admin">Super Admin (Quản trị tối cao)</option>
+                            {% endif %}
+                            {% if current_role == 'System Admin' %}
+                                <option value="System Admin">System Admin (Quản trị hệ thống)</option>
+                            {% endif %}
                         </select>
                     </div>
                 </div>
@@ -703,12 +968,9 @@
     <div class="modal-card">
         <div class="modal-header">
             <div class="modal-title">
-                <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="#38bdf8" stroke-width="2.2"><path d="M11 4H4a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2v-7"></path><path d="M18.5 2.5a2.121 2.121 0 0 1 3 3L12 15l-4 1 1-4 9.5-9.5z"></path></svg>
                 <span>Chỉnh Sửa Thông Tin Nhân Sự</span>
             </div>
-            <button class="modal-close-btn" onclick="closeModal('editModal')">
-                <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><line x1="18" y1="6" x2="6" y2="18"></line><line x1="6" y1="6" x2="18" y2="18"></line></svg>
-            </button>
+            <button class="modal-close-btn" onclick="closeModal('editModal')">✕</button>
         </div>
         <form id="editForm" method="POST">
             <div class="modal-body">
@@ -730,6 +992,12 @@
                         <select id="edit_role" name="role" class="input-control">
                             <option value="User">User (Kỹ thuật viên)</option>
                             <option value="Admin">Admin (Quản trị viên)</option>
+                            {% if current_role in ['System Admin', 'Super Admin'] %}
+                                <option value="Super Admin">Super Admin (Quản trị tối cao)</option>
+                            {% endif %}
+                            {% if current_role == 'System Admin' %}     
+                                <option value="System Admin">System Admin (Quản trị hệ thống)</option>
+                            {% endif %}
                         </select>
                     </div>
                 </div>
@@ -743,13 +1011,8 @@
 </div>
 
 <script>
-    function openModal(modalId) {
-        document.getElementById(modalId).classList.add('active');
-    }
-    
-    function closeModal(modalId) {
-        document.getElementById(modalId).classList.remove('active');
-    }
+    function openModal(modalId) { document.getElementById(modalId).classList.add('active'); }
+    function closeModal(modalId) { document.getElementById(modalId).classList.remove('active'); }
 
     function openEditModal(user) {
         document.getElementById('editForm').action = '/admin/users/edit/' + user.id;
@@ -760,14 +1023,12 @@
         openModal('editModal');
     }
 
-    // Đóng modal khi nhấp ra ngoài thẻ modal-card
     window.onclick = function(event) {
         if (event.target.classList.contains('modal-overlay')) {
             event.target.classList.remove('active');
         }
     }
 
-    // Live search lọc nhân sự
     function filterUsers() {
         let input = document.getElementById('userSearchInput').value.toLowerCase();
         let rows = document.getElementsByClassName('user-row');

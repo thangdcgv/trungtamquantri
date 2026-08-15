@@ -1,0 +1,869 @@
+<!DOCTYPE html>
+<html lang="vi" class="dark">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Quản Lý & Xuất Key Chipless - Máy In Đại Thành</title>
+    
+    <!-- TAILWIND CSS CDN & FONTAWESOME -->
+    <script src="https://cdn.tailwindcss.com"></script>
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+    
+    <!-- GOOGLE FONT (INTER & JETBRAINS MONO) -->
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&family=JetBrains+Mono:wght@500;700&display=swap" rel="stylesheet">
+
+    <script>
+        tailwind.config = {
+            darkMode: 'class',
+            theme: {
+                extend: {
+                    fontFamily: {
+                        sans: ['Inter', 'sans-serif'],
+                        mono: ['JetBrains Mono', 'monospace'],
+                    }
+                }
+            }
+        }
+    </script>
+
+    <style>
+        ::-webkit-scrollbar { width: 6px; height: 6px; }
+        ::-webkit-scrollbar-track { background: #0d1117; }
+        ::-webkit-scrollbar-thumb { background: #21262d; border-radius: 3px; }
+        ::-webkit-scrollbar-thumb:hover { background: #30363d; }
+    </style>
+</head>
+<body class="bg-[#0d1117] text-slate-200 font-sans min-h-screen antialiased selection:bg-sky-500 selection:text-white">
+
+    <!-- TOP NAVBAR TỐI GIẢN -->
+    <header class="border-b border-[#30363d] bg-[#161b22] sticky top-0 z-40">
+        <div class="max-w-[1800px] mx-auto px-4 lg:px-6 h-14 flex items-center justify-between gap-4">
+            <div class="flex items-center gap-3">
+                <div class="w-8 h-8 rounded-lg bg-sky-500/10 border border-sky-500/30 flex items-center justify-center text-sky-400 font-bold">
+                    <i class="fa-solid fa-key text-sm"></i>
+                </div>
+                <div class="flex items-center gap-2">
+                    <span class="font-bold text-sm text-white tracking-wide">MÁY IN ĐẠI THÀNH</span>
+                    <span class="text-slate-600">/</span>
+                    <span class="text-xs text-slate-400 font-medium">Xuất Key</span>
+                </div>
+            </div>
+            <div class="flex items-center gap-3 text-xs">
+                <a href="/" 
+                class="flex items-center gap-2 bg-[#0d1117] hover:bg-[#21262d] px-3 py-1.5 rounded-lg border border-[#30363d] text-slate-300 hover:text-white transition group cursor-pointer">
+                    <i class="fa-solid fa-house text-sky-400 group-hover:scale-110 transition-transform"></i>
+                    <span class="font-medium text-xs">Trang chủ</span>
+                </a>
+                <button onclick="window.location.reload()" class="p-1.5 bg-[#21262d] hover:bg-[#30363d] text-slate-300 rounded-lg transition border border-[#30363d] flex items-center gap-1.5 cursor-pointer">
+                    <i class="fa-solid fa-rotate-right text-xs"></i>
+                    <span class="hidden sm:inline text-xs">Làm mới</span>
+                </button>
+            </div>
+        </div>
+    </header>
+
+    <!-- CONTAINER CHÍNH -->
+    <main class="max-w-[1800px] mx-auto p-4 lg:p-6 space-y-6">
+
+        <!-- KHU VỰC THAO TÁC CHÍNH (GRID 2 CỘT) -->
+        <div class="grid grid-cols-1 xl:grid-cols-12 gap-6 items-start">
+
+            <!-- CỘT TRÁI: QUY TRÌNH XUẤT KEY TỰ ĐỘNG -->
+            <section class="xl:col-span-7 2xl:col-span-8 bg-[#161b22] rounded-xl border border-[#30363d] p-5 shadow-lg space-y-5">
+                
+                <div class="flex items-center justify-between border-b border-[#30363d] pb-4">
+                    <h1 class="text-base font-bold text-white flex items-center gap-2.5">
+                        <i class="fa-solid fa-microchip text-sky-400"></i>
+                        Quy Trình Xuất & Nạp Key Thiết Bị
+                    </h1>
+                    <span class="text-[11px] text-slate-400 font-mono bg-[#0d1117] px-2.5 py-1 rounded border border-[#30363d]">
+                        Phím tắt: <kbd class="text-emerald-400 font-bold">Ctrl + Enter</kbd> Xác nhận
+                    </span>
+                </div>
+
+                <!-- BƯỚC 1: CHỌN THIẾT BỊ & MODEL -->
+                <div class="space-y-4">
+                    <div class="grid grid-cols-1 sm:grid-cols-2 gap-4">
+                        <div>
+                            <label class="block text-xs font-semibold text-slate-300 mb-1.5">
+                                1. Nhóm Thiết Bị <span class="text-rose-400">*</span>
+                            </label>
+                            <select id="select_loai_tb" onchange="onLoaiTBChange()" class="w-full bg-[#0d1117] border border-[#30363d] rounded-lg px-3.5 py-2.5 text-sm text-slate-100 focus:border-sky-500 focus:ring-1 focus:ring-sky-500 outline-none transition cursor-pointer">
+                                <option value="">-- Chọn Loại Thiết Bị --</option>
+                            </select>
+                        </div>
+
+                        <div>
+                            <label class="block text-xs font-semibold text-slate-300 mb-1.5">
+                                2. Model Máy <span class="text-rose-400">*</span>
+                            </label>
+                            <select id="select_model" onchange="onModelChange()" disabled class="w-full bg-[#0d1117]/50 border border-[#30363d] rounded-lg px-3.5 py-2.5 text-sm text-slate-400 focus:border-sky-500 focus:ring-1 focus:ring-sky-500 outline-none transition disabled:cursor-not-allowed">
+                                <option value="">-- Chọn Model --</option>
+                            </select>
+                        </div>
+                    </div>
+
+                    <!-- BƯỚC 2: KHAI BÁO THÔNG TIN THIẾT BỊ/KHÁCH HÀNG -->
+                    <div id="box_form_step2" class="hidden border-t border-[#30363d] pt-4 space-y-4">
+                        <div class="text-xs font-bold uppercase tracking-wider text-slate-300 flex items-center gap-2">
+                            <i class="fa-solid fa-pen-to-square text-sky-400"></i> 3. Nhập Thông Tin Định Danh Khách Hàng / Máy
+                        </div>
+
+                        <!-- Các input động render tự động từ Config Schema -->
+                        <div id="dynamic_form_container" class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-3"></div>
+                    </div>
+
+                    <!-- BƯỚC 3: HIỂN THỊ KEY XEM TRƯỚC VÀ NÚT THỰC THI -->
+                    <div id="box_key_preview_section" class="hidden space-y-4 border-t border-[#30363d] pt-4">
+                        
+                        <div class="bg-[#0d1117] p-4 rounded-xl border border-sky-500/30 space-y-3">
+                            <div class="flex items-center justify-between">
+                                <span class="text-xs font-bold text-sky-400 uppercase tracking-wider flex items-center gap-2">
+                                    <i class="fa-solid fa-eye"></i> Xem Trước Mã Key Chuẩn Bị Nạp
+                                </span>
+                                <span id="lbl_luot_con" class="text-xs font-bold text-emerald-400 bg-emerald-500/10 px-2.5 py-1 rounded border border-emerald-500/20">Tồn: 0 máy</span>
+                            </div>
+
+                            <div class="flex items-center justify-between bg-[#161b22] px-4 py-3 rounded-lg border border-[#30363d] gap-3">
+                                <div id="lbl_ma_key" class="text-xl sm:text-2xl font-mono font-black text-amber-400 tracking-wider truncate select-all">---</div>
+                                <button onclick="copyPreviewKey()" id="btn_copy_preview" class="px-3 py-1.5 bg-[#21262d] hover:bg-[#30363d] text-sky-400 text-xs font-medium rounded border border-[#30363d] transition shrink-0 flex items-center gap-1.5 cursor-pointer">
+                                    <i class="fa-solid fa-copy"></i> Copy
+                                </button>
+                            </div>
+                            <p class="text-[11px] text-slate-400 italic">📌 Lưu ý: Key trên chỉ hiển thị tạm thời. CSDL chỉ thực sự trừ lượt và lưu lịch sử khi bấm "Xác Nhận Nạp Thành Công".</p>
+                        </div>
+
+                        <!-- BỘ NÚT XỬ LÝ -->
+                        <div class="grid grid-cols-1 sm:grid-cols-2 gap-3 pt-2">
+                            <button onclick="submitConfirmSuccess()" id="btn_confirm_success" class="py-3 px-4 bg-emerald-600 hover:bg-emerald-500 text-white font-bold text-xs sm:text-sm rounded-lg transition shadow-lg flex items-center justify-center gap-2 cursor-pointer active:scale-[0.99]">
+                                <i class="fa-solid fa-circle-check text-base"></i>
+                                <span>XÁC NHẬN NẠP THÀNH CÔNG</span>
+                            </button>
+
+                            <button onclick="submitReportFailRetry()" id="btn_report_fail" class="py-3 px-4 bg-rose-950/80 hover:bg-rose-900 border border-rose-600/50 text-rose-200 font-bold text-xs sm:text-sm rounded-lg transition flex items-center justify-center gap-2 cursor-pointer active:scale-[0.99]">
+                                <i class="fa-solid fa-rotate-right text-base text-rose-400"></i>
+                                <span>KEY BÁO LỖI (ĐỔI KEY MỚI)</span>
+                            </button>
+                        </div>
+
+                    </div>
+                </div>
+            </section>
+            
+            <!-- CỘT PHẢI: NẠP KEY NHANH & TRA CỨU TÌM KIẾM -->
+            <div class="xl:col-span-5 2xl:col-span-4 space-y-6">
+
+                <!-- SECTION 1: NẠP KEY NHANH -->
+                <section class="bg-[#161b22] rounded-xl border border-[#30363d] p-5 shadow-lg space-y-4">
+                    <div class="flex items-center justify-between border-b border-[#30363d] pb-3">
+                        <h2 class="text-base font-bold text-white flex items-center gap-2.5">
+                            <i class="fa-solid fa-bolt text-amber-400"></i>
+                            Nạp & Sử Dụng Key Nhanh
+                        </h2>
+                        <span class="text-[11px] text-amber-400 font-medium bg-amber-400/10 px-2 py-0.5 rounded border border-amber-400/20">
+                            Có sẵn key
+                        </span>
+                    </div>
+
+                    <form id="formNapKeyNhanh" onsubmit="handleNapKeyNhanh(event)" class="space-y-3">
+                        <div>
+                            <label class="block text-xs text-slate-400 mb-1">Mã Key (*)</label>
+                            <input type="text" id="nap_ma_key" required placeholder="Dán mã key tại đây..." 
+                                class="w-full bg-[#0d1117] border border-[#30363d] rounded-lg px-3 py-2 text-xs text-amber-300 font-mono placeholder:text-slate-600 focus:border-amber-500 outline-none uppercase">
+                        </div>
+
+                        <div class="grid grid-cols-2 gap-2">
+                            <div>
+                                <label class="block text-xs text-slate-400 mb-1">Loại Thiết Bị</label>
+                                <select id="nap_loai_tb" class="w-full bg-[#0d1117] border border-[#30363d] rounded-lg px-2.5 py-2 text-xs text-slate-200 focus:border-indigo-500 outline-none">
+                                    <option value="Máy in">Máy in</option>
+                                    <option value="Máy cắt bế">Máy cắt bế</option>
+                                    <option value="Thiết bị khác">Thiết bị khác</option>
+                                </select>
+                            </div>
+                            <div>
+                                <label class="block text-xs text-slate-400 mb-1">Seri / SĐT </label>
+                                <input type="text" id="nap_dinh_danh" placeholder="VD: S6298... / 090..." 
+                                    class="w-full bg-[#0d1117] border border-[#30363d] rounded-lg px-3 py-2 text-xs text-slate-200 placeholder:text-slate-600 focus:border-indigo-500 outline-none font-mono">
+                            </div>
+                        </div>
+
+                        <div>
+                            <label class="block text-xs text-slate-400 mb-1">Ghi chú xuất key</label>
+                            <input type="text" id="nap_ghi_chu" placeholder="Tên khách hàng / Lý do nạp..." 
+                                class="w-full bg-[#0d1117] border border-[#30363d] rounded-lg px-3 py-2 text-xs text-slate-200 placeholder:text-slate-600 focus:border-indigo-500 outline-none">
+                        </div>
+
+                        <button type="submit" id="btnNapKey" 
+                                class="w-full py-2.5 bg-emerald-600 hover:bg-emerald-500 text-white font-semibold text-xs rounded-lg transition shrink-0 cursor-pointer flex items-center justify-center gap-2 shadow-md">
+                            <i class="fa-solid fa-check"></i> Xác Nhận Sử Dụng Key
+                        </button>
+                    </form>
+                </section>
+
+                <!-- SECTION 2: TRA CỨU & BỘ LỌC NHANH (LIVE SEARCH) -->
+                <section class="bg-[#161b22] rounded-xl border border-[#30363d] p-5 shadow-lg space-y-4">
+                    <div class="flex items-center justify-between border-b border-[#30363d] pb-3">
+                        <h2 class="text-base font-bold text-white flex items-center gap-2.5">
+                            <i class="fa-solid fa-bolt text-amber-400"></i>
+                            Tra Cứu Nhanh
+                        </h2>
+                        <span id="searchStatus" class="hidden text-xs text-indigo-400 flex items-center gap-1.5 font-medium">
+                            <i class="fa-solid fa-spinner fa-spin"></i> Đang tra cứu...
+                        </span>
+                    </div>
+
+                    <div class="flex flex-col sm:flex-row gap-2.5">
+                        <!-- Bộ lọc Loại Thiết Bị -->
+                        <select id="filterDevice" onchange="triggerLiveSearch()" 
+                                class="bg-[#0d1117] border border-[#30363d] rounded-lg px-3 py-2 text-xs text-slate-200 outline-none focus:border-indigo-500 transition cursor-pointer shrink-0">
+                            <option value="">Tất cả thiết bị</option>
+                            <option value="Máy in">Máy in</option>
+                            <option value="Máy cắt">Máy cắt bế</option>
+                            <option value="Thiết bị khác">Thiết bị khác</option>
+                        </select>
+
+                        <!-- Ô Tìm Kiếm Thời Gian Thực -->
+                        <div class="relative flex-1">
+                            <i class="fa-solid fa-magnifying-glass absolute left-3.5 top-1/2 -translate-y-1/2 text-slate-500 text-xs"></i>
+                            <input type="text" 
+                                id="searchInput" 
+                                placeholder="Nhập Serial, SĐT, Mã Key, Model hoặc Ghi chú..." 
+                                autocomplete="off"
+                                class="w-full bg-[#0d1117] border border-[#30363d] rounded-lg pl-9 pr-8 py-2 text-xs text-slate-100 placeholder:text-slate-500 focus:border-indigo-500 outline-none transition">
+                            
+                            <button type="button" 
+                                    id="btnClearSearch" 
+                                    onclick="clearSearchInput()" 
+                                    class="hidden absolute right-2.5 top-1/2 -translate-y-1/2 text-slate-500 hover:text-slate-200 text-xs p-1 cursor-pointer">
+                                <i class="fa-solid fa-xmark"></i>
+                            </button>
+                        </div>
+                    </div>
+                </section>
+
+            </div>
+        </div>
+
+        <!-- HÀNG DƯỚI TOÀN MÀN HÌNH: BẢNG LỊCH SỬ TOÀN HỆ THỐNG -->
+        <section class="bg-[#161b22] rounded-xl border border-[#30363d] p-5 shadow-lg space-y-4">
+            <div class="flex items-center justify-between border-b border-[#30363d] pb-4">
+                <h2 class="text-base font-bold text-white flex items-center gap-2.5">
+                    <i class="fa-solid fa-clock-rotate-left text-slate-400"></i>
+                    Lịch Sử Cấp Key Hoàn Thành Gần Đây
+                </h2>
+                <span class="text-xs text-slate-400">Tự động chốt khi KTV bấm "Xác nhận thành công"</span>
+            </div>
+
+            <div class="overflow-x-auto border border-[#30363d] rounded-lg">
+                <table class="w-full text-xs text-left border-collapse">
+                    <thead class="bg-[#0d1117] text-slate-400 uppercase font-semibold border-b border-[#30363d]">
+                        <tr>
+                            <th class="p-3 pl-4">Thời gian</th>
+                            <th class="p-3">Loại TB</th>
+                            <th class="p-3">Người xuất</th>
+                            <th class="p-3">Model Máy</th>
+                            <th class="p-3">Seri / Định Danh</th>
+                            <th class="p-3">Mã Key Đã Nạp</th>
+                            <th class="p-3 pr-4">Ghi chú</th>
+                        </tr>
+                    </thead>
+                    <tbody class="divide-y divide-[#30363d] bg-[#161b22]">
+                        {% for h in history_logs %}
+                        <tr class="hover:bg-[#21262d] transition">
+                            <td class="p-3 pl-4 text-slate-400 whitespace-nowrap font-mono">{{ h.thoi_gian_fmt }}</td>
+                            <td class="p-3 whitespace-nowrap">
+                                <span class="px-2 py-0.5 rounded text-[11px] font-medium bg-[#21262d] text-slate-300 border border-[#30363d]">
+                                    {{ h.loai_thiet_bi or 'Máy in' }}
+                                </span>
+                            </td>
+                            <td class="p-3 text-slate-200 font-medium whitespace-nowrap">{{ h.username or 'KTV' }}</td>
+                            <td class="p-3 font-bold text-sky-400 whitespace-nowrap">{{ h.ten_may }}</td>
+                            <td class="p-3 font-mono text-slate-200 whitespace-nowrap">{{ h.so_seri }}</td>
+                            <td class="p-3 whitespace-nowrap">
+                                <span class="font-mono font-bold text-amber-400 bg-amber-500/10 px-2 py-0.5 rounded border border-amber-500/20 inline-block">
+                                    {{ h.key_chipless }}
+                                </span>
+                            </td>
+                            <td class="p-3 pr-4 text-slate-400 max-w-md truncate" title="{{ h.ghi_chu }}">{{ h.ghi_chu or '-' }}</td>
+                        </tr>
+                        {% else %}
+                        <tr>
+                            <td colspan="7" class="p-8 text-center text-slate-500">
+                                <i class="fa-solid fa-inbox text-3xl mb-2 text-slate-600 block"></i>
+                                Chưa có dữ liệu lịch sử xuất key nào.
+                            </td>
+                        </tr>
+                        {% endfor %}
+                    </tbody>
+                </table>
+            </div>
+        </section>
+
+    </main>
+
+    <!-- MODAL THÀNH CÔNG -->
+    <div id="modal_success" class="fixed inset-0 bg-black/80 backdrop-blur-sm hidden flex items-center justify-center z-50 p-4">
+        <div class="bg-[#161b22] border border-[#30363d] rounded-2xl p-6 max-w-md w-full shadow-2xl space-y-5 relative">
+            <div class="text-center space-y-2">
+                <div class="w-12 h-12 bg-emerald-500/10 text-emerald-400 rounded-full border border-emerald-500/20 flex items-center justify-center mx-auto text-xl">
+                    <i class="fa-solid fa-check"></i>
+                </div>
+                <h3 class="text-lg font-bold text-white">Xác Nhận Nạp Key Thành Công!</h3>
+                <p class="text-xs text-slate-400">Đã trừ kho và ghi nhận thông tin xuống CSDL</p>
+            </div>
+
+            <div class="bg-[#0d1117] border border-[#30363d] rounded-xl p-4 text-center space-y-3">
+                <div id="modal_key_value" class="text-xl font-mono font-black text-amber-400 select-all tracking-wider">
+                    XXXX-XXXX-XXXX
+                </div>
+            </div>
+
+            <button onclick="closeModalAndReload()" class="w-full py-2.5 bg-emerald-600 hover:bg-emerald-500 text-white text-xs font-bold rounded-lg transition cursor-pointer">
+                Đóng & Làm Mới Giao Diện
+            </button>
+        </div>
+    </div>
+
+    <!-- TOAST NOTIFICATION (BÁO THÔNG BÁO THÀNH CÔNG / LỖI) -->
+    <div id="toast_msg" class="fixed bottom-5 right-5 bg-[#161b22] border border-[#30363d] text-slate-200 px-4 py-3 rounded-xl shadow-2xl hidden flex items-center gap-3 z-50 max-w-md">
+        <i id="toast_icon" class="fa-solid fa-circle-info text-sky-400 text-lg shrink-0"></i>
+        <div class="text-xs font-medium" id="toast_text">Thông báo...</div>
+        <button onclick="hideToast()" class="text-slate-400 hover:text-white ml-auto text-xs font-bold">✕</button>
+    </div>
+
+    <!-- JAVASCRIPT LOGIC 2 BƯỚC -->
+    <script>
+        // --- BIẾN TOÀN CỤC ---
+        let schemaConfigs = {};
+        let currentKeyData = null;
+        let searchDebounceTimer = null;
+
+        // --- KHỞI TẠO KHI TRANG LOAD SẮN SÀNG ---
+        document.addEventListener("DOMContentLoaded", () => {
+            // 1. Tải cấu hình form động từ Backend
+            loadDynamicSchemas();
+
+            // 2. Khởi tạo sự kiện cho Live Search & Filter
+            initLiveSearchEvents();
+
+            // 3. Phím tắt Ctrl + Enter để xác nhận xuất key
+            document.addEventListener("keydown", (e) => {
+                if (e.ctrlKey && e.key === "Enter") {
+                    e.preventDefault();
+                    submitConfirmSuccess();
+                }
+            });
+        });
+
+        // =========================================================================
+        // 1. CHỨC NĂNG LIVE SEARCH & BỘ LỌC THỜI GIAN THỰC (TỐI ƯU UX)
+        // =========================================================================
+        function initLiveSearchEvents() {
+            const searchInput = document.getElementById('searchInput');
+            const filterDevice = document.getElementById('filterDevice');
+
+            if (searchInput) {
+                // Lắng nghe sự kiện gõ phím -> Debounce 300ms gửi request
+                searchInput.addEventListener('input', (e) => {
+                    const queryVal = e.target.value.trim();
+                    toggleClearBtn(queryVal);
+
+                    clearTimeout(searchDebounceTimer);
+                    searchDebounceTimer = setTimeout(() => {
+                        triggerLiveSearch();
+                    }, 300);
+                });
+
+                // Kiểm tra và hiển thị nút (X) nếu đang có sẵn từ khóa
+                toggleClearBtn(searchInput.value.trim());
+            }
+
+            if (filterDevice) {
+                filterDevice.addEventListener('change', () => {
+                    triggerLiveSearch();
+                });
+            }
+        }
+
+        // Hiển thị/Ẩn nút (X) xóa từ khóa
+        function toggleClearBtn(val) {
+            const btnClearSearch = document.getElementById('btnClearSearch');
+            if (btnClearSearch) {
+                btnClearSearch.classList.toggle('hidden', !val);
+            }
+        }
+
+        // Nút (X): Xóa sạch ô tìm kiếm & Reset bảng dữ liệu ngay lập tức
+        function clearSearchInput() {
+            const searchInput = document.getElementById('searchInput');
+            if (searchInput) {
+                searchInput.value = '';
+                toggleClearBtn('');
+                triggerLiveSearch();
+                searchInput.focus();
+            }
+        }
+
+        // Thực hiện truy vấn Live Search đến Backend API
+        async function triggerLiveSearch() {
+            const searchInput = document.getElementById('searchInput');
+            const filterDevice = document.getElementById('filterDevice');
+            const statusEl = document.getElementById('searchStatus');
+
+            const query = searchInput ? searchInput.value.trim() : '';
+            const device = filterDevice ? filterDevice.value : '';
+
+            if (statusEl) statusEl.classList.remove('hidden');
+
+            try {
+                const params = new URLSearchParams();
+                if (query) params.append('q', query);
+                if (device) params.append('loai_thiet_bi', device);
+
+                const response = await fetch(`/admin/api/quan-ly-key/search-live?${params.toString()}`);
+                
+                // Nâng cấp đoạn kiểm tra phản hồi từ Server
+                if (!response.ok) {
+                    const errorText = await response.text();
+                    throw new Error(`HTTP ${response.status}: ${errorText || response.statusText}`);
+                }
+
+                const result = await response.json();
+                renderTableRows(result.items || []);
+            } catch (err) {
+                showToast("❌ Lỗi tìm kiếm: " + err.message, "error");
+            } finally {
+                if (statusEl) statusEl.classList.add('hidden');
+            }
+        }
+
+        // Cập nhật lại danh sách <tbody> không gây reload toàn trang
+        function renderTableRows(items) {
+            const tbody = document.querySelector('tbody');
+            if (!tbody) return;
+
+            if (items.length === 0) {
+                tbody.innerHTML = `
+                    <tr>
+                        <td colspan="7" class="p-8 text-center text-slate-500">
+                            <i class="fa-solid fa-inbox text-3xl mb-2 text-slate-600 block"></i>
+                            Không tìm thấy dữ liệu khớp với thông tin tra cứu.
+                        </td>
+                    </tr>`;
+                return;
+            }
+
+            tbody.innerHTML = items.map(h => `
+                <tr class="hover:bg-[#21262d] transition border-b border-[#30363d]/50">
+                    <td class="p-3 pl-4 text-slate-400 whitespace-nowrap font-mono text-xs">${h.thoi_gian_fmt || '-'}</td>
+                    <td class="p-3 whitespace-nowrap">
+                        <span class="px-2 py-0.5 rounded text-[11px] font-medium bg-[#21262d] text-slate-300 border border-[#30363d]">
+                            ${h.loai_thiet_bi || 'Máy in'}
+                        </span>
+                    </td>
+                    <td class="p-3 text-slate-200 font-medium whitespace-nowrap text-xs">${h.username || 'KTV'}</td>
+                    <td class="p-3 font-bold text-sky-400 whitespace-nowrap text-xs">${h.ten_may || ''}</td>
+                    <td class="p-3 font-mono text-slate-200 whitespace-nowrap text-xs">${h.so_seri || ''}</td>
+                    <td class="p-3 whitespace-nowrap">
+                        <span class="font-mono font-bold text-amber-400 bg-amber-500/10 px-2 py-0.5 rounded border border-amber-500/20 text-xs inline-block">
+                            ${h.key_chipless || ''}
+                        </span>
+                    </td>
+                    <td class="p-3 pr-4 text-slate-400 text-xs max-w-md truncate" title="${h.ghi_chu || ''}">${h.ghi_chu || '-'}</td>
+                </tr>
+            `).join('');
+        }
+
+        // =========================================================================
+        // 2. TẢI DYNAMIC SCHEMA CONFIG & XỬ LÝ DROPDOWN FORM
+        // =========================================================================
+        async function loadDynamicSchemas() {
+            try {
+                const res = await fetch('/admin/api/quan-ly-key/config-schema');
+                const data = await res.json();
+
+                if (data.devices) {
+                    schemaConfigs = data.devices;
+                    const selectTB = document.getElementById('select_loai_tb');
+                    if (selectTB) {
+                        selectTB.innerHTML = '<option value="">-- Chọn Loại Thiết Bị --</option>';
+                        Object.keys(schemaConfigs).forEach(key => {
+                            const item = schemaConfigs[key];
+                            const opt = document.createElement('option');
+                            opt.value = key;
+                            opt.textContent = item.name;
+                            selectTB.appendChild(opt);
+                        });
+                    }
+                }
+            } catch (err) {
+                showToast("❌ Không thể tải cấu hình nhóm thiết bị: " + err, "error");
+            }
+        }
+
+        async function onLoaiTBChange() {
+            const deviceKey = document.getElementById('select_loai_tb').value;
+            const selectModel = document.getElementById('select_model');
+
+            selectModel.innerHTML = '<option value="">-- Chọn Model --</option>';
+            selectModel.disabled = true;
+            resetStep2AndPreview();
+
+            if (!deviceKey) return;
+
+            const selectedDeviceName = schemaConfigs[deviceKey]?.name || deviceKey;
+
+            try {
+                const res = await fetch(`/admin/api/quan-ly-key/get-models?loai_thiet_bi=${encodeURIComponent(selectedDeviceName)}`);
+                const data = await res.json();
+
+                if (data.models && data.models.length > 0) {
+                    data.models.forEach(m => {
+                        const opt = document.createElement('option');
+                        opt.value = m;
+                        opt.textContent = m;
+                        selectModel.appendChild(opt);
+                    });
+                    selectModel.disabled = false;
+                } else {
+                    showToast(`⚠️ Trong kho hiện đã hết Key cho: ${selectedDeviceName}`, "warning");
+                }
+            } catch (err) {
+                showToast("❌ Lỗi kết nối máy chủ: " + err, "error");
+            }
+        }
+
+        async function onModelChange() {
+            const deviceKey = document.getElementById('select_loai_tb').value;
+            const model = document.getElementById('select_model').value;
+
+            resetStep2AndPreview();
+            if (!model || !deviceKey) return;
+
+            const selectedDeviceName = schemaConfigs[deviceKey]?.name || deviceKey;
+
+            try {
+                const res = await fetch(`/admin/api/quan-ly-key/get-available-key?loai_thiet_bi=${encodeURIComponent(selectedDeviceName)}&ten_may=${encodeURIComponent(model)}`);
+                const data = await res.json();
+
+                if (data.available) {
+                    currentKeyData = data.key_data;
+                    updateKeyPreviewUI(currentKeyData);
+
+                    document.getElementById('box_form_step2').classList.remove('hidden');
+                    document.getElementById('box_key_preview_section').classList.remove('hidden');
+
+                    renderDynamicFields(deviceKey);
+                } else {
+                    showToast("❌ Không tìm thấy Key khả dụng cho model này.", "error");
+                }
+            } catch (err) {
+                showToast("❌ Lỗi tải thông tin key xem trước: " + err, "error");
+            }
+        }
+
+        function updateKeyPreviewUI(keyData) {
+            document.getElementById('lbl_ma_key').textContent = keyData.ma_key;
+            const lblLuotCon = document.getElementById('lbl_luot_con');
+            lblLuotCon.textContent = "Tồn: " + keyData.ton_thuc_te + " máy";
+
+            if (keyData.ton_thuc_te <= 3) {
+                lblLuotCon.className = "text-xs font-bold text-amber-400 bg-amber-500/10 px-2.5 py-1 rounded border border-amber-500/20 animate-pulse";
+            } else {
+                lblLuotCon.className = "text-xs font-bold text-emerald-400 bg-emerald-500/10 px-2.5 py-1 rounded border border-emerald-500/20";
+            }
+        }
+
+        function renderDynamicFields(deviceKey) {
+            const container = document.getElementById('dynamic_form_container');
+            container.innerHTML = '';
+
+            const deviceConfig = schemaConfigs[deviceKey];
+            if (!deviceConfig || !deviceConfig.fields) return;
+
+            let firstInputId = null;
+
+            deviceConfig.fields.forEach((field, index) => {
+                const fieldWrapper = document.createElement('div');
+                fieldWrapper.className = field.col_span || 'col-span-1';
+
+                const label = document.createElement('label');
+                label.className = 'block text-xs font-medium text-slate-300 mb-1';
+                label.innerHTML = `${field.label} ${field.required ? '<span class="text-rose-400">*</span>' : ''}`;
+
+                const input = document.createElement('input');
+                input.type = field.type || 'text';
+                input.id = `dyn_field_${field.name}`;
+                input.dataset.fieldName = field.name;
+                input.dataset.label = field.label;
+                input.dataset.required = field.required ? 'true' : 'false';
+                input.dataset.isPrimary = field.is_primary_id ? 'true' : 'false';
+                input.dataset.uppercase = field.uppercase ? 'true' : 'false';
+
+                let inputClasses = 'w-full bg-[#0d1117] border border-[#30363d] rounded-lg px-3 py-2 text-sm text-slate-100 placeholder:text-slate-600 focus:border-sky-500 outline-none transition';
+                if (field.uppercase) inputClasses += ' uppercase';
+                if (field.mono) inputClasses += ' font-mono';
+
+                input.className = inputClasses;
+                input.placeholder = field.placeholder || '';
+
+                fieldWrapper.appendChild(label);
+                fieldWrapper.appendChild(input);
+                container.appendChild(fieldWrapper);
+
+                if (index === 0) firstInputId = input.id;
+            });
+
+            if (firstInputId) {
+                setTimeout(() => document.getElementById(firstInputId)?.focus(), 100);
+            }
+        }
+
+        function resetStep2AndPreview() {
+            currentKeyData = null;
+            document.getElementById('box_form_step2').classList.add('hidden');
+            document.getElementById('box_key_preview_section').classList.add('hidden');
+            document.getElementById('dynamic_form_container').innerHTML = '';
+        }
+
+        function getValidatedFormData() {
+            const deviceKey = document.getElementById('select_loai_tb').value;
+            const model = document.getElementById('select_model').value;
+
+            if (!currentKeyData || !deviceKey || !model) {
+                showToast("⚠️ Vui lòng chọn nhóm thiết bị và model!", "warning");
+                return null;
+            }
+
+            const inputs = document.querySelectorAll('#dynamic_form_container input');
+            let primaryIdentifier = "";
+            let ghiChuList = [];
+
+            for (const input of inputs) {
+                const val = input.value.trim();
+                const isRequired = input.dataset.required === 'true';
+                const isPrimary = input.dataset.isPrimary === 'true';
+                const isUppercase = input.dataset.uppercase === 'true';
+                const label = input.dataset.label;
+
+                if (isRequired && !val) {
+                    showToast(`⚠️ Vui lòng nhập thông tin: ${label}`, "warning");
+                    input.focus();
+                    return null;
+                }
+
+                if (isPrimary) {
+                    primaryIdentifier = isUppercase ? val.toUpperCase() : val;
+                } else if (val) {
+                    ghiChuList.push(`${label}: ${val}`);
+                }
+            }
+
+            if (!primaryIdentifier && inputs.length > 0) {
+                primaryIdentifier = inputs[0].value.trim();
+            }
+
+            const selectedDeviceName = schemaConfigs[deviceKey]?.name || deviceKey;
+            const fullGhiChu = ghiChuList.join(' | ');
+
+            return {
+                loai_thiet_bi: selectedDeviceName,
+                ten_may: model,
+                key_id: currentKeyData.id,
+                dinh_danh_may: primaryIdentifier,
+                ghi_chu: fullGhiChu
+            };
+        }
+
+        // =========================================================================
+        // 3. XỬ LÝ GỬI FORM VÀ ĐỔI KEY BÁO LỖI
+        // =========================================================================
+        async function submitConfirmSuccess() {
+            const formData = getValidatedFormData();
+            if (!formData) return;
+
+            const btnSuccess = document.getElementById('btn_confirm_success');
+            if (btnSuccess.disabled) return;
+
+            btnSuccess.disabled = true;
+            const originalText = btnSuccess.innerHTML;
+            btnSuccess.innerHTML = `<i class="fa-solid fa-spinner fa-spin"></i> Đang lưu CSDL...`;
+
+            try {
+                const response = await fetch('/admin/api/quan-ly-key/confirm-success', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify(formData)
+                });
+
+                const result = await response.json();
+
+                if (response.ok) {
+                    showSuccessModal(result.key_issued || currentKeyData.ma_key);
+                } else {
+                    showToast("🚫 LỖI: " + (result.detail || "Không thể nạp key"), "error");
+                    btnSuccess.disabled = false;
+                    btnSuccess.innerHTML = originalText;
+                }
+            } catch (err) {
+                showToast("❌ Lỗi gửi dữ liệu: " + err, "error");
+                btnSuccess.disabled = false;
+                btnSuccess.innerHTML = originalText;
+            }
+        }
+
+        async function submitReportFailRetry() {
+            if (!currentKeyData) return;
+
+            const btnFail = document.getElementById('btn_report_fail');
+            if (btnFail.disabled) return;
+
+            const deviceKey = document.getElementById('select_loai_tb').value;
+            const model = document.getElementById('select_model').value;
+            const selectedDeviceName = schemaConfigs[deviceKey]?.name || deviceKey;
+
+            btnFail.disabled = true;
+            const originalText = btnFail.innerHTML;
+            btnFail.innerHTML = `<i class="fa-solid fa-spinner fa-spin"></i> Đang đổi key mới...`;
+
+            try {
+                const response = await fetch('/admin/api/quan-ly-key/report-fail-retry', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({
+                        key_id: currentKeyData.id,
+                        loai_thiet_bi: selectedDeviceName,
+                        ten_may: model,
+                        ly_do: "KTV báo nhập key thất bại trên thiết bị"
+                    })
+                });
+
+                const result = await response.json();
+
+                if (response.ok && result.available) {
+                    currentKeyData = result.new_key_data;
+                    updateKeyPreviewUI(currentKeyData);
+                    showToast("🔄 Key cũ báo lỗi! Hệ thống đã tự động cấp Key mới. Vui lòng thử nạp lại.", "warning");
+                } else {
+                    showToast("🚫 LỖI: " + (result.message || "Không thể cấp đổi key mới"), "error");
+                }
+            } catch (err) {
+                showToast("❌ Lỗi xử lý báo lỗi key: " + err, "error");
+            } finally {
+                btnFail.disabled = false;
+                btnFail.innerHTML = originalText;
+            }
+        }
+
+        async function handleNapKeyNhanh(event) {
+            event.preventDefault();
+
+            const btn = document.getElementById('btnNapKey');
+            const maKey = document.getElementById('nap_ma_key').value.trim();
+            const loaiTB = document.getElementById('nap_loai_tb').value;
+            const dinhDanh = document.getElementById('nap_dinh_danh').value.trim();
+            const ghiChu = document.getElementById('nap_ghi_chu').value.trim();
+
+            if (!maKey) {
+                showToast("⚠️ Vui lòng nhập mã key!", "warning");
+                return;
+            }
+
+            btn.disabled = true;
+            btn.innerHTML = `<i class="fa-solid fa-spinner fa-spin"></i> Đang xử lý...`;
+
+            try {
+                const response = await fetch('/admin/api/quan-ly-key/nap-key-nhanh', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({
+                        ma_key: maKey,
+                        loai_thiet_bi: loaiTB,
+                        dinh_danh: dinhDanh,
+                        ghi_chu: ghiChu
+                    })
+                });
+
+                const result = await response.json();
+
+                if (response.ok && result.success) {
+                    showToast(result.message, "success");
+                    document.getElementById('formNapKeyNhanh').reset();
+                    triggerLiveSearch(); // Cập nhật lại danh sách bên dưới mà không reload toàn bộ trang
+                } else {
+                    showToast(result.message || result.detail || "❌ Thất bại khi nạp key!", "error");
+                }
+            } catch (err) {
+                showToast("❌ Lỗi kết nối máy chủ: " + err, "error");
+            } finally {
+                btn.disabled = false;
+                btn.innerHTML = `<i class="fa-solid fa-check"></i> Xác Nhận Sử Dụng Key`;
+            }
+        }
+
+        // =========================================================================
+        // 4. TIỆN ÍCH UI (MODAL, COPY & TOAST NOTIFICATION)
+        // =========================================================================
+        function showSuccessModal(keyVal) {
+            document.getElementById('modal_key_value').textContent = keyVal;
+            document.getElementById('modal_success').classList.remove('hidden');
+        }
+
+        function closeModalAndReload() {
+            document.getElementById('modal_success').classList.add('hidden');
+            triggerLiveSearch(); // Làm mới danh sách nhật ký sau khi hoàn thành
+        }
+
+        function copyPreviewKey() {
+            const keyVal = document.getElementById('lbl_ma_key').textContent.trim();
+            if (!keyVal || keyVal === '---') return;
+
+            navigator.clipboard.writeText(keyVal).then(() => {
+                const btn = document.getElementById('btn_copy_preview');
+                btn.className = "px-3 py-1.5 bg-emerald-600 text-white text-xs font-medium rounded border border-emerald-500 transition shrink-0 flex items-center gap-1.5";
+                btn.innerHTML = `<i class="fa-solid fa-check"></i> Đã Copy`;
+
+                setTimeout(() => {
+                    btn.className = "px-3 py-1.5 bg-[#21262d] hover:bg-[#30363d] text-sky-400 text-xs font-medium rounded border border-[#30363d] transition shrink-0 flex items-center gap-1.5";
+                    btn.innerHTML = `<i class="fa-solid fa-copy"></i> Copy`;
+                }, 2000);
+            });
+        }
+
+        function showToast(msg, type = "info") {
+            const toast = document.getElementById('toast_msg');
+            const toastText = document.getElementById('toast_text');
+            const toastIcon = document.getElementById('toast_icon');
+
+            if (!toast || !toastText || !toastIcon) return;
+
+            toastText.textContent = msg;
+
+            if (type === "error") {
+                toastIcon.className = "fa-solid fa-circle-exclamation text-rose-400 text-lg shrink-0";
+                toast.className = "fixed bottom-5 right-5 bg-rose-950/90 border border-rose-500/50 text-rose-200 px-4 py-3 rounded-xl shadow-2xl flex items-center gap-3 z-50 max-w-md";
+            } else if (type === "warning") {
+                toastIcon.className = "fa-solid fa-triangle-exclamation text-amber-400 text-lg shrink-0";
+                toast.className = "fixed bottom-5 right-5 bg-amber-950/90 border border-amber-500/50 text-amber-200 px-4 py-3 rounded-xl shadow-2xl flex items-center gap-3 z-50 max-w-md";
+            } else if (type === "success") {
+                toastIcon.className = "fa-solid fa-circle-check text-emerald-400 text-lg shrink-0";
+                toast.className = "fixed bottom-5 right-5 bg-emerald-950/90 border border-emerald-500/50 text-emerald-200 px-4 py-3 rounded-xl shadow-2xl flex items-center gap-3 z-50 max-w-md";
+            } else {
+                toastIcon.className = "fa-solid fa-circle-info text-sky-400 text-lg shrink-0";
+                toast.className = "fixed bottom-5 right-5 bg-[#161b22] border border-[#30363d] text-slate-200 px-4 py-3 rounded-xl shadow-2xl flex items-center gap-3 z-50 max-w-md";
+            }
+
+            toast.classList.remove('hidden');
+            setTimeout(() => toast.classList.add('hidden'), 6000);
+        }
+
+        function hideToast() {
+            const toast = document.getElementById('toast_msg');
+            if (toast) toast.classList.add('hidden');
+        }
+    </script>
+</body>
+</html>

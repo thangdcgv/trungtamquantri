@@ -10,7 +10,8 @@ from app.auth import router as auth_router
 from app.admin_routes import router as admin_router
 from app.warranty import router as warranty_router
 from app.cham_cong import router as cham_cong_router
-
+from app.admin_key import router as kho_key_router, api_router as kho_key_api_router
+from app.admin_quan_ly_key import router as quan_ly_key_router, api_router as quan_ly_key_api_router
 app = FastAPI(
     title="Máy In Đại Thành Center Hub",
     description="Hệ thống quản lý chấm công, bảo hành và quản trị nội bộ",
@@ -31,6 +32,9 @@ app.include_router(auth_router)       # Đăng nhập, đăng xuất, đổi m�
 app.include_router(admin_router)      # Trang Quản trị (/admin, /admin/users, /admin/config-cham-cong)
 app.include_router(warranty_router)   # Phiếu bảo hành (/warranty/create, detail, ...)
 app.include_router(cham_cong_router)  # Chấm công lắp đặt (/cham-cong/form, api, ...)
-
+app.include_router(kho_key_router)
+app.include_router(kho_key_api_router)
+app.include_router(quan_ly_key_router)
+app.include_router(quan_ly_key_api_router, prefix="/admin") # 👈 Bổ sung prefix="/admin" vào đây
 if __name__ == "__main__":
     uvicorn.run("main:app", host="127.0.0.1", port=8000, reload=True)
