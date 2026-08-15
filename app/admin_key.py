@@ -16,7 +16,7 @@ templates = Jinja2Templates(directory="app/templates")
 
 # Danh sách phân loại thiết bị mặc định
 # Nên bỏ Emoji ở backend để đồng nhất tên nhóm trong CSDL
-DANH_SACH_LOAI_TB = ["Máy in", "Phần mềm / Key Reset", "Thiết bị khác"]
+DANH_SACH_LOAI_TB = ["Máy in", "Máy cắt bế", "Thiết bị khác"]
 
 
 # =========================================================================
