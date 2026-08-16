@@ -5,7 +5,7 @@ from typing import Optional, Dict, Any, List
 
 from fastapi import APIRouter, Request, Query, HTTPException, Depends
 from app.auth import require_login
-from fastapi.responses import HTMLResponse, JSONResponse
+from fastapi.responses import HTMLResponse, JSONResponse, RedirectResponse
 from fastapi.templating import Jinja2Templates
 from pydantic import BaseModel
 from config import supabase
@@ -190,6 +190,8 @@ async def trang_quan_ly_key(
     request: Request,
     search: Optional[str] = Query(None)
 ):
+    if not request.session.get("user_id"):
+        return RedirectResponse(url="/auth/login", status_code=303)
     search_keyword = search.strip() if search else ""
     history_logs = []
 
@@ -245,7 +247,7 @@ async def search_live(
     API Tra cứu nhật ký cấp Key thời gian thực (Live Search)
     """
     try:
-        # Ví dụ truy vấn dữ liệu từ Supabase hoặc SQL
+        # Truy vấn dữ liệu từ Supabase
         query = supabase.table("quan_ly_key").select("*")
 
         if loai_thiet_bi:
@@ -259,8 +261,14 @@ async def search_live(
 
         # Sắp xếp mới nhất lên đầu
         res = query.order("thoi_gian", desc=True).limit(50).execute()
+        items = res.data or []
 
-        return {"status": "success", "items": res.data or []}
+        # 👉 BỔ SUNG ĐOẠN NÀY ĐỂ ĐỊNH DẠNG THỜI GIAN CHO LIVE SEARCH
+        for h in items:
+            dt_val = h.get("thoi_gian") or h.get("created_at") or h.get("ngay_tao")
+            h["thoi_gian_fmt"] = format_date_vn(dt_val)
+
+        return {"status": "success", "items": items}
     except Exception as e:
         return {"status": "error", "message": str(e), "items": []}
 # =========================================================================

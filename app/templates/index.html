@@ -6,98 +6,153 @@
 <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
 <style>
     :root {
-        --bg-main: #0f172a;
-        --bg-card: #1e293b;
+        --bg-main: #0b0f19;
+        --bg-card: rgba(21, 29, 48, 0.7);
+        --bg-card-hover: rgba(30, 41, 69, 0.85);
         --text-main: #f8fafc;
-        --border-color: rgba(255,255,255,.12);
         --text-muted: #94a3b8;
+        --border-color: rgba(255, 255, 255, 0.08);
+        --border-hover: rgba(255, 255, 255, 0.16);
+        --accent-emerald: #10b981;
+        --accent-sky: #06b6d4;
+        --accent-amber: #f59e0b;
+        --accent-purple: #a855f7;
     }
 
     body {
         background-color: var(--bg-main) !important;
         color: var(--text-main) !important;
         font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif;
+        min-height: 100vh;
+        overflow-x: hidden;
     }
 
-    /* Ambient Glow Background */
+    /* Ambient Background Glow */
     body::before {
         content: "";
         position: fixed;
-        top: 0;
+        top: -150px;
         left: 50%;
         transform: translateX(-50%);
         width: 100%;
-        max-width: 600px;
-        height: 300px;
-        background: radial-gradient(circle, rgba(56, 189, 248, 0.08) 0%, rgba(15, 23, 42, 0) 70%);
+        max-width: 1200px;
+        height: 450px;
+        background: radial-gradient(circle, rgba(6, 182, 212, 0.08) 0%, rgba(16, 185, 129, 0.04) 40%, transparent 70%);
         pointer-events: none;
         z-index: 0;
     }
 
-    /* Container chuẩn hóa */
+    /* Layout Container Standardized */
     .dashboard-app {
-        max-width: 600px;
+        max-width: 1240px;
         margin: 0 auto;
-        padding: 1rem .5rem 3rem;
+        padding: 1.5rem 1rem 4rem;
         position: relative;
         z-index: 1;
+        box-sizing: border-box;
     }
 
     /* ==========================================
-       HERO WELCOME BANNER
+       TOP SECTION: WELCOME & LAUNCHPAD GRID
        ========================================== */
-    .welcome-card {
-        background: linear-gradient(135deg, rgba(30, 41, 59, 0.8) 0%, rgba(15, 23, 42, 0.95) 100%);
-        border: 1px solid var(--border-color);
-        border-radius: 20px;
-        padding: 1.25rem 1.5rem;
-        position: relative;
-        overflow: hidden;
-        display: flex;
-        align-items: center;
-        justify-content: space-between;
-        box-shadow: 0 10px 30px rgba(0, 0, 0, 0.3);
-        backdrop-filter: blur(12px);
-        -webkit-backdrop-filter: blur(12px);
+    .top-section {
+        display: grid;
+        grid-template-columns: 1fr;
+        gap: 1rem;
+        margin-bottom: 1.75rem;
     }
 
-    .welcome-card::after {
-        content: '';
-        position: absolute;
-        top: -50%;
-        right: -10%;
-        width: 220px;
-        height: 220px;
-        background: radial-gradient(circle, rgba(56, 189, 248, 0.15) 0%, transparent 70%);
-        pointer-events: none;
+    @media (min-width: 992px) {
+        .top-section {
+            grid-template-columns: 350px 1fr;
+            align-items: stretch;
+        }
+    }
+
+    .welcome-card {
+        background: linear-gradient(135deg, rgba(21, 29, 48, 0.95) 0%, rgba(15, 23, 42, 0.9) 100%);
+        border: 1px solid var(--border-color);
+        border-radius: 14px;
+        padding: 1.25rem 1.5rem;
+        display: flex;
+        flex-direction: column;
+        justify-content: center;
+        backdrop-filter: blur(12px);
+        box-shadow: 0 4px 20px rgba(0, 0, 0, 0.25);
     }
 
     .user-greeting {
-        font-size: 1.15rem;
+        font-size: 1.2rem;
         font-weight: 800;
         color: var(--text-main);
-        margin-bottom: 0.35rem;
+        margin-bottom: 0.3rem;
         display: flex;
         align-items: center;
         gap: 0.5rem;
     }
 
     .user-subtitle {
-        font-size: 0.82rem;
+        font-size: 0.8rem;
         color: var(--text-muted);
         font-weight: 500;
     }
 
+    /* Launchpad Action Buttons */
+    .quick-launchpad {
+        display: grid;
+        grid-template-columns: repeat(2, 1fr);
+        gap: 0.75rem;
+    }
+
+    @media (min-width: 576px) {
+        .quick-launchpad {
+            grid-template-columns: repeat(4, 1fr);
+        }
+    }
+
+    .quick-btn {
+        background: var(--bg-card);
+        border: 1px solid var(--border-color);
+        border-radius: 14px;
+        padding: 1rem 0.75rem;
+        color: var(--text-main);
+        text-decoration: none;
+        display: flex;
+        flex-direction: column;
+        align-items: center;
+        justify-content: center;
+        gap: 0.5rem;
+        transition: all 0.2s cubic-bezier(0.4, 0, 0.2, 1);
+        backdrop-filter: blur(12px);
+    }
+
+    .quick-btn:hover {
+        background: var(--bg-card-hover);
+        border-color: var(--border-hover);
+        transform: translateY(-2px);
+        box-shadow: 0 6px 16px rgba(0, 0, 0, 0.3);
+    }
+
+    .quick-btn i {
+        font-size: 1.25rem;
+    }
+
+    .quick-btn span {
+        font-size: 0.78rem;
+        font-weight: 700;
+        letter-spacing: -0.01em;
+    }
+
     /* ==========================================
-       SECTION HEADERS & LAYOUT
+       SECTION TITLE
        ========================================== */
     .section-title {
-        font-size: 0.82rem;
+        font-size: 0.8rem;
         font-weight: 800;
         color: var(--text-muted);
         text-transform: uppercase;
         letter-spacing: 0.08em;
-        margin: 1.75rem 0 1rem 0;
+        margin: 0 0 1rem 0;
         display: flex;
         align-items: center;
         gap: 0.75rem;
@@ -107,31 +162,41 @@
         content: '';
         flex: 1;
         height: 1px;
-        background: rgba(255, 255, 255, 0.08);
-    }
-
-    .feed-grid {
-        display: flex;
-        flex-direction: column;
-        gap: 16px;
+        background: var(--border-color);
     }
 
     /* ==========================================
-       FEED CARDS
+       EQUAL HEIGHT RESPONSIVE GRID
        ========================================== */
+    .feed-grid {
+        display: grid;
+        grid-template-columns: 1fr;
+        gap: 1.25rem;
+    }
+
+    @media (min-width: 992px) {
+        .feed-grid {
+            grid-template-columns: repeat(2, minmax(0, 1fr));
+        }
+    }
+
     .feed-card {
-        background: rgba(30, 41, 59, 0.6);
+        background: var(--bg-card);
         border: 1px solid var(--border-color);
-        border-radius: 18px;
-        padding: 1rem 1.15rem;
+        border-radius: 16px;
+        padding: 1.25rem;
         backdrop-filter: blur(12px);
-        -webkit-backdrop-filter: blur(12px);
-        transition: border-color 0.2s ease, box-shadow 0.2s ease;
+        box-shadow: 0 4px 20px rgba(0, 0, 0, 0.2);
+        display: flex;
+        flex-direction: column;
+        height: 100%;
+        transition: border-color 0.25s ease, box-shadow 0.25s ease;
+        box-sizing: border-box;
     }
 
     .feed-card:hover {
-        border-color: rgba(255, 255, 255, 0.18);
-        box-shadow: 0 8px 24px rgba(0, 0, 0, 0.25);
+        border-color: var(--border-hover);
+        box-shadow: 0 8px 25px rgba(0, 0, 0, 0.35);
     }
 
     .feed-card-header {
@@ -140,13 +205,14 @@
         justify-content: space-between;
         padding-bottom: 0.85rem;
         margin-bottom: 0.85rem;
-        border-bottom: 1px dashed rgba(255, 255, 255, 0.1);
+        border-bottom: 1px dashed rgba(255, 255, 255, 0.08);
     }
 
     .feed-card-title-group {
         display: flex;
         align-items: center;
-        gap: 0.75rem;
+        gap: 0.65rem;
+        min-width: 0;
     }
 
     .feed-icon-box {
@@ -157,168 +223,265 @@
         align-items: center;
         justify-content: center;
         flex-shrink: 0;
-        font-size: 1.1rem;
+        font-size: 1rem;
     }
 
     .feed-card-name {
-        font-size: 0.9rem;
+        font-size: 0.88rem;
         font-weight: 800;
         color: var(--text-main);
+        white-space: nowrap;
+        overflow: hidden;
+        text-overflow: ellipsis;
     }
 
     .feed-card-action {
-        font-size: 0.75rem;
+        font-size: 0.72rem;
         font-weight: 700;
         text-decoration: none;
         display: inline-flex;
         align-items: center;
-        gap: 0.4rem;
-        padding: 0.4rem 0.75rem;
-        border-radius: 8px;
+        gap: 0.35rem;
+        padding: 0.35rem 0.65rem;
+        border-radius: 7px;
+        flex-shrink: 0;
         transition: all 0.2s ease;
     }
 
-    /* Color Accents (Chuẩn hóa) */
-    .accent-green .feed-icon-box { background: rgba(16, 185, 129, 0.15); color: #10b981; }
-    .accent-green .feed-card-action { color: #10b981; background: rgba(16, 185, 129, 0.1); border: 1px solid rgba(16, 185, 129, 0.2); }
-    .accent-green .feed-card-action:hover { background: rgba(16, 185, 129, 0.2); color: #fff; }
+    /* Color Accents Theme */
+    .accent-green .feed-icon-box { background: rgba(16, 185, 129, 0.12); color: var(--accent-emerald); }
+    .accent-green .feed-card-action { color: var(--accent-emerald); background: rgba(16, 185, 129, 0.08); border: 1px solid rgba(16, 185, 129, 0.2); }
+    .accent-green .feed-card-action:hover { background: var(--accent-emerald); color: #fff; }
 
-    .accent-blue .feed-icon-box { background: rgba(56, 189, 248, 0.15); color: #38bdf8; }
-    .accent-blue .feed-card-action { color: #38bdf8; background: rgba(56, 189, 248, 0.1); border: 1px solid rgba(56, 189, 248, 0.2); }
-    .accent-blue .feed-card-action:hover { background: rgba(56, 189, 248, 0.2); color: #fff; }
-    
-    .accent-orange .feed-icon-box { background: rgba(245, 158, 11, 0.15); color: #f59e0b; }
-    .accent-orange .feed-card-action { color: #f59e0b; background: rgba(245, 158, 11, 0.1); border: 1px solid rgba(245, 158, 11, 0.2); }
-    .accent-orange .feed-card-action:hover { background: rgba(245, 158, 11, 0.2); color: #fff; }
+    .accent-blue .feed-icon-box { background: rgba(6, 182, 212, 0.12); color: var(--accent-sky); }
+    .accent-blue .feed-card-action { color: var(--accent-sky); background: rgba(6, 182, 212, 0.08); border: 1px solid rgba(6, 182, 212, 0.2); }
+    .accent-blue .feed-card-action:hover { background: var(--accent-sky); color: #fff; }
 
     /* ==========================================
-       FEED ITEM LISTS
+       LIST & ITEM STYLING - UPDATED FOR MOBILE
        ========================================== */
     .feed-list {
         display: flex;
         flex-direction: column;
-        gap: 0.5rem;
+        gap: 0.55rem;
+        flex: 1;
     }
 
     .feed-item {
         display: flex;
         align-items: center;
         justify-content: space-between;
-        padding: 0.75rem 0.85rem;
-        background: rgba(0, 0, 0, 0.15);
-        border: 1px solid rgba(255, 255, 255, 0.06);
-        border-radius: 12px;
+        padding: 0.7rem 0.85rem;
+        background: rgba(0, 0, 0, 0.18);
+        border: 1px solid rgba(255, 255, 255, 0.04);
+        border-radius: 10px;
         text-decoration: none;
         color: var(--text-main);
-        transition: all 0.25s ease;
+        transition: all 0.2s ease;
+        box-sizing: border-box;
     }
 
     .feed-item:hover {
-        background: rgba(255, 255, 255, 0.05);
-        border-color: rgba(255, 255, 255, 0.15);
+        background: rgba(255, 255, 255, 0.04);
+        border-color: rgba(255, 255, 255, 0.12);
         transform: translateX(3px);
     }
 
     .feed-info {
         display: flex;
         flex-direction: column;
-        gap: 0.35rem;
+        gap: 0.35rem; /* Tăng nhẹ gap để phân tách 2 dòng rõ ràng hơn */
         overflow: hidden;
-        margin-right: 0.75rem;
+        min-width: 0;
+        flex: 1;
+        margin-right: 0.5rem;
     }
 
+    /* Flex Layout cho Tiêu đề (Dòng 1) */
     .feed-title {
-        font-size: 0.86rem;
+        display: flex;
+        align-items: center;
+        gap: 0.4rem;
+        width: 100%;
+    }
+
+    /* Ellipsis cho text nằm trong Flex (bắt buộc có min-width: 0) */
+    .feed-title-name {
+        font-size: 0.84rem;
         font-weight: 700;
         white-space: nowrap;
         overflow: hidden;
         text-overflow: ellipsis;
-        display: flex;
-        align-items: center;
-        gap: 0.4rem;
+        flex: 1;
+        min-width: 0; 
     }
 
+    /* Metadata hỗ trợ rớt dòng (wrap) (Dòng 2) */
     .feed-meta {
-        font-size: 0.74rem;
+        font-size: 0.72rem;
         color: var(--text-muted);
         display: flex;
         align-items: center;
-        gap: 0.4rem;
-        flex-wrap: wrap;
+        flex-wrap: wrap; /* Rất quan trọng: cho phép xuống dòng nếu màn quá nhỏ */
+        gap: 0.35rem;
+        line-height: 1.4;
     }
 
     .feed-empty {
-        font-size: 0.82rem;
+        font-size: 0.8rem;
         color: var(--text-muted);
         text-align: center;
-        padding: 1.25rem 0.75rem;
-        background: rgba(255, 255, 255, 0.02);
+        padding: 2rem 0.75rem;
+        background: rgba(255, 255, 255, 0.01);
         border-radius: 10px;
-        border: 1px dashed rgba(255, 255, 255, 0.1);
+        border: 1px dashed rgba(255, 255, 255, 0.06);
+        margin: auto 0;
     }
 
     /* Badges & Micro Items */
     .status-pill {
         display: inline-flex;
         align-items: center;
-        padding: 0.15rem 0.5rem;
-        border-radius: 6px;
-        font-size: 0.68rem;
+        padding: 0.15rem 0.45rem;
+        border-radius: 5px;
+        font-size: 0.65rem;
         font-weight: 700;
-        background: rgba(56, 189, 248, 0.12);
-        color: #38bdf8;
-        border: 1px solid rgba(56, 189, 248, 0.2);
+        background: rgba(6, 182, 212, 0.12);
+        color: var(--accent-sky);
+        border: 1px solid rgba(6, 182, 212, 0.2);
+        flex-shrink: 0; /* Đảm bảo badge không bao giờ bị bóp méo */
+    }
+
+    .status-pill.green {
+        background: rgba(16, 185, 129, 0.15); 
+        color: var(--accent-emerald); 
+        border: 1px solid rgba(16, 185, 129, 0.3);
     }
 
     .meta-divider {
-        color: var(--border-color);
+        color: rgba(255, 255, 255, 0.18);
     }
 
     .action-icon-link {
         display: inline-flex;
         align-items: center;
         justify-content: center;
-        width: 30px;
-        height: 30px;
-        border-radius: 8px;
-        background: rgba(255, 255, 255, 0.04);
-        border: 1px solid rgba(255, 255, 255, 0.08);
+        width: 26px;
+        height: 26px;
+        border-radius: 7px;
+        background: rgba(255, 255, 255, 0.03);
+        border: 1px solid rgba(255, 255, 255, 0.06);
         color: var(--text-muted);
         flex-shrink: 0;
         transition: all 0.2s ease;
-        font-size: 0.8rem;
+        font-size: 0.7rem;
     }
 
-    .accent-green .feed-item:hover .action-icon-link { background: #10b981; border-color: #10b981; color: #fff; }
-    .accent-blue .feed-item:hover .action-icon-link { background: #38bdf8; border-color: #38bdf8; color: #fff; }
-    .accent-orange .feed-item:hover .action-icon-link { background: #f59e0b; border-color: #f59e0b; color: #fff; }
+    .accent-green .feed-item:hover .action-icon-link { background: var(--accent-emerald); border-color: var(--accent-emerald); color: #fff; }
+    .accent-blue .feed-item:hover .action-icon-link { background: var(--accent-sky); border-color: var(--accent-sky); color: #fff; }
 
-    @media (max-width: 430px) {
-        .dashboard-app { padding: 1rem 4px 3rem; }
-        .welcome-card { padding: 1rem; border-radius: 16px; }
-        .feed-card { padding: 14px; border-radius: 16px; }
-        .user-greeting { font-size: 1.05rem; }
+    /* ==========================================
+       OPTIMIZED MOBILE STYLING ONLY
+       ========================================== */
+    @media (max-width: 576px) {
+        .dashboard-app { 
+            padding: 0.5rem 0.65rem 1rem; 
+        }
+        .welcome-card { 
+            padding: 0.6rem 0.8rem; 
+            border-radius: 12px;
+        }
+        .user-greeting {
+            font-size: 1.05rem;
+        }
+        .quick-launchpad {
+            gap: 0.5rem;
+        }
+        .quick-btn {
+            padding: 0.5rem 0.25rem;
+            border-radius: 12px;
+        }
+        .quick-btn i {
+            font-size: 0.95rem;
+        }
+        .quick-btn span {
+            font-size: 0.72rem;
+        }
+        .feed-grid {
+            gap: 0.85rem;
+        }
+        .feed-card { 
+            padding: 0.85rem; 
+            border-radius: 14px;
+        }
+        .feed-card-header {
+            padding-bottom: 0.65rem;
+            margin-bottom: 0.65rem;
+        }
+        .feed-icon-box {
+            width: 32px;
+            height: 32px;
+            font-size: 0.9rem;
+        }
+        .feed-card-name {
+            font-size: 0.82rem;
+        }
+        .feed-card-action {
+            padding: 0.25rem 0.5rem;
+            font-size: 0.68rem;
+        }
+        .feed-item {
+            padding: 0.45rem 0.6rem;
+            border-radius: 8px;
+        }
+        .feed-title-name {
+            font-size: 0.8rem;
+        }
+        .feed-meta {
+            font-size: 0.68rem;
+        }
     }
 </style>
 {% endblock %}
 
 {% block content %}
 <div class="dashboard-app">
-    <!-- Welcome Banner -->
-    <div class="welcome-card">
-        <div>
+    <!-- TOP SECTION: WELCOME BANNER & LAUNCHPAD -->
+    <div class="top-section">
+        <div class="welcome-card">
             <div class="user-greeting">
                 <span>Xin chào, {% if current_user and current_user.is_authenticated %}{{ current_user.name }}{% else %}Quản trị viên{% endif %}!</span>
                 <span>👋</span>
             </div>
-            <div class="user-subtitle">Trung tâm điều hành nội bộ Máy In Đại Thành</div>
+            <div class="user-subtitle">Trung tâm điều hành nội bộ Máy In Đại Thành Center Hub</div>
+        </div>
+
+        <div class="quick-launchpad">
+            <a href="/warranty/create" class="quick-btn" style="color: var(--accent-emerald);">
+                <i class="fa-solid fa-plus-circle"></i>
+                <span>Tạo Bảo Hành</span>
+            </a>
+            <a href="/cham-cong/list" class="quick-btn" style="color: var(--accent-sky);">
+                <i class="fa-solid fa-clipboard-check"></i>
+                <span>Duyệt Chấm Công</span>
+            </a>
+            <a href="https://printer-guide.onrender.com" target="_blank" rel="noopener noreferrer" class="quick-btn" style="color: var(--accent-amber);">
+                <i class="fa-solid fa-book-open"></i>
+                <span>Thư Viện Máy In</span>
+            </a>
+            <a href="/admin" class="quick-btn" style="color: var(--accent-purple);">
+                <i class="fa-solid fa-sliders"></i>
+                <span>Quản Trị Admin</span>
+            </a>
         </div>
     </div>
 
-    <!-- Section: Hoạt động gần đây -->
+    <!-- SECTION TITLE -->
     <div class="section-title">Hoạt động gần đây</div>
 
-    <div class="feed-grid">
+    <!-- EQUAL HEIGHT RESPONSIVE GRID (2 CARDS) -->
+    <div class="feed-grid">  
+        
         <!-- 1. Card Bảo Hành Điện Tử -->
         <div class="feed-card accent-green">
             <div class="feed-card-header">
@@ -330,7 +493,7 @@
                 </div>
                 <a href="/warranty/create" class="feed-card-action">
                     <i class="fa-solid fa-plus"></i>
-                    <span>Tạo phiếu mới</span>
+                    <span>Tạo mới</span>
                 </a>
             </div>
             <div class="feed-list">
@@ -338,23 +501,27 @@
                     {% for item in recent_warranties %}
                     <a href="/warranty/{{ item.id }}" class="feed-item">
                         <div class="feed-info">
-                            <span class="feed-title">
-                                {{ item.customer_name | default('Khách hàng') }} - {{ item.category | default('Máy in') }} 
-                                <span class="meta-divider">|</span> 
-                                <span style="color: #10b981;">{{ item.model_name | default('N/A') }}</span>
-                            </span>
-                            <span class="feed-meta">
+                            <!-- Dòng 1: Khách hàng (linh hoạt co giãn) + Model Máy (cố định, không bị bóp méo) -->
+                            <div class="feed-title">
+                                <span class="feed-title-name">{{ item.customer_name | default('Khách hàng') }}</span>
+                                <span class="status-pill green">{{ item.model_name | default('N/A') }}</span>
+                            </div>
+
+                            <!-- Dòng 2: Meta info tự động xuống dòng (flex-wrap) nếu màn hình quá chật -->
+                            <div class="feed-meta">
                                 <span>S/N: {{ item.serial_number | default('N/A') }}</span>
                                 <span class="meta-divider">•</span>
+                                <span>{{ item.category | default('Máy in') }}</span>
+                                <span class="meta-divider">•</span>
                                 <span>
-                                    Ngày tạo: 
                                     {% if item.created_at %}
-                                        {{ item.created_at[8:10] }}/{{ item.created_at[5:7] }}/{{ item.created_at[0:4] }} {{ item.created_at[11:16] }}
+                                        <!-- Rút gọn năm để tối ưu mobile: DD/MM HH:MM -->
+                                        {{ item.created_at[8:10] }}/{{ item.created_at[5:7] }} {{ item.created_at[11:16] }}
                                     {% else %}
                                         N/A
                                     {% endif %}
                                 </span>
-                            </span>
+                            </div>
                         </div>
                         <div class="action-icon-link">
                             <i class="fa-solid fa-chevron-right"></i>
@@ -376,38 +543,38 @@
                     </div>
                     <div class="feed-card-name">Đơn Chấm Công Gần Nhất</div>
                 </div>
-                <!-- Đường dẫn đúng tới trang danh sách -->
                 <a href="/cham-cong/list" class="feed-card-action">
                     <i class="fa-solid fa-list"></i>
-                    <span>Xem danh sách</span>
+                    <span>Danh sách</span>
                 </a>
             </div>
             <div class="feed-list">
                 {% if recent_installations %}
                     {% for item in recent_installations %}
-                    <!-- Đường dẫn đúng tới trang chi tiết -->
                     <a href="/cham-cong/detail/{{ item.id }}" class="feed-item">
                         <div class="feed-info">
-                            <span class="feed-title">
-                                {{ item.ten | default('KTV') }} 
+                            <!-- Dòng 1: Tên KTV (linh hoạt co giãn) + Trạng thái (cố định) -->
+                            <div class="feed-title">
+                                <span class="feed-title-name">{{ item.ten | default('KTV') }}</span>
                                 <span class="status-pill">{{ item.trang_thai | default('Chờ duyệt') }}</span>
-                                <span class="meta-divider">•</span> 
-                                HĐ: {{ item.so_hoa_don | default('N/A') }}
-                            </span>
-                            <span class="feed-meta">
-                            <span>Thời gian:</span>
-                            {% if item.thoi_gian %}
-                                {% if item.thoi_gian is string %}
-                                    <!-- Fallback phòng hờ nếu là chuỗi thô -->
-                                    {{ item.thoi_gian[8:10] }}/{{ item.thoi_gian[5:7] }}/{{ item.thoi_gian[0:4] }} {{ item.thoi_gian[11:16] }}
-                                {% else %}
-                                    <!-- Luồng chính: Hiển thị chuẩn giờ Việt Nam đã được parse ở Backend -->
-                                    {{ item.thoi_gian.strftime('%d/%m/%Y %H:%M') }}
-                                {% endif %}
-                            {% else %}
-                                N/A
-                            {% endif %}
-                        </span>
+                            </div>
+                            
+                            <!-- Dòng 2: Đẩy HĐ xuống đây tạo sự đồng bộ 2 dòng tuyệt đẹp với thẻ Bảo hành -->
+                            <div class="feed-meta">
+                                <span style="color: var(--text-main); font-weight: 600;">HĐ: {{ item.so_hoa_don | default('N/A') }}</span>
+                                <span class="meta-divider">•</span>
+                                <span>
+                                    {% if item.thoi_gian %}
+                                        {% if item.thoi_gian is string %}
+                                            {{ item.thoi_gian[8:10] }}/{{ item.thoi_gian[5:7] }} {{ item.thoi_gian[11:16] }}
+                                        {% else %}
+                                            {{ item.thoi_gian.strftime('%d/%m %H:%M') }}
+                                        {% endif %}
+                                    {% else %}
+                                        N/A
+                                    {% endif %}
+                                </span>
+                            </div>
                         </div>
                         <div class="action-icon-link">
                             <i class="fa-solid fa-chevron-right"></i>
@@ -420,46 +587,6 @@
             </div>
         </div>
 
-        <!-- 3. Card Thư Viện Máy In -->
-        <div class="feed-card accent-orange">
-            <div class="feed-card-header">
-                <div class="feed-card-title-group">
-                    <div class="feed-icon-box">
-                        <i class="fa-solid fa-book-bookmark"></i>
-                    </div>
-                    <div class="feed-card-name">Bài Viết Thư Viện Gần Nhất</div>
-                </div>
-                <a href="https://printer-guide.onrender.com" target="_blank" rel="noopener noreferrer" class="feed-card-action">
-                    <span>Đến Thư Viện</span>
-                    <i class="fa-solid fa-arrow-up-right-from-square"></i>
-                </a>
-            </div>
-            <div class="feed-list">
-                {% if recent_library %}
-                    {% for item in recent_library %}
-                    <a href="https://printer-guide.onrender.com/post/{{ item.id }}" target="_blank" rel="noopener noreferrer" class="feed-item">
-                        <div class="feed-info">
-                            <span class="feed-title">{{ item.title | default('Tiêu đề tài liệu') }}</span>
-                            <span class="feed-meta">
-                                <span>Thời gian:</span>
-                                {% if item.created_at %}
-                                    {% set clean_date = item.created_at | string %}
-                                    {{ clean_date[8:10] }}/{{ clean_date[5:7] }}/{{ clean_date[0:4] }} {% if clean_date | length >= 16 %}{{ clean_date[11:16] }}{% endif %}
-                                {% else %}
-                                    N/A
-                                {% endif %}
-                            </span>
-                        </div>
-                        <div class="action-icon-link">
-                            <i class="fa-solid fa-chevron-right"></i>
-                        </div>
-                    </a>
-                    {% endfor %}
-                {% else %}
-                    <div class="feed-empty">Chưa có bài viết nào trên thư viện.</div>
-                {% endif %}
-            </div>
-        </div>
     </div>
 </div>
-{% endblock %}
+{% endblock %}  

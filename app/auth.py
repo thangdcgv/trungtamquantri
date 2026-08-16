@@ -173,10 +173,18 @@ async def login(
         request.session["role"] = role
 
         # -------------------------------------------------
-        # 5. Chuyển đến Admin
+        # 5. Điều hướng theo Role
         # -------------------------------------------------
+        # Chuẩn hóa role về chữ thường để so sánh chính xác (tránh lỗi hoa/thường)
+        role_clean = str(role).strip().lower()
+
+        if role_clean in ["Admin", "Super Admin", "System Admin"]:
+            redirect_url = "/admin"
+        else:
+            redirect_url = "/"  # Trang chủ dành cho tài khoản User thường
+
         return RedirectResponse(
-            url="/admin",
+            url=redirect_url,
             status_code=status.HTTP_303_SEE_OTHER,
         )
 

@@ -4,6 +4,7 @@ import traceback
 from typing import Optional, List
 from fastapi import APIRouter, Request, Form, Query, HTTPException, status
 from fastapi.responses import HTMLResponse, RedirectResponse
+from app.auth import get_current_user_or_redirect  # Import hàm từ auth.py
 from fastapi.templating import Jinja2Templates
 from pydantic import BaseModel
 from config import supabase
@@ -65,8 +66,16 @@ async def list_kho_key(
     trang_thai: Optional[str] = Query(None)
 ):
     raw_keys_data = []
-    
+    # 1. Kiểm tra Đăng nhập
+    user = await get_current_user_or_redirect(request)
+    if not user:
+        return RedirectResponse(url="/auth/login", status_code=303)
 
+    # 2. Kiểm tra Phân quyền (Role Admin mới được phép truy cập Kho Key)
+    user_role = str(user.get("role", "")).strip().lower()
+    if user_role not in ["admin", "super admin", "system admin"]:
+        # Người dùng thường (User/KTV) bị đẩy về trang Cấp Key dành cho họ
+        return RedirectResponse(url="/admin/quan-ly-key", status_code=303)
     # Truy vấn Supabase DB
     try:
         query = supabase.table("kho_key").select("*").order("id", desc=True)

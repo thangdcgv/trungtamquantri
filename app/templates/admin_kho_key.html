@@ -1,5 +1,5 @@
 <!DOCTYPE html>
-<html lang="vi" class="dark"></html>
+<html lang="vi" class="dark">
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
@@ -30,34 +30,34 @@
 
     <style>
         ::-webkit-scrollbar { width: 6px; height: 6px; }
-        ::-webkit-scrollbar-track { background: #0d1117; }
-        ::-webkit-scrollbar-thumb { background: #21262d; border-radius: 3px; }
-        ::-webkit-scrollbar-thumb:hover { background: #30363d; }
+        ::-webkit-scrollbar-track { background: #0f172a; }
+        ::-webkit-scrollbar-thumb { background: #334155; border-radius: 3px; }
+        ::-webkit-scrollbar-thumb:hover { background: #475569; }
     </style>
 </head>
-<body class="bg-slate-100 text-slate-800 font-sans p-6">
+<body class="bg-slate-950 text-slate-100 font-sans p-6 min-h-screen">
 
-    <div class="max-w-7xl mx-auto bg-white rounded-xl shadow-md p-6">
+    <div class="max-w-7xl mx-auto bg-slate-900 rounded-xl shadow-2xl p-6 border border-slate-800">
         
         <!-- HEADER -->
-        <div class="mb-6 border-b pb-4 flex justify-between items-center">
+        <div class="mb-6 border-b border-slate-800 pb-4 flex justify-between items-center">
             <div>
-                <h1 class="text-2xl font-bold text-slate-800 flex items-center gap-2">
-                    <i class="fa-solid fa-key text-blue-600"></i> Quản Lý Kho Key Chipless
+                <h1 class="text-2xl font-bold text-slate-100 flex items-center gap-2">
+                    <i class="fa-solid fa-key text-blue-500"></i> Quản Lý Kho Key Chipless
                 </h1>
-                <p class="text-sm text-slate-500 mt-1">💡 Có thể nhập key hàng loạt, phân loại thiết bị và chỉnh sửa chi tiết từng dòng.</p>
+                <p class="text-sm text-slate-400 mt-1">💡 Có thể nhập key hàng loạt, phân loại thiết bị và chỉnh sửa chi tiết từng dòng.</p>
             </div>
-            <a href="/admin" class="text-sm bg-slate-100 hover:bg-slate-200 text-slate-700 px-3 py-2 rounded-lg font-medium transition">
+            <a href="/admin" class="text-sm bg-slate-800 hover:bg-slate-700 text-slate-300 border border-slate-700 px-3 py-2 rounded-lg font-medium transition">
                 ⬅️ Quay lại Admin
             </a>
         </div>
 
         <!-- TABS NAVIGATION -->
-        <div class="flex border-b border-slate-200 mb-6">
-            <button id="tab-btn-import" onclick="switchTab('import')" class="py-2 px-4 font-semibold text-blue-600 border-b-2 border-blue-600 transition-all">
+        <div class="flex border-b border-slate-800 mb-6">
+            <button id="tab-btn-import" onclick="switchTab('import')" class="py-2 px-4 font-semibold text-blue-400 border-b-2 border-blue-500 transition-all">
                 📥 Nhập Lô Key Mới
             </button>
-            <button id="tab-btn-manage" onclick="switchTab('manage')" class="py-2 px-4 font-semibold text-slate-500 hover:text-blue-600 transition-all">
+            <button id="tab-btn-manage" onclick="switchTab('manage')" class="py-2 px-4 font-semibold text-slate-400 hover:text-blue-400 transition-all">
                 🛠️ Quản Lý Kho & Điều Chỉnh
             </button>
         </div>
@@ -66,35 +66,35 @@
         <!-- TAB 1: NHẬP MỚI -->
         <!-- ================================================================= -->
         <div id="tab-content-import" class="space-y-4">
-            <form id="form-import" onsubmit="handleCheckImport(event)" class="grid grid-cols-1 md:grid-cols-2 gap-6 bg-slate-50 p-4 rounded-lg border border-slate-200">
+            <form id="form-import" onsubmit="handleCheckImport(event)" class="grid grid-cols-1 md:grid-cols-2 gap-6 bg-slate-800/40 p-4 rounded-lg border border-slate-800">
                 <div class="space-y-4">
                     <div>
-                        <label class="block text-sm font-medium mb-1">Loại thiết bị <span class="text-red-500">*</span></label>
-                        <select id="loai_tb" class="w-full border rounded-lg p-2 bg-white focus:ring-2 focus:ring-blue-500 outline-none">
+                        <label class="block text-sm font-medium mb-1 text-slate-300">Loại thiết bị <span class="text-red-400">*</span></label>
+                        <select id="loai_tb" class="w-full border border-slate-700 rounded-lg p-2 bg-slate-900 text-slate-100 focus:ring-2 focus:ring-blue-500 outline-none">
                             {% for item in danh_sach_loai_tb %}
                                 <option value="{{ item }}">{{ item }}</option>
                             {% endfor %}
                         </select>
                     </div>
                     <div>
-                        <label class="block text-sm font-medium mb-1">Model máy <span class="text-red-500">*</span></label>
+                        <label class="block text-sm font-medium mb-1 text-slate-300">Model máy <span class="text-red-400">*</span></label>
                         <input type="text" id="ten_may" placeholder="VD: C5290, L18050, PRO-1000..." required
-                               class="w-full border rounded-lg p-2 uppercase focus:ring-2 focus:ring-blue-500 outline-none">
+                               class="w-full border border-slate-700 rounded-lg p-2 uppercase bg-slate-900 text-slate-100 placeholder-slate-500 focus:ring-2 focus:ring-blue-500 outline-none">
                     </div>
                     <div>
-                        <label class="block text-sm font-medium mb-1">Số lượt dùng trên mỗi Key</label>
+                        <label class="block text-sm font-medium mb-1 text-slate-300">Số lượt dùng trên mỗi Key</label>
                         <input type="number" id="limit" value="1" min="1" 
-                               class="w-full border rounded-lg p-2 focus:ring-2 focus:ring-blue-500 outline-none">
+                               class="w-full border border-slate-700 rounded-lg p-2 bg-slate-900 text-slate-100 focus:ring-2 focus:ring-blue-500 outline-none">
                     </div>
                 </div>
 
                 <div class="flex flex-col justify-between">
                     <div>
-                        <label class="block text-sm font-medium mb-1">Danh sách mã Key (Mỗi dòng một mã)</label>
+                        <label class="block text-sm font-medium mb-1 text-slate-300">Danh sách mã Key (Mỗi dòng một mã)</label>
                         <textarea id="list_keys" rows="7" placeholder="KEY123-ABC...&#10;KEY456-DEF..." required
-                                  class="w-full border rounded-lg p-2 font-mono text-sm focus:ring-2 focus:ring-blue-500 outline-none"></textarea>
+                                  class="w-full border border-slate-700 rounded-lg p-2 font-mono text-sm bg-slate-900 text-slate-100 placeholder-slate-600 focus:ring-2 focus:ring-blue-500 outline-none"></textarea>
                     </div>
-                    <button type="submit" class="w-full mt-4 bg-blue-600 hover:bg-blue-700 text-white font-semibold py-2.5 rounded-lg shadow transition">
+                    <button type="submit" class="w-full mt-4 bg-blue-600 hover:bg-blue-500 text-white font-semibold py-2.5 rounded-lg shadow transition">
                         📥 Kiểm tra & Nhập kho
                     </button>
                 </div>
@@ -107,12 +107,12 @@
         <div id="tab-content-manage" class="hidden space-y-6">
             
             <!-- Bộ lọc loại thiết bị -->
-            <div class="bg-slate-50 p-4 rounded-lg border border-slate-200">
-                <h3 class="text-sm font-bold text-slate-700 mb-2">🔍 Bộ lọc loại thiết bị</h3>
+            <div class="bg-slate-800/40 p-4 rounded-lg border border-slate-800">
+                <h3 class="text-sm font-bold text-slate-300 mb-2">🔍 Bộ lọc loại thiết bị</h3>
                 <div class="flex flex-wrap gap-4">
                     {% for item in danh_sach_loai_tb %}
-                    <label class="inline-flex items-center gap-2 text-sm cursor-pointer">
-                        <input type="checkbox" value="{{ item }}" checked onchange="applyFilters()" class="filter-tb rounded text-blue-600">
+                    <label class="inline-flex items-center gap-2 text-sm cursor-pointer text-slate-300">
+                        <input type="checkbox" value="{{ item }}" checked onchange="applyFilters()" class="filter-tb rounded bg-slate-900 border-slate-700 text-blue-500 focus:ring-blue-500">
                         <span>{{ item }}</span>
                     </label>
                     {% endfor %}
@@ -121,10 +121,10 @@
 
             <!-- PHẦN 1: BẢNG THỐNG KÊ TỒN KHO -->
             <div>
-                <h3 class="text-lg font-bold mb-3 text-slate-800">📊 Thống kê tồn kho</h3>
-                <div class="overflow-x-auto rounded-lg border border-slate-200">
+                <h3 class="text-lg font-bold mb-3 text-slate-200">📊 Thống kê tồn kho</h3>
+                <div class="overflow-x-auto rounded-lg border border-slate-800">
                     <table class="w-full text-left border-collapse text-sm">
-                        <thead class="bg-slate-100 border-b font-semibold text-slate-700">
+                        <thead class="bg-slate-800/80 border-b border-slate-800 font-semibold text-slate-300">
                             <tr>
                                 <th class="p-3">STT</th>
                                 <th class="p-3">🛠️ Loại Thiết Bị</th>
@@ -141,65 +141,65 @@
                 </div>
             </div>
 
-            <hr class="border-slate-200">
+            <hr class="border-slate-800">
 
             <!-- PHẦN 2: THAO TÁC HÀNG LOẠT -->
-            <div class="bg-slate-50 p-4 rounded-lg border border-slate-200">
-                <h3 class="text-lg font-bold mb-3 text-slate-800">⚡ Thao tác nhanh theo Model</h3>
+            <div class="bg-slate-800/40 p-4 rounded-lg border border-slate-800">
+                <h3 class="text-lg font-bold mb-3 text-slate-200">⚡ Thao tác nhanh theo Model</h3>
                 <div class="grid grid-cols-1 md:grid-cols-2 gap-4 items-end">
                     <div>
-                        <label class="block text-sm font-medium mb-1">Chọn dòng máy xử lý</label>
-                        <select id="bulk-select-model" onchange="renderDetailTable()" class="w-full border rounded-lg p-2 bg-white outline-none">
+                        <label class="block text-sm font-medium mb-1 text-slate-300">Chọn dòng máy xử lý</label>
+                        <select id="bulk-select-model" onchange="renderDetailTable()" class="w-full border border-slate-700 rounded-lg p-2 bg-slate-900 text-slate-100 outline-none">
                             <!-- Render JS -->
                         </select>
                     </div>
 
                     <div class="flex gap-2">
                         <div class="flex-1">
-                            <label class="block text-sm font-medium mb-1">Giới hạn mới</label>
-                            <input type="number" id="bulk-new-limit" value="1" min="1" class="w-full border rounded-lg p-2 outline-none">
+                            <label class="block text-sm font-medium mb-1 text-slate-300">Giới hạn mới</label>
+                            <input type="number" id="bulk-new-limit" value="1" min="1" class="w-full border border-slate-700 rounded-lg p-2 bg-slate-900 text-slate-100 outline-none">
                         </div>
-                        <button onclick="handleBulkUpdateLimit()" class="bg-blue-600 hover:bg-blue-700 text-white font-medium px-4 py-2 rounded-lg transition self-end">
+                        <button onclick="handleBulkUpdateLimit()" class="bg-blue-600 hover:bg-blue-500 text-white font-medium px-4 py-2 rounded-lg transition self-end">
                             🚀 Cập nhật Limit
                         </button>
                     </div>
                 </div>
 
-                <div class="mt-4 pt-4 border-t flex items-center justify-between flex-wrap gap-2">
+                <div class="mt-4 pt-4 border-t border-slate-800 flex items-center justify-between flex-wrap gap-2">
                     <div class="flex items-center gap-4">
-                        <label class="text-sm font-medium">Phạm vi xóa lô:</label>
-                        <select id="bulk-delete-type" class="border rounded-lg p-1.5 text-sm bg-white">
+                        <label class="text-sm font-medium text-slate-300">Phạm vi xóa lô:</label>
+                        <select id="bulk-delete-type" class="border border-slate-700 rounded-lg p-1.5 text-sm bg-slate-900 text-slate-100 outline-none">
                             <option value="safe">Chỉ xóa Key chưa dùng (An toàn)</option>
                             <option value="all">Xóa tất cả Key của model này</option>
                         </select>
                     </div>
-                    <button onclick="handleBulkDelete()" class="bg-red-500 hover:bg-red-600 text-white font-medium px-4 py-2 rounded-lg text-sm transition">
+                    <button onclick="handleBulkDelete()" class="bg-rose-600 hover:bg-rose-500 text-white font-medium px-4 py-2 rounded-lg text-sm transition">
                         🗑️ Xác nhận xóa lô
                     </button>
                 </div>
             </div>
 
-            <hr class="border-slate-200">
+            <hr class="border-slate-800">
 
             <!-- PHẦN 3: CHI TIẾT & SỬA LẺ -->
             <div>
                 <div class="flex justify-between items-center mb-3">
-                    <h3 class="text-lg font-bold text-slate-800">🔍 Chi tiết & Chỉnh sửa lẻ</h3>
-                    <button onclick="addNewRowToDetails()" class="bg-slate-700 hover:bg-slate-800 text-white text-xs px-3 py-1.5 rounded-lg">
+                    <h3 class="text-lg font-bold text-slate-200">🔍 Chi tiết & Chỉnh sửa lẻ</h3>
+                    <button onclick="addNewRowToDetails()" class="bg-slate-800 hover:bg-slate-700 border border-slate-700 text-slate-200 text-xs px-3 py-1.5 rounded-lg transition">
                         + Thêm dòng mới
                     </button>
                 </div>
                 
-                <div class="overflow-x-auto rounded-lg border border-slate-200">
+                <div class="overflow-x-auto rounded-lg border border-slate-800">
                     <table class="w-full text-left border-collapse text-sm">
-                        <thead class="bg-slate-100 border-b font-semibold text-slate-700">
+                        <thead class="bg-slate-800/80 border-b border-slate-800 font-semibold text-slate-300">
                             <tr>
-                                <th class="p-2 border-r">Loại Thiết Bị</th>
-                                <th class="p-2 border-r">Model</th>
-                                <th class="p-2 border-r">Mã Key</th>
-                                <th class="p-2 border-r w-24">Limit</th>
-                                <th class="p-2 border-r w-24">Đã Dùng</th>
-                                <th class="p-2 border-r w-32">Trạng thái</th>
+                                <th class="p-2 border-r border-slate-800">Loại Thiết Bị</th>
+                                <th class="p-2 border-r border-slate-800">Model</th>
+                                <th class="p-2 border-r border-slate-800">Mã Key</th>
+                                <th class="p-2 border-r border-slate-800 w-24">Limit</th>
+                                <th class="p-2 border-r border-slate-800 w-24">Đã Dùng</th>
+                                <th class="p-2 border-r border-slate-800 w-32">Trạng thái</th>
                                 <th class="p-2 text-center w-16">Thao tác</th>
                             </tr>
                         </thead>
@@ -209,7 +209,7 @@
                     </table>
                 </div>
 
-                <button onclick="handleSaveDetails()" class="mt-4 w-full bg-green-600 hover:bg-green-700 text-white font-bold py-2.5 rounded-lg shadow transition">
+                <button onclick="handleSaveDetails()" class="mt-4 w-full bg-emerald-600 hover:bg-emerald-500 text-white font-bold py-2.5 rounded-lg shadow transition">
                     💾 Lưu thay đổi lẻ
                 </button>
             </div>
@@ -221,23 +221,23 @@
     <!-- ================================================================= -->
     <!-- MODAL XÁC NHẬN TRÙNG KEY (POPUP) -->
     <!-- ================================================================= -->
-    <div id="modal-duplicate" class="fixed inset-0 bg-slate-900/50 backdrop-blur-sm hidden flex items-center justify-center p-4 z-50">
-        <div class="bg-white rounded-xl shadow-xl max-w-lg w-full p-6 space-y-4">
-            <h3 class="text-lg font-bold text-amber-600 flex items-center gap-2">
+    <div id="modal-duplicate" class="fixed inset-0 bg-slate-950/80 backdrop-blur-sm hidden flex items-center justify-center p-4 z-50">
+        <div class="bg-slate-900 border border-slate-800 rounded-xl shadow-2xl max-w-lg w-full p-6 space-y-4">
+            <h3 class="text-lg font-bold text-amber-400 flex items-center gap-2">
                 <i class="fa-solid fa-triangle-exclamation"></i> Phát hiện trùng lặp mã Key!
             </h3>
-            <p id="modal-dup-msg" class="text-sm text-slate-600"></p>
+            <p id="modal-dup-msg" class="text-sm text-slate-300"></p>
             
-            <div class="bg-amber-50 p-3 rounded-lg border border-amber-200 max-h-32 overflow-y-auto text-xs font-mono" id="modal-dup-list"></div>
+            <div class="bg-amber-950/40 border border-amber-800/60 p-3 rounded-lg max-h-32 overflow-y-auto text-xs font-mono text-amber-300" id="modal-dup-list"></div>
 
             <div class="grid grid-cols-3 gap-2 pt-2">
-                <button onclick="closeModal()" class="bg-slate-200 hover:bg-slate-300 text-slate-700 text-xs font-semibold py-2 rounded-lg">
+                <button onclick="closeModal()" class="bg-slate-800 hover:bg-slate-700 text-slate-300 text-xs font-semibold py-2 rounded-lg border border-slate-700 transition">
                     🚫 Hủy bỏ
                 </button>
-                <button onclick="confirmImport('skip')" class="bg-blue-600 hover:bg-blue-700 text-white text-xs font-semibold py-2 rounded-lg">
+                <button onclick="confirmImport('skip')" class="bg-blue-600 hover:bg-blue-500 text-white text-xs font-semibold py-2 rounded-lg transition">
                     ⏭️ Bỏ trùng & Nhập mới
                 </button>
-                <button onclick="confirmImport('all')" class="bg-amber-600 hover:bg-amber-700 text-white text-xs font-semibold py-2 rounded-lg">
+                <button onclick="confirmImport('all')" class="bg-amber-600 hover:bg-amber-500 text-white text-xs font-semibold py-2 rounded-lg transition">
                     📝 Nhập tất cả
                 </button>
             </div>
@@ -258,13 +258,13 @@
             const contentManage = document.getElementById('tab-content-manage');
 
             if (tab === 'import') {
-                btnImport.className = "py-2 px-4 font-semibold text-blue-600 border-b-2 border-blue-600 transition-all";
-                btnManage.className = "py-2 px-4 font-semibold text-slate-500 hover:text-blue-600 transition-all";
+                btnImport.className = "py-2 px-4 font-semibold text-blue-400 border-b-2 border-blue-500 transition-all";
+                btnManage.className = "py-2 px-4 font-semibold text-slate-400 hover:text-blue-400 transition-all";
                 contentImport.classList.remove('hidden');
                 contentManage.classList.add('hidden');
             } else {
-                btnManage.className = "py-2 px-4 font-semibold text-blue-600 border-b-2 border-blue-600 transition-all";
-                btnImport.className = "py-2 px-4 font-semibold text-slate-500 hover:text-blue-600 transition-all";
+                btnManage.className = "py-2 px-4 font-semibold text-blue-400 border-b-2 border-blue-500 transition-all";
+                btnImport.className = "py-2 px-4 font-semibold text-slate-400 hover:text-blue-400 transition-all";
                 contentManage.classList.remove('hidden');
                 contentImport.classList.add('hidden');
                 applyFilters();
@@ -383,13 +383,13 @@
 
             Object.values(summaryMap).forEach(row => {
                 tbody.innerHTML += `
-                    <tr class="border-b hover:bg-slate-50">
-                        <td class="p-3">${stt++}</td>
-                        <td class="p-3">${row.loai_tb}</td>
-                        <td class="p-3 font-semibold">${row.ten_may}</td>
-                        <td class="p-3 text-blue-600 font-bold">${row.tong}</td>
-                        <td class="p-3 text-red-500">${row.da_dung}</td>
-                        <td class="p-3 text-green-600 font-bold">${row.con_lai}</td>
+                    <tr class="border-b border-slate-800 hover:bg-slate-800/50 transition-colors">
+                        <td class="p-3 text-slate-400">${stt++}</td>
+                        <td class="p-3 text-slate-300">${row.loai_tb}</td>
+                        <td class="p-3 font-semibold text-slate-100">${row.ten_may}</td>
+                        <td class="p-3 text-blue-400 font-bold">${row.tong}</td>
+                        <td class="p-3 text-rose-400">${row.da_dung}</td>
+                        <td class="p-3 text-emerald-400 font-bold">${row.con_lai}</td>
                     </tr>
                 `;
                 selectModel.innerHTML += `<option value="${row.loai_tb} :: ${row.ten_may}">${row.loai_tb} - ${row.ten_may}</option>`;
@@ -420,20 +420,20 @@
             const currentLoai = row.loai_thiet_bi || defaultLoai;
             const loaiOptions = listLoaiTB.map(t => `<option value="${t}" ${t === currentLoai ? 'selected' : ''}>${t}</option>`).join('');
             return `
-                <tr class="border-b detail-row" data-id="${row.id || ''}">
-                    <td class="p-1.5"><select class="row-loai border rounded p-1 w-full text-xs">${loaiOptions}</select></td>
-                    <td class="p-1.5"><input type="text" class="row-model border rounded p-1 w-full text-xs font-semibold" value="${row.ten_may || ''}"></td>
-                    <td class="p-1.5"><input type="text" class="row-key border rounded p-1 w-full text-xs font-mono" value="${row.ma_key || ''}"></td>
-                    <td class="p-1.5"><input type="number" oninput="autoUpdateRowStatus(this)" class="row-limit border rounded p-1 w-full text-xs" value="${row.gioi_han || 1}"></td>
-                    <td class="p-1.5"><input type="number" oninput="autoUpdateRowStatus(this)" class="row-dadung border rounded p-1 w-full text-xs" value="${row.da_dung || 0}"></td>
+                <tr class="border-b border-slate-800 detail-row hover:bg-slate-800/30 transition-colors" data-id="${row.id || ''}">
+                    <td class="p-1.5"><select class="row-loai border border-slate-700 bg-slate-900 text-slate-100 rounded p-1 w-full text-xs outline-none focus:border-blue-500">${loaiOptions}</select></td>
+                    <td class="p-1.5"><input type="text" class="row-model border border-slate-700 bg-slate-900 text-slate-100 rounded p-1 w-full text-xs font-semibold uppercase outline-none focus:border-blue-500" value="${row.ten_may || ''}"></td>
+                    <td class="p-1.5"><input type="text" class="row-key border border-slate-700 bg-slate-900 text-slate-100 rounded p-1 w-full text-xs font-mono outline-none focus:border-blue-500" value="${row.ma_key || ''}"></td>
+                    <td class="p-1.5"><input type="number" oninput="autoUpdateRowStatus(this)" class="row-limit border border-slate-700 bg-slate-900 text-slate-100 rounded p-1 w-full text-xs outline-none focus:border-blue-500" value="${row.gioi_han || 1}"></td>
+                    <td class="p-1.5"><input type="number" oninput="autoUpdateRowStatus(this)" class="row-dadung border border-slate-700 bg-slate-900 text-slate-100 rounded p-1 w-full text-xs outline-none focus:border-blue-500" value="${row.da_dung || 0}"></td>
                     <td class="p-1.5">
-                        <select class="row-trangthai border rounded p-1 w-full text-xs">
+                        <select class="row-trangthai border border-slate-700 bg-slate-900 text-slate-100 rounded p-1 w-full text-xs outline-none focus:border-blue-500">
                             <option value="Còn lượt" ${row.trang_thai === 'Còn lượt' ? 'selected' : ''}>Còn lượt</option>
                             <option value="Hết lượt" ${row.trang_thai === 'Hết lượt' ? 'selected' : ''}>Hết lượt</option>
                         </select>
                     </td>
                     <td class="p-1.5 text-center">
-                        <button onclick="this.closest('tr').remove()" class="text-red-500 hover:text-red-700 text-xs p-1"><i class="fa-solid fa-trash"></i></button>
+                        <button onclick="this.closest('tr').remove()" class="text-rose-400 hover:text-rose-300 text-xs p-1 transition"><i class="fa-solid fa-trash"></i></button>
                     </td>
                 </tr>
             `;

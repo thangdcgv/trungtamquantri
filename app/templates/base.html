@@ -458,7 +458,6 @@
         </a>
 
         <!-- Quản Lý Nhập Xuất Key -->
-        {% if request.session.get('role') in ('Admin', 'Super Admin', 'System Admin') %}
         <a href="/admin/quan-ly-key" class="nav-item {% if request.url.path.startswith('/admin/quan-ly-key') %}active{% endif %}">
             <svg viewBox="0 0 24 24">
                 <circle cx="7.5" cy="15.5" r="3.5"></circle>
@@ -466,7 +465,6 @@
             </svg>
             <span>Quản lý Key</span>
         </a>
-        {% endif %}
 
         <!-- 4. Cụm Quản Trị Hệ Thống -->
         {% if request.session.get('role') in ('Admin', 'Super Admin', 'System Admin') %}
