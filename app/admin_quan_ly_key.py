@@ -175,6 +175,7 @@ class NapKeyNhanhSchema(BaseModel):
     loai_thiet_bi: Optional[str] = "Máy in"
     dinh_danh: Optional[str] = ""
     ghi_chu: Optional[str] = ""
+    confirm_create: Optional[bool] = False
 
 class ReportFailReq(BaseModel):
     key_id: int
@@ -477,14 +478,13 @@ async def report_fail_retry_action(
 @api_router.post("/nap-key-nhanh")
 async def api_nap_key_nhanh(
     data: NapKeyNhanhSchema,
-    current_user: dict = Depends(require_login)  # Sử dụng require_login
+    current_user: dict = Depends(require_login)
 ):
-    ma_key = data.ma_key.strip()
+    ma_key = data.ma_key.strip().upper()  # Chuẩn hóa viết hoa mã key
     if not ma_key:
         raise HTTPException(status_code=400, detail="Mã Key không được để trống!")
 
     try:
-        # Lấy chính xác danh tính người dùng từ require_login
         username_ktv = (
             current_user.get("username") or 
             current_user.get("ho_ten") or 
@@ -498,13 +498,15 @@ async def api_nap_key_nhanh(
         existing_keys = res_key.data or []
 
         if existing_keys:
-            # --- TRƯỜNG HỢP 1: KEY ĐÃ TỒN TẠI TRONG KHO ---
+            # ==========================================
+            # TRƯỜNG HỢP 1: KEY ĐÃ TỒN TẠI TRONG KHO
+            # ==========================================
             key_item = existing_keys[0]
             gioi_han = key_item.get("gioi_han") or 1
             da_dung = key_item.get("da_dung") or 0
             trang_thai = key_item.get("trang_thai", "Còn lượt")
 
-            # Kiểm tra nếu số lần đã dùng >= giới hạn hoặc trạng thái báo Hết lượt
+            # Kiểm tra nếu hết lượt
             if da_dung >= gioi_han or trang_thai == "Hết lượt":
                 return JSONResponse(
                     status_code=400,
@@ -514,11 +516,10 @@ async def api_nap_key_nhanh(
                     }
                 )
 
-            # Còn lượt: Tăng số lần đã dùng lên 1
+            # Cập nhật số lượt
             da_dung_moi = da_dung + 1
             trang_thai_moi = "Hết lượt" if da_dung_moi >= gioi_han else "Còn lượt"
 
-            # Cập nhật CSDL kho_key
             supabase.table("kho_key").update({
                 "da_dung": da_dung_moi,
                 "trang_thai": trang_thai_moi
@@ -528,18 +529,34 @@ async def api_nap_key_nhanh(
             luot_con_lai = gioi_han - da_dung_moi
 
         else:
-            # --- TRƯỜNG HỢP 2: KEY CHƯA CÓ -> TỰ ĐỘNG THÊM MỚI (DÙNG NGAY 1/1 LƯỢT) ---
+            # ==========================================
+            # TRƯỜNG HỢP 2: KEY CHƯA TỒN TẠI
+            # ==========================================
+            # Nếu Frontend chưa gửi cờ xác nhận -> Trả về lỗi 404 để mở Modal
+            if not data.confirm_create:
+                return JSONResponse(
+                    status_code=404,
+                    content={
+                        "success": False,
+                        "code": "KEY_NOT_FOUND",
+                        "ma_key": ma_key,
+                        "message": f"Mã Key [{ma_key}] chưa tồn tại trong kho."
+                    }
+                )
+
+            # Nếu KTV đã bấm "Đồng ý nạp" trên Modal -> Khởi tạo key mới (Tổng 2 lượt, đã dùng 1)
             new_key_data = {
                 "ten_may": data.loai_thiet_bi,
                 "ma_key": ma_key,
-                "gioi_han": 1,
-                "da_dung": 1,
-                "trang_thai": "Hết lượt",
+                "gioi_han": 2,          # Khởi tạo tổng 2 lượt
+                "da_dung": 1,           # Trừ ngay 1 lượt
+                "trang_thai": "Còn lượt",# Dư 1 lượt dự phòng
                 "loai_thiet_bi": data.loai_thiet_bi
             }
             supabase.table("kho_key").insert(new_key_data).execute()
+            
             ten_may = data.loai_thiet_bi
-            luot_con_lai = 0
+            luot_con_lai = 1
 
         # 2. Ghi nhật ký vào bảng quan_ly_key
         log_entry = {

@@ -1,0 +1,513 @@
+{% extends "base.html" %}
+
+{% block head %}
+<style>
+    /* Ép kiểu cho ô input date hiển thị icon & giao diện lịch chuẩn Dark Mode */
+    input[type="date"]::-webkit-calendar-picker-indicator {
+        filter: invert(0.8);
+        cursor: pointer;
+    }
+</style>
+{% endblock %}
+
+{% block content %}
+<div class="min-h-screen bg-slate-950 text-slate-100 py-6 px-4 sm:px-6 lg:px-8 space-y-6">
+
+    <!-- TOP HEADER & ACTION BAR -->
+    <div class="bg-slate-900/90 backdrop-blur-md p-5 rounded-2xl border border-slate-800 shadow-xl flex flex-col lg:flex-row lg:items-center justify-between gap-4">
+        
+        <!-- Navigation & Page Title -->
+        <div class="flex items-center gap-4">
+            <a href="/" 
+               class="w-10 h-10 rounded-xl bg-slate-800 hover:bg-slate-700 border border-slate-700/80 text-slate-300 hover:text-white flex items-center justify-center transition shadow-sm group shrink-0" 
+               title="Quay về Trang Chủ">
+                <i class="fa-solid fa-house group-hover:scale-110 transition-transform text-sm"></i>
+            </a>
+
+            <div class="h-8 w-[1px] bg-slate-800 hidden sm:block"></div>
+
+            <div class="flex items-center gap-3">
+                <div class="w-11 h-11 rounded-xl bg-indigo-500/10 border border-indigo-500/20 text-indigo-400 flex items-center justify-center shrink-0">
+                    <i class="fa-solid fa-shield-halved text-xl"></i>
+                </div>
+                <div>
+                    <h1 class="text-lg font-bold text-slate-100 tracking-tight flex items-center gap-2">
+                        Quản Lý Bảo Hành
+                    </h1>
+                    <p class="text-xs text-slate-400 mt-0.5">Tra cứu, quản lý và theo dõi thông tin phiếu bảo hành thiết bị</p>
+                </div>
+            </div>
+        </div>
+        
+        <!-- Action Buttons -->
+        <div class="flex items-center gap-2.5 w-full lg:w-auto">
+            <button onclick="document.getElementById('excelModal').classList.remove('hidden')" 
+                    class="flex-1 lg:flex-initial inline-flex items-center justify-center gap-2 bg-emerald-950/60 hover:bg-emerald-900/80 text-emerald-300 font-semibold px-4 py-2.5 rounded-xl text-xs transition border border-emerald-800/60 shadow-lg shadow-emerald-950/30 active:scale-[0.98] cursor-pointer">
+                <i class="fa-solid fa-file-excel text-emerald-400"></i>
+                <span>Nhập Excel</span>
+            </button>
+
+            <a href="/warranty/create" 
+               class="flex-1 lg:flex-initial inline-flex items-center justify-center gap-2 bg-indigo-600 hover:bg-indigo-500 text-white font-semibold px-4 py-2.5 rounded-xl text-xs transition border border-indigo-500 shadow-lg shadow-indigo-600/30 active:scale-[0.98]">
+                <i class="fa-solid fa-plus"></i>
+                <span>Tạo Phiếu Mới</span>
+            </a>
+        </div>
+    </div>
+
+    <!-- BỘ LỌC TÌM KIẾM NÂNG CAO -->
+    <div class="bg-slate-900/90 p-5 rounded-2xl border border-slate-800 shadow-xl">
+        <form method="GET" action="/warranty/list" class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-12 gap-4 items-end">
+            
+            <!-- 1. Từ khóa tìm kiếm -->
+            <div class="lg:col-span-4">
+                <label class="block text-[11px] font-bold text-slate-400 uppercase tracking-wider mb-1.5 flex items-center gap-1">
+                    <i class="fa-solid fa-magnifying-glass text-indigo-400 text-[10px]"></i> Tìm kiếm từ khóa
+                </label>
+                <div class="relative">
+                    <input type="text" id="searchInput" name="q" value="{{ request.query_params.get('q', '') }}" 
+                        placeholder="Nhập Serial (S/N), Model..." 
+                        autocomplete="off"
+                        class="w-full pl-9 pr-9 py-2 bg-slate-950 border border-slate-800 rounded-xl focus:border-indigo-500 focus:ring-1 focus:ring-indigo-500 text-xs text-slate-200 placeholder:text-slate-600 outline-none transition">
+                    <i class="fa-solid fa-barcode absolute left-3 top-1/2 -translate-y-1/2 text-slate-500 text-xs"></i>
+                    
+                    <!-- Icon Spinner xoay khi đang fetch dữ liệu -->
+                    <i id="searchSpinner" class="fa-solid fa-spinner fa-spin absolute right-3 top-1/2 -translate-y-1/2 text-indigo-400 text-xs hidden"></i>
+                </div>
+            </div>
+
+            <!-- 2. Người tạo phiếu -->
+            <div class="lg:col-span-3">
+                <label class="block text-[11px] font-bold text-slate-400 uppercase tracking-wider mb-1.5 flex items-center gap-1">
+                    <i class="fa-solid fa-user-pen text-indigo-400 text-[10px]"></i> Người tạo phiếu
+                </label>
+                <div class="relative">
+                    <select name="created_by" class="w-full pl-3 pr-8 py-2 bg-slate-950 border border-slate-800 rounded-xl focus:border-indigo-500 text-xs text-slate-200 appearance-none outline-none cursor-pointer">
+                        <option value="">-- Tất cả nhân viên --</option>
+                        {% for creator_name in creators %}
+                            {% if creator_name and creator_name is string %}
+                                <option value="{{ creator_name }}" {% if request.query_params.get('created_by') == creator_name %}selected{% endif %}>
+                                    {{ creator_name }}
+                                </option>
+                            {% endif %}
+                        {% endfor %}
+                    </select>
+                    <i class="fa-solid fa-chevron-down absolute right-3 top-1/2 -translate-y-1/2 text-slate-500 text-[10px] pointer-events-none"></i>
+                </div>
+            </div>
+
+            <!-- 3. Khoảng thời gian -->
+            <div class="lg:col-span-4 grid grid-cols-2 gap-2">
+                <div>
+                    <label class="block text-[11px] font-bold text-slate-400 uppercase tracking-wider mb-1.5 flex items-center gap-1">
+                        <i class="fa-regular fa-calendar text-indigo-400 text-[10px]"></i> Từ ngày
+                    </label>
+                    <input type="date" name="start_date" value="{{ request.query_params.get('start_date', '') }}" 
+                        class="w-full px-2.5 py-2 bg-slate-950 border border-slate-800 rounded-xl focus:border-indigo-500 text-xs text-slate-200 outline-none">
+                </div>
+                <div>
+                    <label class="block text-[11px] font-bold text-slate-400 uppercase tracking-wider mb-1.5 flex items-center gap-1">
+                        <i class="fa-regular fa-calendar-check text-indigo-400 text-[10px]"></i> Đến ngày
+                    </label>
+                    <input type="date" name="end_date" value="{{ request.query_params.get('end_date', '') }}" 
+                        class="w-full px-2.5 py-2 bg-slate-950 border border-slate-800 rounded-xl focus:border-indigo-500 text-xs text-slate-200 outline-none">
+                </div>
+            </div>
+
+            <!-- 4. Nút Filter -->
+            <div class="lg:col-span-1 flex items-center gap-1.5">
+                <button type="submit" 
+                        class="flex-1 bg-indigo-600 hover:bg-indigo-500 text-white py-2 px-3 rounded-xl font-semibold text-xs transition shadow-md shadow-indigo-600/20 active:scale-[0.98] flex items-center justify-center gap-1 cursor-pointer"
+                        title="Áp dụng bộ lọc">
+                    <i class="fa-solid fa-filter text-[10px]"></i>
+                    <span class="sm:inline lg:hidden">Lọc</span>
+                </button>
+                
+                {% if request.query_params.get('q') or request.query_params.get('created_by') or request.query_params.get('start_date') or request.query_params.get('end_date') %}
+                <a href="/warranty/list" 
+                   class="bg-slate-800 hover:bg-slate-700 text-slate-400 hover:text-slate-200 py-2 px-2.5 rounded-xl text-xs transition border border-slate-700 flex items-center justify-center shrink-0" 
+                   title="Xóa bộ lọc">
+                    <i class="fa-solid fa-rotate-left"></i>
+                </a>
+                {% endif %}
+            </div>
+
+        </form>
+    </div>
+
+    <!-- BẢNG DỮ LIỆU -->
+    <div class="bg-slate-900/90 rounded-2xl border border-slate-800 shadow-2xl overflow-hidden">
+        <div class="overflow-x-auto">
+            <table class="w-full text-left border-collapse text-xs">
+                <thead>
+                    <tr class="bg-slate-800/80 border-b border-slate-700/80 text-slate-400 uppercase tracking-wider text-[10px] font-bold">
+                        <th class="py-3.5 px-4">Số Serial (S/N)</th>
+                        <th class="py-3.5 px-4">Khách Hàng</th>
+                        <th class="py-3.5 px-4">Model & Loại Máy</th>
+                        <th class="py-3.5 px-4">Gói Bảo Hành</th>
+                        <th class="py-3.5 px-4">Counter (Đầu / Hiện tại)</th>
+                        <th class="py-3.5 px-4">Người Tạo / Ngày Tạo</th>
+                        <th class="py-3.5 px-4 text-center">Thao Tác</th>
+                    </tr>
+                </thead>
+                <tbody class="divide-y divide-slate-800/60 text-slate-300">
+                    {% if items %}
+                        <!-- Lấy Session an toàn tránh Dict Type Error -->
+                        {% set user_role = request.session.get('role', '') %}
+                        {% set session_user = request.session.get('user') %}
+                        {% set user_name_from_session = session_user.get('name', '') if session_user is mapping else '' %}
+                        {% set current_staff = (request.session.get('display_name') or user_name_from_session or '') | string %}
+                        {% set is_admin = user_role in ['Admin', 'Super Admin', 'System Admin'] %}
+
+                        {% for item in items %}
+                        <!-- Chuẩn hóa tên người tạo phiếu -->
+                        {% set raw_creator = item.staff_name or item.created_by_name or item.creator or '' %}
+                        {% if raw_creator is mapping %}
+                            {% set item_creator = raw_creator.get('display_name') or raw_creator.get('name') or '' %}
+                        {% else %}
+                            {% set item_creator = raw_creator | string %}
+                        {% endif %}
+
+                        {% set is_owner = is_admin or (item_creator and item_creator.strip().lower() == current_staff.strip().lower()) %}
+
+                        <tr class="hover:bg-slate-800/50 transition group">
+                            
+                            <!-- Serial Number -->
+                            <td class="py-3.5 px-4">
+                                <div class="inline-flex items-center gap-2 font-mono font-semibold text-indigo-300 bg-indigo-950/60 hover:bg-indigo-900/70 px-2.5 py-1 rounded-lg border border-indigo-800/50 transition">
+                                    <span>{{ item.serial_number }}</span>
+                                    <button type="button" onclick="copyToClipboard('{{ item.serial_number }}')" class="text-indigo-400/60 hover:text-indigo-300 transition" title="Sao chép S/N">
+                                        <i class="fa-regular fa-copy text-[11px]"></i>
+                                    </button>
+                                </div>
+                            </td>
+
+                            <!-- Khách hàng -->
+                            <td class="py-3.5 px-4">
+                                <div class="flex items-center gap-3">
+                                    <div class="w-8 h-8 rounded-full bg-slate-800 border border-slate-700 text-slate-300 font-bold flex items-center justify-center text-[11px] shrink-0">
+                                        {{ (item.customer_name or 'K')[0] | upper }}
+                                    </div>
+                                    <div>
+                                        <div class="font-semibold text-slate-100 group-hover:text-indigo-400 transition">{{ item.customer_name }}</div>
+                                        {% if item.phone_number %}
+                                        <a href="tel:{{ item.phone_number }}" class="text-[11px] text-slate-400 hover:text-slate-300 inline-flex items-center gap-1 mt-0.5">
+                                            <i class="fa-solid fa-phone text-[9px] text-slate-500"></i> {{ item.phone_number }}
+                                        </a>
+                                        {% endif %}
+                                    </div>
+                                </div>
+                            </td>
+
+                            <!-- Model & Loại máy -->
+                            <td class="py-3.5 px-4">
+                                <div class="font-medium text-slate-200">{{ item.model_name }}</div>
+                                <span class="inline-block bg-slate-800/80 text-slate-400 text-[10px] font-medium px-2 py-0.5 rounded-md border border-slate-700/60 mt-1">
+                                    {{ item.category or 'Khác' }}
+                                </span>
+                            </td>
+
+                            <!-- Gói bảo hành -->
+                            <td class="py-3.5 px-4">
+                                {% if item.applied_policy_name %}
+                                <span class="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-lg text-[11px] font-medium bg-emerald-950/70 text-emerald-300 border border-emerald-800/60">
+                                    <i class="fa-solid fa-shield-halved text-[10px] text-emerald-400"></i> {{ item.applied_policy_name }}
+                                </span>
+                                {% else %}
+                                <span class="inline-flex items-center px-2 py-0.5 rounded text-[11px] font-medium bg-slate-800 text-slate-500 border border-slate-700/50">
+                                    Chưa áp dụng
+                                </span>
+                                {% endif %}
+                            </td>
+
+                            <!-- Counter -->
+                            <td class="py-3.5 px-4">
+                                <div class="flex items-center gap-2 font-mono">
+                                    <span class="text-slate-500 text-[11px]" title="Counter Đầu">{{ "{:,}".format(item.initial_counter or 0) }}</span>
+                                    <i class="fa-solid fa-arrow-right text-[9px] text-slate-600"></i>
+                                    <span class="font-semibold text-emerald-400 bg-emerald-950/50 px-2 py-0.5 rounded-md border border-emerald-800/50 text-[11px]" title="Counter Hiện tại">
+                                        {{ "{:,}".format(item.current_counter or 0) }}
+                                    </span>
+                                </div>
+                            </td>
+
+                            <!-- Người tạo & Ngày mua/tạo -->
+                            <td class="py-3.5 px-4 text-slate-400 whitespace-nowrap">
+                                <div class="flex flex-col gap-0.5">
+                                    <span class="text-slate-300 font-medium inline-flex items-center gap-1.5">
+                                        <i class="fa-regular fa-user text-slate-500 text-[10px]"></i>
+                                        {{ item_creator or 'Hệ thống' }}
+                                    </span>
+                                    <span class="text-[11px] text-slate-500 inline-flex items-center gap-1.5">
+                                        <i class="fa-regular fa-calendar text-slate-600 text-[10px]"></i>
+                                        {{ item.purchase_date or item.created_at or 'N/A' }}
+                                    </span>
+                                </div>
+                            </td>
+
+                            <!-- CỘT THAO TÁC -->
+                            <td class="py-3.5 px-4 text-center">
+                                <div class="flex justify-center items-center gap-1">
+                                    <a href="/warranty/{{ item.id }}" 
+                                       class="p-1.5 text-slate-400 hover:text-indigo-400 hover:bg-indigo-950/80 rounded-lg transition border border-transparent hover:border-indigo-800/50" 
+                                       title="{% if is_owner %}Chỉnh sửa phiếu{% else %}Xem chi tiết{% endif %}">
+                                        {% if is_owner %}
+                                            <i class="fa-solid fa-pen-to-square text-sm"></i>
+                                        {% else %}
+                                            <i class="fa-solid fa-eye text-sm text-slate-500 hover:text-indigo-400"></i>
+                                        {% endif %}
+                                    </a>
+
+                                    {% if is_owner %}
+                                    <button type="button" 
+                                            onclick="confirmDelete('{{ item.id }}', '{{ item.serial_number }}')" 
+                                            class="p-1.5 text-slate-400 hover:text-rose-400 hover:bg-rose-950/80 rounded-lg transition border border-transparent hover:border-rose-800/50 cursor-pointer" 
+                                            title="Xóa phiếu">
+                                        <i class="fa-solid fa-trash-can text-sm"></i>
+                                    </button>
+                                    {% endif %}
+                                </div>
+                            </td>
+                        </tr>
+                        {% endfor %}
+                    {% else %}
+                        <tr>
+                            <td colspan="7" class="py-16 text-center">
+                                <div class="max-w-xs mx-auto text-center space-y-3">
+                                    <div class="w-12 h-12 bg-slate-800/80 text-slate-500 rounded-full flex items-center justify-center mx-auto text-xl border border-slate-700">
+                                        <i class="fa-regular fa-folder-open"></i>
+                                    </div>
+                                    <div>
+                                        <p class="text-sm font-semibold text-slate-300">Không tìm thấy dữ liệu</p>
+                                        <p class="text-xs text-slate-500 mt-1">Hãy thử thay đổi từ khóa hoặc bộ lọc tìm kiếm.</p>
+                                    </div>
+                                </div>
+                            </td>
+                        </tr>
+                    {% endif %}
+                </tbody>
+            </table>
+        </div>
+
+        <!-- PHÂN TRANG -->
+        {% if total_pages and total_pages > 1 %}
+        <div class="px-6 py-4 bg-slate-900 border-t border-slate-800 flex flex-col sm:flex-row items-center justify-between gap-3">
+            <div class="text-xs text-slate-400">
+                Hiển thị trang <span class="font-bold text-slate-200">{{ current_page }}</span> / <span class="font-bold text-slate-200">{{ total_pages }}</span>
+            </div>
+            
+            <div class="flex items-center gap-1">
+                {% if current_page > 1 %}
+                <a href="/warranty/list?page={{ current_page - 1 }}&q={{ request.query_params.get('q', '') }}&created_by={{ request.query_params.get('created_by', '') }}&start_date={{ request.query_params.get('start_date', '') }}&end_date={{ request.query_params.get('end_date', '') }}" 
+                   class="w-8 h-8 border border-slate-800 bg-slate-950 rounded-lg text-xs font-medium hover:bg-slate-800 text-slate-300 transition flex items-center justify-center">
+                    <i class="fa-solid fa-chevron-left text-[10px]"></i>
+                </a>
+                {% endif %}
+                
+                {% for p in range(1, total_pages + 1) %}
+                    {% if p == current_page %}
+                        <span class="w-8 h-8 border border-indigo-500 bg-indigo-600 text-white rounded-lg text-xs font-bold flex items-center justify-center shadow-lg shadow-indigo-600/30">{{ p }}</span>
+                    {% elif p <= 3 or p >= total_pages - 2 or (p >= current_page - 1 and p <= current_page + 1) %}
+                        <a href="/warranty/list?page={{ p }}&q={{ request.query_params.get('q', '') }}&created_by={{ request.query_params.get('created_by', '') }}&start_date={{ request.query_params.get('start_date', '') }}&end_date={{ request.query_params.get('end_date', '') }}" 
+                           class="w-8 h-8 border border-slate-800 bg-slate-950 rounded-lg text-xs font-medium hover:bg-slate-800 text-slate-400 hover:text-slate-200 transition flex items-center justify-center">{{ p }}</a>
+                    {% endif %}
+                {% endfor %}
+
+                {% if current_page < total_pages %}
+                <a href="/warranty/list?page={{ current_page + 1 }}&q={{ request.query_params.get('q', '') }}&created_by={{ request.query_params.get('created_by', '') }}&start_date={{ request.query_params.get('start_date', '') }}&end_date={{ request.query_params.get('end_date', '') }}" 
+                   class="w-8 h-8 border border-slate-800 bg-slate-950 rounded-lg text-xs font-medium hover:bg-slate-800 text-slate-300 transition flex items-center justify-center">
+                    <i class="fa-solid fa-chevron-right text-[10px]"></i>
+                </a>
+                {% endif %}
+            </div>
+        </div>
+        {% endif %}
+    </div>
+</div>
+
+<!-- MODAL IMPORT EXCEL -->
+<div id="excelModal" class="fixed inset-0 bg-slate-950/80 backdrop-blur-md hidden flex items-center justify-center z-50 p-4 transition-all">
+    <div class="bg-slate-900 border border-slate-800 rounded-2xl shadow-2xl max-w-md w-full p-6 relative text-slate-100">
+        <button onclick="document.getElementById('excelModal').classList.add('hidden')" 
+                class="absolute top-4 right-4 text-slate-500 hover:text-slate-300 w-8 h-8 rounded-full flex items-center justify-center hover:bg-slate-800 transition cursor-pointer">
+            <i class="fa-solid fa-xmark text-base"></i>
+        </button>
+        
+        <div class="flex items-center gap-3 mb-4">
+            <div class="w-10 h-10 rounded-xl bg-emerald-500/10 text-emerald-400 flex items-center justify-center text-lg font-bold border border-emerald-500/20">
+                <i class="fa-solid fa-file-excel"></i>
+            </div>
+            <div>
+                <h3 class="text-base font-bold text-slate-100">Nhập Dữ Liệu Từ Excel</h3>
+                <p class="text-xs text-slate-400">Tải lên danh sách bảo hành tự động</p>
+            </div>
+        </div>
+
+        <div class="mb-4">
+            <a href="/warranty/api/download-template" class="inline-flex items-center gap-1.5 text-xs font-medium text-indigo-400 hover:text-indigo-300 bg-indigo-950/60 hover:bg-indigo-900/60 px-3 py-1.5 rounded-lg transition border border-indigo-800/60">
+                <i class="fa-solid fa-download text-[11px]"></i> Tải file Excel mẫu (.xlsx)
+            </a>
+        </div>
+
+        <form id="excelForm" onsubmit="uploadExcel(event)" class="space-y-4">
+            <div class="border-2 border-dashed border-slate-700 hover:border-emerald-500 rounded-xl p-6 text-center transition cursor-pointer bg-slate-950/50 hover:bg-emerald-950/20 relative" id="dropzone">
+                <i class="fa-solid fa-cloud-arrow-up text-3xl text-emerald-400 mb-2"></i>
+                <p class="text-xs font-semibold text-slate-200">Kéo thả file vào đây hoặc bấm chọn</p>
+                <p class="text-[10px] text-slate-500 mt-1">Hỗ trợ định dạng .xlsx, .xls</p>
+                <input type="file" id="excelFile" accept=".xlsx, .xls" required class="absolute inset-0 w-full h-full opacity-0 cursor-pointer" onchange="updateFileName(this)">
+            </div>
+
+            <div id="fileNameDisplay" class="text-xs text-emerald-300 bg-emerald-950/60 px-3 py-2 rounded-lg font-medium hidden items-center gap-2 border border-emerald-800/60">
+                <i class="fa-solid fa-paperclip text-emerald-400"></i> 
+                <span id="fileNameText" class="truncate"></span>
+            </div>
+
+            <div class="flex justify-end gap-2 pt-2">
+                <button type="button" onclick="document.getElementById('excelModal').classList.add('hidden')" class="px-4 py-2 border border-slate-700 rounded-xl text-xs font-semibold text-slate-400 hover:bg-slate-800 transition cursor-pointer">Hủy</button>
+                <button type="submit" id="btnSubmitExcel" class="px-4 py-2 bg-emerald-600 hover:bg-emerald-500 text-white rounded-xl text-xs font-semibold transition shadow-md shadow-emerald-600/20 cursor-pointer">Tải Lên</button>
+            </div>
+        </form>
+    </div>
+</div>
+{% endblock %}
+
+{% block scripts %}
+<script>
+    // Copy S/N nhanh vào Clipboard
+    function copyToClipboard(text) {
+        navigator.clipboard.writeText(text).then(() => {
+            alert(`Đã sao chép S/N: ${text}`);
+        });
+    }
+
+    // Hiển thị tên file Excel khi chọn
+    function updateFileName(input) {
+        const display = document.getElementById('fileNameDisplay');
+        const text = document.getElementById('fileNameText');
+        if (input.files && input.files[0]) {
+            text.innerText = input.files[0].name;
+            display.classList.remove('hidden');
+            display.classList.add('flex');
+        } else {
+            display.classList.add('hidden');
+            display.classList.remove('flex');
+        }
+    }
+
+    // Xử lý Xóa Phiếu Bảo Hành
+    async function confirmDelete(warrantyId, serialNumber) {
+        if (!confirm(`Bạn có chắc chắn muốn xóa phiếu bảo hành S/N: ${serialNumber}?`)) {
+            return;
+        }
+
+        try {
+            const response = await fetch(`/warranty/api/delete/${warrantyId}`, {
+                method: 'DELETE',
+                headers: { 'Content-Type': 'application/json' }
+            });
+
+            const result = await response.json();
+
+            if (response.ok && result.success) {
+                alert('Xóa phiếu bảo hành thành công!');
+                window.location.reload();
+            } else {
+                // Hiển thị message từ backend trả về (ví dụ: "Bạn không có quyền xóa...")
+                alert(result.message || 'Không thể xóa phiếu bảo hành này');
+            }
+        } catch (error) {
+            console.error('Lỗi xóa phiếu:', error);
+            alert('Đã xảy ra lỗi kết nối hệ thống!');
+        }
+    }
+
+    // Xử lý Upload Excel
+    async function uploadExcel(event) {
+        event.preventDefault();
+        const fileInput = document.getElementById('excelFile');
+        if (!fileInput.files[0]) return;
+
+        const formData = new FormData();
+        formData.append('file', fileInput.files[0]);
+
+        const btn = document.getElementById('btnSubmitExcel');
+        btn.disabled = true;
+        btn.innerText = "Đang xử lý...";
+
+        try {
+            const response = await fetch('/warranty/api/import-excel', {
+                method: 'POST',
+                body: formData
+            });
+            const result = await response.json();
+            if (response.ok && result.success) {
+                alert(`Nhập thành công ${result.imported_count} bản ghi!`);
+                window.location.reload();
+            } else {
+                alert("Lỗi: " + (result.detail || result.message || "Nhập file thất bại"));
+            }
+        } catch (err) {
+            alert("Lỗi hệ thống khi tải file!");
+        } finally {
+            btn.disabled = false;
+            btn.innerText = "Tải Lên";
+        }
+    }
+    document.addEventListener("DOMContentLoaded", () => {
+        const searchInput = document.getElementById("searchInput");
+        const searchSpinner = document.getElementById("searchSpinner");
+        const filterForm = searchInput?.closest("form");
+        let debounceTimer;
+
+        if (!searchInput || !filterForm) return;
+
+        // Lắng nghe sự kiện người dùng nhập phím
+        searchInput.addEventListener("input", () => {
+            if (searchSpinner) searchSpinner.classList.remove("hidden");
+
+            clearTimeout(debounceTimer);
+            // Chờ 400ms sau khi ngừng gõ mới gửi request (Debounce)
+            debounceTimer = setTimeout(() => {
+                fetchLiveSearchResults();
+            }, 400);
+        });
+
+        async function fetchLiveSearchResults() {
+            const formData = new FormData(filterForm);
+            const params = new URLSearchParams(formData).toString();
+            const url = `${filterForm.action}?${params}`;
+
+            try {
+                const response = await fetch(url);
+                const htmlText = await response.text();
+
+                // Parse HTML trả về
+                const parser = new DOMParser();
+                const doc = parser.parseFromString(htmlText, "text/html");
+
+                // 1. Cập nhật lại nội dung Bảng (tbody)
+                const newTbody = doc.querySelector("tbody");
+                const currentTbody = document.querySelector("tbody");
+                if (newTbody && currentTbody) {
+                    currentTbody.innerHTML = newTbody.innerHTML;
+                }
+
+                // 2. Cập nhật lại thanh Phân trang (Pagination) nếu có
+                const newPagination = doc.querySelector(".bg-slate-900.border-t");
+                const currentPagination = document.querySelector(".bg-slate-900.border-t");
+                if (newPagination && currentPagination) {
+                    currentPagination.innerHTML = newPagination.innerHTML;
+                }
+
+                // 3. Cập nhật URL trên trình duyệt (giúp F5 không mất kết quả lọc)
+                window.history.pushState({}, "", url);
+
+            } catch (error) {
+                console.error("Lỗi Live Search:", error);
+            } finally {
+                if (searchSpinner) searchSpinner.classList.add("hidden");
+            }
+        }
+    });
+</script>
+{% endblock %}

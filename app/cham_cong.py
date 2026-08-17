@@ -396,6 +396,8 @@ async def get_form_cham_cong(
         employees_list = []
 
         user_role = str(current_user.get("role") or "User").strip()
+        current_username = current_user.get("username")
+
         if user_role in ("Admin", "Super Admin", "System Admin"):
             try:
                 emp_res = supabase.table("quan_tri_vien").select("username, ho_ten").execute()
@@ -407,7 +409,21 @@ async def get_form_cham_cong(
         if edit_id:
             res = supabase.table("cham_cong").select("*").eq("id", edit_id).execute()
             if res.data:
-                edit_data = res.data[0]
+                record = res.data[0]
+                
+                # Kiểm tra trạng thái đơn (chỉ cho phép sửa khi chưa duyệt / Chờ duyệt)
+                is_approved = record.get("trang_thai") == "Đã duyệt"
+                
+                # Kiểm tra quyền chính chủ (Admin có thể sửa mọi đơn chưa duyệt, User chỉ sửa đơn của chính mình)
+                is_owner = (record.get("username") == current_username) or (user_role in ("Admin", "Super Admin", "System Admin"))
+
+                if is_approved:
+                    return HTMLResponse(content="<h3>Đơn này đã được duyệt, không thể chỉnh sửa!</h3>", status_code=403)
+
+                if not is_owner:
+                    return HTMLResponse(content="<h3>Bạn không có quyền chỉnh sửa đơn này!</h3>", status_code=403)
+
+                edit_data = record
 
         return templates.TemplateResponse(
             request=request,
@@ -526,6 +542,34 @@ async def submit_cham_cong(
         session_fullname = current_user.get("ho_ten") or current_user.get("username", "system_user")
         user_role = str(current_user.get("role") or "User").strip()
 
+        # ==========================================
+        # KIỂM TRA QUYỀN CHỈNH SỬA (KHI EDIT_ID TỒN TẠI)
+        # ==========================================
+        if parsed_edit_id:
+            existing_res = supabase.table("cham_cong").select("username, trang_thai").eq("id", parsed_edit_id).execute()
+            if not existing_res.data:
+                return JSONResponse(
+                    status_code=status.HTTP_404_NOT_FOUND,
+                    content={"success": False, "message": "❌ Không tìm thấy đơn chấm công cần chỉnh sửa!"}
+                )
+            
+            existing_record = existing_res.data[0]
+            
+            # 1. Kiểm tra đơn đã duyệt chưa (chỉ chặn nếu đã duyệt)
+            if existing_record.get("trang_thai") == "Đã duyệt":
+                return JSONResponse(
+                    status_code=status.HTTP_403_FORBIDDEN,
+                    content={"success": False, "message": "❌ Đơn này đã được duyệt, không thể chỉnh sửa!"}
+                )
+                
+            # 2. Kiểm tra quyền sở hữu đơn
+            is_owner = (existing_record.get("username") == session_user) or (user_role in ("Admin", "Super Admin", "System Admin"))
+            if not is_owner:
+                return JSONResponse(
+                    status_code=status.HTTP_403_FORBIDDEN,
+                    content={"success": False, "message": "❌ Bạn không có quyền chỉnh sửa đơn của người khác!"}
+                )
+
         # Phân quyền: Chỉ Admin mới được phép chỉ định target_username
         if target_username and target_username.strip():
             if user_role in ("Admin", "Super Admin", "System Admin"):
@@ -613,6 +657,7 @@ async def submit_cham_cong(
             gia_thuong_luong=gia_thuong_luong
         )
 
+        # Payload khớp 100% các cột DB của public.cham_cong
         data_payload = {
             "username": target_user,
             "ten": ho_ten_target,
@@ -629,7 +674,8 @@ async def submit_cham_cong(
             "tien_ngoai_gio": float(res_tinh.get("tien_ngoai_gio", 0)),
             "phu_phi_phat_sinh": float(res_tinh.get("phu_phi_phat_sinh", 0)),
             "hinh_anh": final_image_url,
-            "trang_thai": 'Chờ duyệt'
+            "trang_thai": 'Chờ duyệt',
+            "ghi_chu_duyet": None  # Reset lại ghi chú khi sửa/nộp lại đơn
         }
 
         if parsed_edit_id:
@@ -665,9 +711,25 @@ async def duyet_phieu(
                 content={"success": False, "message": "❌ Từ chối truy cập: Bạn không có quyền quản trị!"}
             )
 
+        # Lấy tên hiển thị của Admin thực hiện duyệt
+        admin_fullname = current_user.get("ho_ten") or current_user.get("username", "Admin")
+
+        # Tự động xử lý ghi chú duyệt
+        raw_note = payload.ghi_chu_duyet.strip() if payload.ghi_chu_duyet else ""
+        
+        if not raw_note and payload.trang_thai == "Đã duyệt":
+            # Nếu bấm duyệt nhanh (không nhập ghi chú)
+            final_note = f"{admin_fullname} - duyệt đơn hợp lệ"
+        elif raw_note:
+            # Nếu admin có nhập ghi chú riêng
+            final_note = f"{admin_fullname}: {raw_note}"
+        else:
+            final_note = raw_note
+
+        # Payload đúng chuẩn các cột tồn tại trong DB bảng cham_cong
         update_data = {
             "trang_thai": payload.trang_thai,
-            "ghi_chu_duyet": payload.ghi_chu_duyet.strip() if payload.ghi_chu_duyet else ""
+            "ghi_chu_duyet": final_note
         }
 
         res = supabase.table('cham_cong').update(update_data).eq('id', item_id).execute()
@@ -685,6 +747,61 @@ async def duyet_phieu(
             content={"success": False, "message": f"Lỗi hệ thống: {str(e)}"}
         )
 
+
+# ==========================================
+# 3.1Bổ sung xóa đơn (ADMIN)
+# ==========================================
+@router.delete("/api/delete/{item_id}")
+async def delete_cham_cong(
+    item_id: int,
+    current_user: dict = Depends(require_login)
+):
+    """Xóa phiếu chấm công (Admin xóa mọi phiếu, User chỉ xóa phiếu của chính mình khi chưa duyệt)"""
+    try:
+        session_user = current_user.get("username", "")
+        user_role = str(current_user.get("role") or "User").strip()
+
+        # 1. Kiểm tra sự tồn tại của đơn
+        existing_res = supabase.table("cham_cong").select("username, trang_thai").eq("id", item_id).execute()
+        if not existing_res.data:
+            return JSONResponse(
+                status_code=status.HTTP_404_NOT_FOUND,
+                content={"success": False, "message": "❌ Không tìm thấy đơn chấm công cần xóa!"}
+            )
+
+        existing_record = existing_res.data[0]
+        is_admin = user_role in ("Admin", "Super Admin", "System Admin")
+        is_owner = existing_record.get("username") == session_user
+
+        # 2. Kiểm tra quyền xóa
+        if not is_admin:
+            if not is_owner:
+                return JSONResponse(
+                    status_code=status.HTTP_403_FORBIDDEN,
+                    content={"success": False, "message": "❌ Bạn không có quyền xóa đơn của người khác!"}
+                )
+            
+            # Nếu là chính chủ nhưng đơn đã duyệt -> Không cho xóa
+            if existing_record.get("trang_thai") == "Đã duyệt":
+                return JSONResponse(
+                    status_code=status.HTTP_403_FORBIDDEN,
+                    content={"success": False, "message": "❌ Đơn đã được duyệt, không thể xóa!"}
+                )
+
+        # 3. Thực hiện xóa trong DB
+        supabase.table("cham_cong").delete().eq("id", item_id).execute()
+
+        return JSONResponse(
+            status_code=status.HTTP_200_OK,
+            content={"success": True, "message": "🗑️ Đã xóa phiếu chấm công thành công!"}
+        )
+
+    except Exception as e:
+        logger.error(f"Lỗi xóa phiếu chấm công {item_id}: {str(e)}")
+        return JSONResponse(
+            status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
+            content={"success": False, "message": f"❌ Lỗi hệ thống: {str(e)}"}
+        )
 
 # ==========================================
 # 4. ROUTES QUẢN LÝ CẤU HÌNH ĐỊNH MỨC (ADMIN)

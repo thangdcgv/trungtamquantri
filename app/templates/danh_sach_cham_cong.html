@@ -401,7 +401,7 @@
     <header class="app-header py-3 mb-4">
         <div class="container d-flex align-items-center justify-content-between">
             <div class="d-flex align-items-center gap-3">
-                <a href="/cham-cong" class="btn btn-outline-secondary btn-sm rounded-circle text-white border-0">
+                <a href="/" class="btn btn-outline-secondary btn-sm rounded-circle text-white border-0">
                     <i class="fa-solid fa-arrow-left"></i>
                 </a>
                 <div>
@@ -410,7 +410,7 @@
                 </div>
             </div>
             <div>
-                {% if user_role == 'Admin' %}
+                {% if user_role in ('Admin', 'System Admin', 'Super Admin') %}
                     <span class="badge bg-danger-subtle text-danger border border-danger-subtle rounded-pill px-3 py-2">
                         <i class="fa-solid fa-user-shield me-1"></i> Admin
                     </span>
@@ -504,7 +504,7 @@
                         </select>
                     </div>
 
-                    {% if user_role == 'Admin' %}
+                    {% if user_role in ('Admin', 'System Admin', 'Super Admin') %}
                     <div class="col-12 col-md-3">
                         <label class="form-label text-muted extra-small mb-1"><i class="fa-solid fa-user-gear me-1"></i>Kỹ thuật viên</label>
                         <select name="ktv" class="form-select form-select-sm" onchange="this.form.submit()">
@@ -518,7 +518,7 @@
                     </div>
                     {% endif %}
 
-                    <div class="col-12 {% if user_role == 'Admin' %}col-md-3{% else %}col-md-6{% endif %}">
+                    <div class="col-12 {% if user_role in ('Admin', 'System Admin', 'Super Admin') %}col-md-3{% else %}col-md-6{% endif %}">
                         <label class="form-label text-muted extra-small mb-1"><i class="fa-solid fa-list-ol me-1"></i>Hiển thị tối đa</label>
                         <select name="limit" class="form-select form-select-sm" onchange="this.form.submit()">
                             <option value="30" {% if limit == 30 %}selected{% endif %}>30 đơn gần nhất</option>
@@ -582,7 +582,6 @@
                                     <span class="fw-bold text-info fs-6">
                                         #{{ item.so_hoa_don }}
                                     </span>
-                                    <!-- Đã đổi fw-normal thành fw-bold và chọn màu chữ text-light / text-white cho sắc nét -->
                                     <span class="badge bg-dark text-light border border-secondary fw-bold px-2 py-1">
                                         <i class="fa-regular fa-user me-1 text-info"></i>{{ item.ten or item.username }}
                                     </span>
@@ -663,23 +662,29 @@
                             {% endif %}
                         </div>
 
-                        <!-- Footer Actions dành riêng cho Admin -->
-                        {% if user_role in ['Admin', 'System Admin', 'SuperAdmin'] %}
+                        <!-- Footer Actions: Phân quyền Admin & User chính chủ -->
+                        {% set is_admin = user_role in ('Admin', 'System Admin', 'Super Admin') %}
+                        {% set is_owner = (current_user and item.username == current_user.username) %}
+                        {% set can_user_edit = (is_owner and item.trang_thai != 'Đã duyệt') %}
+
+                        {% if is_admin or can_user_edit %}
                         <div class="pt-2 border-top border-secondary-subtle d-flex justify-content-between align-items-center mt-2">
                             <div class="d-flex gap-2">
-                                <!-- Nút Sửa dành cho Admin & System Admin -->
+                                <!-- Nút Sửa dành cho Admin HOẶC User chính chủ chưa duyệt -->
                                 <a href="/cham-cong/form?edit_id={{ item.id }}" class="btn btn-action-sm btn-outline-warning">
                                     <i class="fa-solid fa-pen-to-square me-1"></i> Sửa
                                 </a>
 
-                                <!-- Nút Xóa CHỈ DÀNH RIÊNG cho System Admin / SuperAdmin -->
-                                {% if user_role in ['System Admin', 'SuperAdmin'] %}
-                                    <button class="btn btn-action-sm btn-outline-danger" onclick="deleteItem('{{ item.id }}', '{{ item.so_hoa_don }}')" title="Xóa đơn">
-                                        <i class="fa-solid fa-trash-can me-1"></i> Xóa
+                                <!-- Nút Xóa: Admin cấp cao HOẶC User chính chủ chưa duyệt -->
+                                {% if user_role in ('System Admin', 'Super Admin') or can_user_edit %}
+                                    <button type="button" class="btn btn-danger btn-sm" onclick="deleteChamCong('{{ item.id }}')">
+                                        🗑️ Xóa
                                     </button>
                                 {% endif %}
                             </div>
 
+                            <!-- Nhóm nút Phê duyệt chỉ dành riêng cho Admin -->
+                            {% if is_admin %}
                             <div class="d-flex gap-2">
                                 {% if item.trang_thai != 'Từ chối' %}
                                     <button class="btn btn-action-sm btn-outline-danger text-white" onclick="openApproveModal('{{ item.id }}', 'Từ chối', '{{ item.so_hoa_don }}')">
@@ -695,8 +700,9 @@
                                     </button>
                                 {% endif %}
                             </div>
+                            {% endif %}
                         </div>
-                    {% endif %}
+                        {% endif %}
 
                     </div>
                 </div>
@@ -851,7 +857,33 @@ btnConfirm.className = currentConfig.btnClass;
             if (!confirm(`Xác nhận duyệt nhanh hóa đơn #${invoiceCode}?`)) return;
             await executeDuyet(itemId, 'Đã duyệt', '');
         }
+        //Nút xóa đơn
+        async function deleteChamCong(recordId) {
+            if (!confirm("⚠️ Bạn có chắc chắn muốn xóa phiếu chấm công này không? Hành động này không thể hoàn tác!")) {
+                return;
+            }
 
+            try {
+                const response = await fetch(`/cham-cong/api/delete/${recordId}`, {
+                    method: "DELETE",
+                    headers: {
+                        "Content-Type": "application/json"
+                    }
+                });
+
+                const result = await response.json();
+
+                if (response.ok && result.success) {
+                    alert(result.message);
+                    location.reload(); // Reload lại trang để cập nhật danh sách
+                } else {
+                    alert(result.message || "❌ Không thể xóa đơn!");
+                }
+            } catch (error) {
+                console.error("Lỗi xóa đơn:", error);
+                alert("❌ Lỗi kết nối máy chủ!");
+            }
+        }
         // Submit từ Modal
         async function submitDuyetPhieu() {
             const itemId = document.getElementById('modalItemId').value;

@@ -5,6 +5,9 @@
 {% block head %}
 <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
 <style>
+    .d-none {
+        display: none !important;
+    }
     :root {
         --bg-main: #0f172a;
         --bg-card: #1e293b;
@@ -375,9 +378,9 @@
     <div class="detail-card">
         <!-- Top Navigation & Header Bar -->
         <div class="header-bar">
-            <a href="javascript:history.back()" class="btn-back">
+            <button type="button" onclick="history.back()" class="btn-back">
                 <i class="fa-solid fa-chevron-left"></i> Quay lại
-            </a>
+            </button>
             <h1 class="form-header-title">
                 <i class="fa-solid fa-file-shield" style="color: #38bdf8;"></i> CẬP NHẬT BẢO HÀNH
             </h1>
@@ -385,7 +388,7 @@
         </div>
 
         <form id="updateWarrantyForm" action="/warranty/api/update/{{ item.id }}" method="POST">
-            <!-- Hidden inputs để lưu trữ trạng thái phân loại -->
+            <!-- Hidden inputs lưu trữ trạng thái phân loại & chính sách -->
             <input type="hidden" name="category" id="db_category" value="{{ item.category }}">
             <input type="hidden" name="condition" id="db_condition" value="{{ item.condition }}">
             <input type="hidden" name="no_page_limit" id="db_no_page_limit" value="{{ 'true' if item.no_page_limit else 'false' }}">
@@ -447,7 +450,9 @@
 
             <!-- 3. Chi tiết thiết bị & Thời hạn bảo hành -->
             <div class="section-box">
-                <div class="group-title" id="warranty_detail_title"><i class="fa-solid fa-gears"></i> CHI TIẾT BẢO HÀNH ({{ item.category | upper }})</div>
+                <div class="group-title" id="warranty_detail_title">
+                    <i class="fa-solid fa-gears"></i> CHI TIẾT BẢO HÀNH ({{ item.category | upper }})
+                </div>
                 
                 <div class="warranty-subcard">
                     <div class="sub-group-title"><i class="fa-solid fa-id-card"></i> ĐỊNH DANH & THỜI HẠN BẢO HÀNH</div>
@@ -474,14 +479,16 @@
                 </div>
 
                 <!-- Chỉ số & Định mức trang in -->
-                <div class="warranty-subcard" style="margin-bottom: 0;">
-                    <div class="sub-group-title"><i class="fa-solid fa-chart-line"></i> QUẢN LÝ SỐ TRANG IN & ĐỊNH MỨC</div>
+                <div class="warranty-subcard {{ 'd-none' if item.no_page_limit else '' }}" id="page_counter_section">
+                    <div class="sub-group-title">
+                        <i class="fa-solid fa-chart-line"></i> QUẢN LÝ SỐ TRANG IN & ĐỊNH MỨC
+                    </div>
                     <div class="form-grid-2">
                         <div class="field-group">
                             <label class="field-label">Số trang ban đầu</label>
                             <div class="input-spinner-group" id="initial_counter_wrapper">
                                 <button type="button" class="btn-spin" onclick="spin('initial_counter', -100)"><i class="fa-solid fa-minus"></i></button>
-                                <input type="number" name="initial_counter" id="initial_counter" class="form-control-custom" value="{{ item.initial_counter or 0 }}">
+                                <input type="number" name="initial_counter" id="initial_counter" class="form-control-custom" value="{{ item.initial_counter or 0 }}" {{ 'disabled' if item.no_page_limit else '' }}>
                                 <button type="button" class="btn-spin" onclick="spin('initial_counter', 100)"><i class="fa-solid fa-plus"></i></button>
                             </div>
                         </div>
@@ -489,19 +496,26 @@
                             <label class="field-label">Số trang hiện tại</label>
                             <div class="input-spinner-group">
                                 <button type="button" class="btn-spin" onclick="spin('current_counter', -100)"><i class="fa-solid fa-minus"></i></button>
-                                <input type="number" name="current_counter" id="current_counter" class="form-control-custom" value="{{ item.current_counter or item.initial_counter or 0 }}">
+                                <input type="number" name="current_counter" id="current_counter" class="form-control-custom" value="{{ item.current_counter or item.initial_counter or 0 }}" {{ 'disabled' if item.no_page_limit else '' }}>
                                 <button type="button" class="btn-spin" onclick="spin('current_counter', 100)"><i class="fa-solid fa-plus"></i></button>
                             </div>
                         </div>
                         <div class="field-group">
                             <label class="field-label">Định mức Cơ (Trang)</label>
-                            <input type="number" name="page_limit_body" id="page_limit_body" class="form-control-custom" value="{{ item.page_limit_body or 10000 }}" readonly style="color: #38bdf8; font-weight: 700;">
+                            <input type="number" name="page_limit_body" id="page_limit_body" class="form-control-custom" value="{{ item.page_limit_body or 0 }}" readonly style="color: #38bdf8; font-weight: 700;">
                         </div>
                         <div class="field-group">
                             <label class="field-label">Định mức Đầu/Mực (Trang)</label>
-                            <input type="number" name="page_limit_head" id="page_limit_head" class="form-control-custom" value="{{ item.page_limit_head or 3000 }}" readonly style="color: #38bdf8; font-weight: 700;">
+                            <input type="number" name="page_limit_head" id="page_limit_head" class="form-control-custom" value="{{ item.page_limit_head or 0 }}" readonly style="color: #38bdf8; font-weight: 700;">
                         </div>
                     </div>
+                </div>
+
+                <!-- Thông báo nếu gói/máy không áp dụng giới hạn số trang -->
+                <div id="no_page_limit_msg" 
+                    class="alert-info-custom {{ 'd-none' if not item.no_page_limit else '' }}" 
+                    style="margin-top: 15px; padding: 12px; background: rgba(56, 189, 248, 0.1); border: 1px solid rgba(56, 189, 248, 0.3); border-radius: 8px; color: #38bdf8; font-size: 0.85rem;">
+                    <i class="fa-solid fa-circle-info"></i> Gói bảo hành này <strong>không giới hạn số trang in</strong> (hoặc thuộc dòng máy không đếm trang).
                 </div>
             </div>
 
@@ -513,9 +527,9 @@
 
             <!-- Action Row -->
             <div class="action-row">
-                <a href="javascript:history.back()" class="btn-cancel-action">
+                <button type="button" class="btn-cancel-action" onclick="resetFormToOriginal()">
                     <i class="fa-solid fa-xmark"></i> Hủy bỏ
-                </a>
+                </button>
                 <button type="submit" class="btn-submit">
                     <i class="fa-solid fa-floppy-disk"></i> LƯU CẬP NHẬT
                 </button>
@@ -530,63 +544,102 @@
 </script>
 
 <script>
-    const rawPoliciesText = document.getElementById('policies-data').textContent;
-    let DB_POLICIES = [];
+    // 1. Khởi tạo MAP dữ liệu chính sách từ thẻ JSON ẩn
+    const POLICIES_MAP = {};
     try {
-        DB_POLICIES = JSON.parse(rawPoliciesText || '[]');
+        const rawPoliciesText = document.getElementById('policies-data').textContent;
+        const dbPolicies = JSON.parse(rawPoliciesText || '[]');
+        if (Array.isArray(dbPolicies)) {
+            dbPolicies.forEach(p => { 
+                if (p.policy_name) POLICIES_MAP[p.policy_name] = p; 
+            });
+        }
     } catch (e) {
         console.error("Lỗi đọc dữ liệu chính sách:", e);
     }
 
-    const POLICIES_MAP = {};
-    if (Array.isArray(DB_POLICIES)) {
-        DB_POLICIES.forEach(p => { 
-            if (p.policy_name) POLICIES_MAP[p.policy_name] = p; 
-        });
-    }
+    // 2. Hàm áp dụng chính sách khi KTV thay đổi Dropdown
+    function applyPolicyPreset(policyName) {
+        const selectedPolicy = POLICIES_MAP[policyName];
+        if (!selectedPolicy) return;
 
-    function applyPolicyPreset(policyKey) {
-        const p = POLICIES_MAP[policyKey];
-        if (!p) return;
+        const isLaser = selectedPolicy.category === "Máy Laser";
+        const isNoLimit = Boolean(selectedPolicy.no_page_limit);
 
-        const category = p.category || "Máy In Phun";
-        const condition = p.condition || "Mới";
-        const noLimit = Boolean(p.no_page_limit);
+        // Update hidden inputs
+        document.getElementById('db_category').value = selectedPolicy.category || '';
+        document.getElementById('db_condition').value = selectedPolicy.condition || '';
+        document.getElementById('db_no_page_limit').value = isNoLimit ? 'true' : 'false';
+        document.getElementById('cartridge_warranty_months').value = selectedPolicy.cartridge_warranty_months || 0;
 
-        document.getElementById('db_category').value = category;
-        document.getElementById('db_condition').value = condition;
-        document.getElementById('db_no_page_limit').value = noLimit;
-
-        document.getElementById('txt_category').innerHTML = '<i class="fa-solid fa-box-open"></i> ' + category;
+        // Update UI Badges (Phân loại & Tình trạng)
+        document.getElementById('txt_category').innerHTML = `<i class="fa-solid fa-box-open"></i> ${selectedPolicy.category}`;
         
-        const condElem = document.getElementById('txt_condition');
-        if (condition === "Mới") {
-            condElem.innerHTML = '<i class="fa-solid fa-star"></i> Mới';
-            condElem.className = "badge-new";
-        } else {
-            condElem.innerHTML = '<i class="fa-solid fa-screwdriver-wrench"></i> ' + condition;
-            condElem.className = "badge-used";
+        const condBadge = document.getElementById('txt_condition');
+        if (condBadge) {
+            const isNew = selectedPolicy.condition === 'Mới';
+            condBadge.className = isNew ? 'badge-new' : 'badge-used';
+            condBadge.innerHTML = isNew 
+                ? `<i class="fa-solid fa-star"></i> Mới` 
+                : `<i class="fa-solid fa-screwdriver-wrench"></i> ${selectedPolicy.condition}`;
         }
 
-        document.getElementById('warranty_detail_title').innerHTML = 
-            `<i class="fa-solid fa-gears"></i> CHI TIẾT BẢO HÀNH (${category.toUpperCase()})`;
+        document.getElementById('warranty_detail_title').innerText = `CHI TIẾT BẢO HÀNH (${(selectedPolicy.category || '').toUpperCase()})`;
 
-        const isLaser = (category.toLowerCase().includes("laser"));
-        document.getElementById('head_warranty_label').innerText = isLaser ? "BH Hộp mực (Tháng)" : "BH Đầu phun (Tháng)";
+        // Dynamic Label & Thời hạn tháng (Phân biệt Laser vs Đầu phun)
+        const headLabel = document.getElementById('head_warranty_label');
+        if (headLabel) {
+            headLabel.innerText = isLaser ? 'BH Hộp mực (Tháng)' : 'BH Đầu phun (Tháng)';
+        }
 
-        document.getElementById('warranty_months').value = p.warranty_months || 0;
-        document.getElementById('head_warranty_months').value = isLaser ? (p.cartridge_warranty_months || 0) : (p.head_warranty_months || 0);
-        document.getElementById('cartridge_warranty_months').value = p.cartridge_warranty_months || 0;
+        document.getElementById('warranty_months').value = selectedPolicy.warranty_months || 0;
+        document.getElementById('head_warranty_months').value = isLaser 
+            ? (selectedPolicy.cartridge_warranty_months || 0) 
+            : (selectedPolicy.head_warranty_months || 0);
 
-        document.getElementById('page_limit_body').value = p.page_limit_body || 0;
-        document.getElementById('page_limit_head').value = p.page_limit_head || 0;
+        // Logic Ẩn / Hiện và Disable Quản lý trang in bằng Class .d-none
+        const pageSection = document.getElementById('page_counter_section');
+        const noLimitMsg = document.getElementById('no_page_limit_msg');
+        const initialInput = document.getElementById('initial_counter');
+        const currentInput = document.getElementById('current_counter');
+
+        if (isNoLimit) {
+            if (pageSection) pageSection.classList.add('d-none');
+            if (noLimitMsg) noLimitMsg.classList.remove('d-none');
+            
+            if (initialInput) initialInput.disabled = true;
+            if (currentInput) currentInput.disabled = true;
+            
+            document.getElementById('page_limit_body').value = 0;
+            document.getElementById('page_limit_head').value = 0;
+        } else {
+            if (pageSection) pageSection.classList.remove('d-none');
+            if (noLimitMsg) noLimitMsg.classList.add('d-none');
+
+            if (initialInput) initialInput.disabled = false;
+            if (currentInput) currentInput.disabled = false;
+
+            document.getElementById('page_limit_body').value = selectedPolicy.page_limit_body || 0;
+            document.getElementById('page_limit_head').value = selectedPolicy.page_limit_head || 0;
+        }
     }
 
+    // 3. Hàm Spinner điều chỉnh số trang
     function spin(fieldId, delta) {
         const field = document.getElementById(fieldId);
         if (!field || field.disabled || field.readOnly) return;
         let val = parseInt(field.value) || 0;
         field.value = Math.max(0, val + delta);
+    }
+
+    // 4. Hàm Reset khôi phục Form về ban đầu khi ấn Hủy
+    function resetFormToOriginal() {
+        const form = document.getElementById('updateWarrantyForm');
+        if (form) {
+            form.reset();
+            const originalPolicy = document.getElementById('applied_policy_name').value;
+            applyPolicyPreset(originalPolicy);
+        }
     }
 </script>
 {% endblock %}

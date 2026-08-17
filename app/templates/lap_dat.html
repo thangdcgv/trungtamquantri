@@ -377,10 +377,20 @@
             </div>
         </div>
 
-        <button class="btn btn-outline-custom px-3 py-2 d-flex align-items-center gap-2 shadow-sm" type="button" data-bs-toggle="collapse" data-bs-target="#searchInvoiceCollapse">
-            <i class="fa-solid fa-pen-to-square text-info"></i>
-            <span class="small">Sửa HĐ</span>
-        </button>
+        <!-- Nhóm nút bấm thao tác -->
+        <div class="d-flex align-items-center gap-2">
+            <!-- Nút truy cập Danh sách chấm công -->
+            <a href="/cham-cong/list" class="btn btn-outline-custom px-3 py-2 d-flex align-items-center gap-2 shadow-sm text-decoration-none">
+                <i class="fa-solid fa-list-check text-info"></i>
+                <span class="small">Danh Sách</span>
+            </a>
+
+            <!-- Nút Sửa HĐ -->
+            <button class="btn btn-outline-custom px-3 py-2 d-flex align-items-center gap-2 shadow-sm" type="button" data-bs-toggle="collapse" data-bs-target="#searchInvoiceCollapse">
+                <i class="fa-solid fa-pen-to-square text-info"></i>
+                <span class="small">Sửa HĐ</span>
+            </button>
+        </div>
     </div>
 
     <!-- KHỐI TRA CỨU HÓA ĐƠN -->

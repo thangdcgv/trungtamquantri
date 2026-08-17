@@ -311,15 +311,25 @@
 <div class="dashboard-app">
     <div class="detail-card">
         <!-- Header Bar -->
-        <div class="header-bar">
+        <div class="header-bar d-flex justify-content-between align-items-center">
+            <!-- Nút Quay lại -->
             <a href="javascript:history.back()" class="btn-back">
                 <i class="fa-solid fa-chevron-left"></i>
                 <span>Quay lại</span>
             </a>
-            <h1 class="header-title">
+
+            <!-- Tiêu đề trang -->
+            <h1 class="header-title m-0">
                 <i class="fa-solid fa-clipboard-list" style="color: #38bdf8;"></i> CHI TIẾT ĐƠN
             </h1>
-            <div style="width: 85px;" class="d-none d-sm-block"></div>
+
+            <!-- Nhóm nút bấm phụ (thay thế cho div trống cũ) -->
+            <div class="d-flex align-items-center gap-2">
+                <a href="/cham-cong/list" class="btn btn-outline-custom btn-sm px-3 py-2 d-flex align-items-center gap-2 text-decoration-none">
+                    <i class="fa-solid fa-list-check text-info"></i>
+                    <span class="small d-none d-sm-inline">Danh Sách</span>
+                </a>
+            </div>
         </div>
 
         <!-- Status Banner -->

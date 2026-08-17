@@ -1,5 +1,5 @@
 <!DOCTYPE html>
-<html lang="vi">
+<html lang="vi" class="dark">
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, viewport-fit=cover">
@@ -9,6 +9,22 @@
     <link rel="preconnect" href="https://fonts.googleapis.com">
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
     <link href="https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@400;500;600;700;800&display=swap" rel="stylesheet">
+
+    <!-- 1. BỔ SUNG TAILWIND CSS & FONTAWESOME DÙNG CHUNG TOÀN HỆ THỐNG -->
+    <script src="https://cdn.tailwindcss.com"></script>
+    <script>
+        tailwind.config = {
+            darkMode: 'class',
+            theme: {
+                extend: {
+                    fontFamily: {
+                        sans: ['Plus Jakarta Sans', 'sans-serif'],
+                    }
+                }
+            }
+        }
+    </script>
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.1/css/all.min.css" integrity="sha512-DTOQO9RWCH3ppGqcWaEA1BIZOC6xxalwEsw9c2QQeAIftl+Vegovlnee1c9QX4TctnWMn13TZye+giMm8e2LwA==" crossorigin="anonymous" referrerpolicy="no-referrer" />
 
     <style>
         :root {
@@ -294,8 +310,8 @@
             border-color: rgba(255, 255, 255, 0.14);
         }
 
-        /* Input / Select / Textarea Compact toàn cục */
-        input, select, textarea {
+        /* 2. DÙNG :where() ĐỂ TRÁNH ĐÈ LÊN STYLE TAILWIND CỦA TRANG CON */
+        :where(input, select, textarea) {
             width: 100%;
             background-color: rgba(10, 15, 29, 0.6);
             border: 1px solid var(--border-color);
@@ -309,13 +325,13 @@
             transition: all 0.2s ease;
         }
 
-        input:focus, select:focus, textarea:focus {
+        :where(input:focus, select:focus, textarea:focus) {
             border-color: var(--primary-light);
             box-shadow: 0 0 0 3px var(--primary-glow);
             background-color: rgba(10, 15, 29, 0.9);
         }
 
-        button, .btn {
+        :where(.btn-default) {
             display: inline-flex;
             align-items: center;
             justify-content: center;
@@ -334,11 +350,6 @@
             text-decoration: none;
         }
 
-        button:active, .btn:active {
-            transform: scale(0.97);
-            opacity: 0.9;
-        }
-
         /* ========================================================
         CẤU HÌNH RESPONSIVE RIÊNG BIỆT CHO CÁC THIẾT BỊ
         ======================================================== */
@@ -355,28 +366,28 @@
         /* 2. MÁY TÍNH BẢNG - TABLET (Từ 768px trở lên) */
         @media (min-width: 768px) {
             .app-content {
-                max-width: 768px;
+                max-width: 800px;
                 padding-left: 1rem;
                 padding-right: 1rem;
             }
-            body::before { max-width: 768px; }
+            body::before { max-width: 800px; }
             .card { padding: 1rem; }
         }
 
-        /* 3. LAPTOP / DESKTOP (Từ 992px trở lên) */
+        /* 3. LAPTOP / DESKTOP (Từ 992px trở lên) - NÂNG RỘNG TỐI ĐA CHO BẢNG DỮ LIỆU */
         @media (min-width: 992px) {
             :root {
-                --bottom-nav-height: 48px; /* Tối ưu chiều cao thanh nav trên màn hình lớn */
+                --bottom-nav-height: 48px;
             }
 
             .app-content {
-                max-width: 1100px; /* Mở rộng tối đa để hỗ trợ form chia 2-3 cột */
-                padding-left: 1.25rem;
-                padding-right: 1.25rem;
+                max-width: 1280px; /* Nâng rộng từ 1100px lên 1280px để hiển thị Bảng Data thoải mái */
+                padding-left: 1.5rem;
+                padding-right: 1.5rem;
                 padding-top: calc(var(--top-header-height) + 1rem);
                 padding-bottom: calc(var(--bottom-nav-height) + 1rem);
             }
-            body::before { max-width: 1100px; }
+            body::before { max-width: 1280px; }
             .card { padding: 1.15rem; }
 
             /* Điều chỉnh thanh nav trên desktop cho mỏng & gọn hơn */

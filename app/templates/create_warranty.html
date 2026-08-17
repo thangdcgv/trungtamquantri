@@ -585,10 +585,21 @@
                 <small>Tạo phiếu bảo hành - Máy In Đại Thành</small>
             </div>
         </div>
-        <button class="excel-toggle" type="button" onclick="document.getElementById('excelImport').open = !document.getElementById('excelImport').open">
-            <i class="fa-solid fa-file-excel"></i>
-            <span>Nhập Excel</span>
-        </button>
+        
+        <!-- Nhóm các nút thao tác -->
+        <div class="warranty-actions" style="display: flex; align-items: center; gap: 10px;">
+            <!-- Nút Điều Hướng Về Danh Sách Phiếu -->
+            <a href="/warranty/list" class="btn-list" style="display: inline-flex; align-items: center; gap: 6px; text-decoration: none;">
+                <i class="fa-solid fa-list-check"></i>
+                <span>Danh Sách Phiếu</span>
+            </a>
+
+            <!-- Nút Nhập Excel -->
+            <button class="excel-toggle" type="button" onclick="document.getElementById('excelImport').open = !document.getElementById('excelImport').open">
+                <i class="fa-solid fa-file-excel"></i>
+                <span>Nhập Excel</span>
+            </button>
+        </div>
     </div>
 
     <div class="warranty-shell">
@@ -679,8 +690,12 @@
                         </div>
                         <div class="field-group">
                             <label class="field-label">Người tạo phiếu</label>
-                            <!-- Sử dụng class input-locked cho trường readonly -->
-                            <input type="text" name="staff_name" class="form-control-custom input-locked" value="{{ current_user.ho_ten if current_user and current_user.ho_ten else 'Nguyễn Thắng' }}" readonly>
+                            <!-- Dynamic user name, fallback về username hoặc 'Hệ thống' nếu không tìm thấy -->
+                            <input type="text" 
+                                name="staff_name" 
+                                class="form-control-custom input-locked" 
+                                value="{{ current_user.ho_ten or current_user.username or 'KTV Lắp Đặt' }}" 
+                                readonly>
                         </div>
                     </div>
                 </div>
@@ -741,9 +756,10 @@
 
                 <!-- ACTIONS -->
                 <div class="action-row">
-                    <a href="javascript:history.back()" class="btn-cancel">
+                    <!-- Đổi thẻ <a> thành button type="reset" -->
+                    <button type="reset" class="btn-cancel">
                         Hủy bỏ
-                    </a>
+                    </button>
                     <button type="submit" class="btn-submit">
                         <i class="fa-solid fa-floppy-disk"></i> LƯU PHIẾU BẢO HÀNH
                     </button>
@@ -882,6 +898,23 @@
         const selectElem = document.getElementById('applied_policy_name');
         if (selectElem && selectElem.value) {
             applyPolicyPreset(selectElem.value);
+        }
+    });
+    document.getElementById("createForm").addEventListener("submit", async function(e) {
+        e.preventDefault();
+        const formData = new FormData(this);
+        
+        const response = await fetch("/warranty/api/create", {
+            method: "POST",
+            body: formData
+        });
+        
+        const result = await response.json();
+        if (result.success) {
+            alert(result.message);
+            window.location.href = "/warranty/" + result.data[0].id; // Chuyển hướng sau khi tạo xong
+        } else {
+            alert("Lỗi: " + result.message);
         }
     });
 </script>
