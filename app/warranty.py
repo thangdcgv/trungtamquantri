@@ -104,7 +104,7 @@ async def get_warranty_list(
             query = query.lte("purchase_date", end_date.strip())
 
         # Trả về kết quả mới nhất lên đầu
-        records_res = query.order("created_at", desc=True).execute()
+        records_res = query.order("created_at", desc=True).limit(20).execute()
 
         return templates.TemplateResponse(
             request=request,
