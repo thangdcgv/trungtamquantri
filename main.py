@@ -1,6 +1,7 @@
 import os
 import uvicorn
 from fastapi import FastAPI
+from fastapi.responses import FileResponse
 from fastapi.staticfiles import StaticFiles
 from starlette.middleware.sessions import SessionMiddleware
 
@@ -21,7 +22,10 @@ app = FastAPI(
 # Đảm bảo thư mục static tồn tại trước khi mount
 os.makedirs("app/static", exist_ok=True)
 app.mount("/static", StaticFiles(directory="app/static"), name="static")
-
+@app.get('/favicon.png', include_in_schema=False)
+async def favicon():
+    # Trả về luôn file favicon.png nếu trình duyệt gọi /favicon.ico
+    return FileResponse('app/static/favicon.png')
 # Khai báo Secret Key (Ưu tiên lấy từ biến môi trường .env)
 SECRET_KEY = os.getenv("SECRET_KEY", "mayindaithanh-centerhub-secret-key-2026")
 app.add_middleware(SessionMiddleware, secret_key=SECRET_KEY)
