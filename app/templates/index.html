@@ -453,7 +453,7 @@
                 <span>Xin chào, {% if current_user and current_user.is_authenticated %}{{ current_user.name }}{% else %}Quản trị viên{% endif %}!</span>
                 <span>👋</span>
             </div>
-            <div class="user-subtitle">Trung tâm điều hành nội bộ Máy In Đại Thành Center Hub</div>
+            <div class="user-subtitle">Trung tâm điều hành nội bộ Máy In Đại Thành</div>
         </div>
 
         <div class="quick-launchpad">
@@ -469,10 +469,22 @@
                 <i class="fa-solid fa-book-open"></i>
                 <span>Thư Viện Máy In</span>
             </a>
-            <a href="/admin" class="quick-btn" style="color: var(--accent-purple);">
-                <i class="fa-solid fa-sliders"></i>
-                <span>Quản Trị Admin</span>
-            </a>
+            {% if current_user and current_user.role in ['Admin', 'Super Admin', 'System Admin'] %}
+                <!-- Dành cho Admin: Truy cập bình thường -->
+                <a href="/admin" class="quick-btn" style="color: var(--accent-purple);">
+                    <i class="fa-solid fa-sliders"></i>
+                    <span>Quản Trị Admin</span>
+                </a>
+            {% else %}
+                <!-- Dành cho User thường: Hiện cảnh báo khi bấm -->
+                <a href="javascript:void(0);" 
+                onclick="alert('⚠️ Bạn không có quyền truy cập vào trang Quản Trị!')" 
+                class="quick-btn" 
+                style="color: var(--accent-purple); opacity: 0.5; cursor: not-allowed;">
+                    <i class="fa-solid fa-sliders"></i>
+                    <span>Quản Trị Admin</span>
+                </a>
+            {% endif %}
         </div>
     </div>
 
@@ -492,7 +504,7 @@
                     <div class="feed-card-name">Phiếu Bảo Hành Mới Tạo</div>
                 </div>
                 <a href="/warranty/list" class="feed-card-action">
-                    <i class="fa-solid fa-plus"></i>
+                    <i class="fa-solid fa-list"></i>
                     <span>Danh sách phiếu</span>
                 </a>
             </div>
@@ -553,15 +565,26 @@
                     {% for item in recent_installations %}
                     <a href="/cham-cong/detail/{{ item.id }}" class="feed-item">
                         <div class="feed-info">
-                            <!-- Dòng 1: Tên KTV (linh hoạt co giãn) + Trạng thái (cố định) -->
+                            <!-- Dòng 1: Tên KTV + Trạng thái -->
                             <div class="feed-title">
                                 <span class="feed-title-name">{{ item.ten | default('KTV') }}</span>
                                 <span class="status-pill">{{ item.trang_thai | default('Chờ duyệt') }}</span>
                             </div>
                             
-                            <!-- Dòng 2: Đẩy HĐ xuống đây tạo sự đồng bộ 2 dòng tuyệt đẹp với thẻ Bảo hành -->
+                            <!-- Dòng 2: HĐ + Thành tiền + Thời gian -->
                             <div class="feed-meta">
                                 <span style="color: var(--text-main); font-weight: 600;">HĐ: {{ item.so_hoa_don | default('N/A') }}</span>
+                                
+                                <span class="meta-divider">•</span>
+                                <!-- Bổ sung Thành tiền -->
+                                <span style="color: #10b981; font-weight: 700;">
+                                    {% if item.thanh_tien is defined and item.thanh_tien is not none %}
+                                        {{ "{:,.0f}".format(item.thanh_tien | float).replace(',', '.') }}đ
+                                    {% else %}
+                                        0đ
+                                    {% endif %}
+                                </span>
+
                                 <span class="meta-divider">•</span>
                                 <span>
                                     {% if item.thoi_gian %}

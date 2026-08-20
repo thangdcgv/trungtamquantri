@@ -294,6 +294,9 @@
         <div class="admin-grid">
             
             <!-- Module 1: Quản Lý Kho Key Chipless (MỚI THÊM) -->
+             
+            {% if current_user and current_user.role in ['Super Admin', 'System Admin'] %}
+            <!-- Dành cho Super Admin / System Admin: Truy cập bình thường -->
             <a href="/admin/kho-key" class="admin-card accent-key">
                 <div>
                     <div class="admin-card-header">
@@ -319,6 +322,37 @@
                     </svg>
                 </div>
             </a>
+        {% else %}
+            <!-- Dành cho các cấp quyền khác: Vẫn hiển thị card nhưng mờ đi và nảy cảnh báo khi bấm -->
+            <a href="javascript:void(0);" 
+            onclick="alert('⚠️ Truy cập bị từ chối: Chức năng này bị giới hạn với quyền tài khoản của bạn!')" 
+            class="admin-card accent-key" 
+            style="opacity: 0.5; cursor: not-allowed; filter: grayscale(40%);">
+                <div>
+                    <div class="admin-card-header">
+                        <div class="icon-box" aria-hidden="true">
+                            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor">
+                                <circle cx="7.5" cy="15.5" r="4.5"></circle>
+                                <path d="m10.7 12.3 8.8-8.8m-3.5 0h3.5v3.5m-3.5 0.5 2 2"></path>
+                            </svg>
+                        </div>
+                        <div>
+                            <h2 class="card-title">Quản Lý Kho Key</h2>
+                            <p class="card-desc">
+                                Nhập lô Key mới hàng loạt, lọc kiểm tra tồn kho theo loại thiết bị, điều chỉnh giới hạn lượt dùng và chỉnh sửa chi tiết.
+                            </p>
+                        </div>
+                    </div>
+                </div>
+                <div class="btn-action">
+                    <span>Bị giới hạn quyền</span>
+                    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" aria-hidden="true">
+                        <line x1="5" y1="12" x2="19" y2="12"></line>
+                        <polyline points="12 5 19 12 12 19"></polyline>
+                    </svg>
+                </div>
+            </a>
+        {% endif %}
 
             <!-- Module 2: Quản Lý Tài Khoản -->
             <a href="/admin/users" class="admin-card accent-users">

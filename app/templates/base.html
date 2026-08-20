@@ -6,14 +6,14 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, viewport-fit=cover">
     <title>{% block title %}Center Hub - Máy In Đại Thành{% endblock %}</title>
     <!-- Liên kết file Manifest -->
-    <link rel="manifest" href="/manifest.json">
+    <link rel="manifest" href="/static/manifest.json">
     <meta name="theme-color" content="#0d1117">
 
     <!-- Đăng ký Service Worker tối thiểu (Điều kiện bắt buộc của PWA) -->
     <script>
     if ('serviceWorker' in navigator) {
         window.addEventListener('load', () => {
-        navigator.serviceWorker.register('/sw.js').catch(err => console.log('SW setup error:', err));
+        navigator.serviceWorker.register('/static/sw.js').catch(err => console.log('SW setup error:', err));
         });
     }
     </script>
@@ -481,6 +481,7 @@
         </a>
 
         <!-- Quản Lý Nhập Xuất Key -->
+         {% if current_user and current_user.role in ('User', 'Super Admin', 'System Admin') %}
         <a href="/admin/quan-ly-key" class="nav-item {% if request.url.path.startswith('/admin/quan-ly-key') %}active{% endif %}">
             <svg viewBox="0 0 24 24">
                 <circle cx="7.5" cy="15.5" r="3.5"></circle>
@@ -488,9 +489,9 @@
             </svg>
             <span>Quản lý Key</span>
         </a>
-
+        {% endif %}
         <!-- 4. Cụm Quản Trị Hệ Thống -->
-        {% if request.session.get('role') in ('Admin', 'Super Admin', 'System Admin') %}
+        {% if current_user and current_user.role in ('Admin', 'Super Admin', 'System Admin') %}
         <a href="/admin" class="nav-item {% if request.url.path.startswith('/admin') %}active{% endif %}">
             <svg viewBox="0 0 24 24">
                 <path d="M12.22 2h-.44a2 2 0 0 0-2 2v.18a2 2 0 0 1-1 1.73l-.43.25a2 2 0 0 1-2 0l-.15-.08a2 2 0 0 0-2.73.73l-.22.38a2 2 0 0 0 .73 2.73l.15.1a2 2 0 0 1 1 1.72v.51a2 2 0 0 1-1 1.74l-.15.09a2 2 0 0 0-.73 2.73l.22.38a2 2 0 0 0 2.73.73l.15-.08a2 2 0 0 1 2 0l.43.25a2 2 0 0 1 1 1.73V20a2 2 0 0 0 2 2h.44a2 2 0 0 0 2-2v-.18a2 2 0 0 1 1-1.73l.43-.25a2 2 0 0 1 2 0l.15.08a2 2 0 0 0 2.73-.73l.22-.38a2 2 0 0 0-.73-2.73l-.15-.08a2 2 0 0 1-1-1.74v-.5a2 2 0 0 1 1-1.74l.15-.09a2 2 0 0 0 .73-2.73l-.22-.38a2 2 0 0 0-2.73-.73l-.15.08a2 2 0 0 1-2 0l-.43-.25a2 2 0 0 1-1-1.73V4a2 2 0 0 0-2-2z"></path>

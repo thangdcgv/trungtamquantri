@@ -489,7 +489,7 @@
         </div>
 
         <!-- 6. KHU VỰC DUYỆT ĐƠN (Dành cho Quản trị viên) -->
-        {% if request.session.get('role') == 'Admin' %}
+        {% if current_user and current_user.role in ['Admin','System Admin'] %}
         <div class="section-box" style="margin-top: 1.25rem; border-color: rgba(56, 189, 248, 0.3); background: rgba(15, 23, 42, 0.5);">
             <div class="group-title" style="color: #f43f5e;"><i class="fa-solid fa-bolt"></i> THAO TÁC QUẢN TRỊ (DUYỆT ĐƠN)</div>
             <form id="approvalForm" onsubmit="submitApproval(event, '{{ item.id }}')">

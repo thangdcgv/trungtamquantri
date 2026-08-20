@@ -497,10 +497,9 @@ async def forgot_password(
 @router.get("/update-password")
 async def update_password_page(request: Request):
     """
-    Hiển thị trang nhập mật khẩu mới sau khi reset.
-    Supabase sẽ xử lý recovery session từ URL callback.
+    Hiển thị trang giao diện để người dùng nhập mật khẩu mới.
+    Toàn bộ logic bắt token và gọi đổi mật khẩu sẽ do JS ở client xử lý.
     """
-
     return render_template(
         request,
         "update_password.html",

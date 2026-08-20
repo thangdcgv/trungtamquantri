@@ -663,7 +663,7 @@
                         </div>
 
                         <!-- Footer Actions: Phân quyền Admin & User chính chủ -->
-                        {% set is_admin = user_role in ('Admin', 'System Admin', 'Super Admin') %}
+                        {% set is_admin = user_role in ('Admin', 'System Admin') %}
                         {% set is_owner = (current_user and item.username == current_user.username) %}
                         {% set can_user_edit = (is_owner and item.trang_thai != 'Đã duyệt') %}
 
