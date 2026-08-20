@@ -884,8 +884,10 @@ async def view_danh_sach_cham_cong(
         current_year = now.year
         current_month = now.month
 
-        selected_month = thang if thang is not None else current_month
-        selected_year = nam if nam is not None else current_year
+        # Nếu không truyền thang (None), mặc định lấy tháng hiện tại. 
+        # Nếu truyền thang=0, hiểu là xem "Tất cả các tháng".
+        selected_month = current_month if thang is None else thang
+        selected_year = current_year if nam is None else nam
 
         # 1. Query dữ liệu từ Supabase
         query = supabase.table("cham_cong").select("*")
@@ -905,6 +907,7 @@ async def view_danh_sach_cham_cong(
         # 5. LỌC THEO THÁNG & NĂM (Dựa vào cột thoi_gian)
         if selected_year > 0:
             if selected_month > 0:
+                # Lọc trong 1 tháng cụ thể
                 start_date = f"{selected_year}-{selected_month:02d}-01T00:00:00"
                 if selected_month == 12:
                     end_date = f"{selected_year + 1}-01-01T00:00:00"
@@ -912,6 +915,7 @@ async def view_danh_sach_cham_cong(
                     end_date = f"{selected_year}-{selected_month + 1:02d}-01T00:00:00"
                 query = query.gte("thoi_gian", start_date).lt("thoi_gian", end_date)
             else:
+                # Lọc cả năm (khi thang = 0)
                 query = query.gte("thoi_gian", f"{selected_year}-01-01T00:00:00").lt("thoi_gian", f"{selected_year + 1}-01-01T00:00:00")
 
         # 6. TÌM KIẾM TỪ KHÓA
@@ -953,22 +957,25 @@ async def view_danh_sach_cham_cong(
             except Exception as ktv_err:
                 logger.error(f"Lỗi tải danh sách KTV: {ktv_err}")
 
-        # 9. RENDER TEMPLATE (Đã sửa đủ tham số context)
+        # 9. RENDER TEMPLATE (Đã bổ sung đầy đủ alias biến context)
         return templates.TemplateResponse(
             request=request,
-            name="danh_sach_cham_cong.html",  # Hoặc tên file template danh sách thực tế của bạn
+            name="danh_sach_cham_cong.html",
             context={
                 "request": request,
                 "danh_sach": danh_sach,
+                "danh_sach_don": danh_sach,  # Alias phòng trường hợp template dùng tên này
                 "current_user": current_user,
                 "user_role": user_role,
                 "current_username": current_username,
                 "danh_sach_ktv": danh_sach_ktv,
                 "selected_month": selected_month,
                 "selected_year": selected_year,
-                "status_filter": status_filter or "",
+                "status_filter": status_filter or "Tất cả",
                 "search": search or "",
-                "ktv": ktv or ""
+                "search_query": search or "",  # Alias phòng trường hợp template dùng tên này
+                "ktv": ktv or "Tất cả",
+                "selected_ktv": ktv or "Tất cả"
             }
         )
     except Exception as e:

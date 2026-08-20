@@ -13,6 +13,9 @@ from app.warranty import router as warranty_router
 from app.cham_cong import router as cham_cong_router
 from app.admin_key import router as kho_key_router, api_router as kho_key_api_router
 from app.admin_quan_ly_key import router as quan_ly_key_router, api_router as quan_ly_key_api_router
+from app.report import router as report_router  # 👈 Sửa alias khớp với phần include_router phía dưới
+
+
 app = FastAPI(
     title="Máy In Đại Thành Center Hub",
     description="Hệ thống quản lý chấm công, bảo hành và quản trị nội bộ",
@@ -22,10 +25,12 @@ app = FastAPI(
 # Đảm bảo thư mục static tồn tại trước khi mount
 os.makedirs("app/static", exist_ok=True)
 app.mount("/static", StaticFiles(directory="app/static"), name="static")
+
 @app.get('/favicon.png', include_in_schema=False)
+@app.get('/favicon.ico', include_in_schema=False)  # 👈 Bổ sung đường dẫn favicon.ico để tránh log lỗi 404 từ trình duyệt
 async def favicon():
-    # Trả về luôn file favicon.png nếu trình duyệt gọi /favicon.ico
     return FileResponse('app/static/favicon.png')
+
 # Khai báo Secret Key (Ưu tiên lấy từ biến môi trường .env)
 SECRET_KEY = os.getenv("SECRET_KEY", "mayindaithanh-centerhub-secret-key-2026")
 app.add_middleware(SessionMiddleware, secret_key=SECRET_KEY)
@@ -39,6 +44,8 @@ app.include_router(cham_cong_router)  # Chấm công lắp đặt (/cham-cong/fo
 app.include_router(kho_key_router)
 app.include_router(kho_key_api_router)
 app.include_router(quan_ly_key_router)
-app.include_router(quan_ly_key_api_router, prefix="/admin") # 👈 Bổ sung prefix="/admin" vào đây
+app.include_router(quan_ly_key_api_router, prefix="/admin")
+app.include_router(report_router)  # 👈 Chỉnh thành report_router.router
+
 if __name__ == "__main__":
     uvicorn.run("main:app", host="127.0.0.1", port=8000, reload=True)

@@ -3,6 +3,7 @@
 {% block title %}Quản Lý Chấm Công Lắp Đặt{% endblock %}
 
 {% block head %}
+    <script src="https://cdn.jsdelivr.net/npm/sweetalert2@11"></script>
     <!-- Bootstrap 5.3 & FontAwesome 6 -->
     <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css" rel="stylesheet">
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
@@ -486,8 +487,8 @@
                 <div class="row g-2 mb-3">
                     <div class="col-6 col-md-3">
                         <label class="form-label text-muted extra-small mb-1"><i class="fa-regular fa-calendar me-1"></i>Tháng</label>
-                        <select name="thang" class="form-select form-select-sm" onchange="this.form.submit()">
-                            <option value="0" {% if selected_month == 0 %}selected{% endif %}>Tất cả tháng</option>
+                        <select name="thang" id="thangSelect" class="form-select form-select-sm" onchange="this.form.submit()">
+                            <option value="0" {% if selected_month == 0 or not selected_month %}selected{% endif %}>Tất cả tháng</option>
                             {% for m in range(1, 13) %}
                                 <option value="{{ m }}" {% if selected_month == m %}selected{% endif %}>Tháng {{ m }}</option>
                             {% endfor %}
@@ -496,7 +497,7 @@
 
                     <div class="col-6 col-md-3">
                         <label class="form-label text-muted extra-small mb-1"><i class="fa-regular fa-calendar-days me-1"></i>Năm</label>
-                        <select name="nam" class="form-select form-select-sm" onchange="this.form.submit()">
+                        <select name="nam" id="namSelect" class="form-select form-select-sm" onchange="this.form.submit()">
                             {% set current_year_val = current_year if current_year else 2026 %}
                             {% for y in range(current_year_val - 2, current_year_val + 2) %}
                                 <option value="{{ y }}" {% if selected_year == y %}selected{% endif %}>Năm {{ y }}</option>
@@ -507,11 +508,12 @@
                     {% if user_role in ('Admin', 'System Admin', 'Super Admin') %}
                     <div class="col-12 col-md-3">
                         <label class="form-label text-muted extra-small mb-1"><i class="fa-solid fa-user-gear me-1"></i>Kỹ thuật viên</label>
-                        <select name="ktv" class="form-select form-select-sm" onchange="this.form.submit()">
-                            <option value="Tất cả">Tất cả kỹ thuật viên</option>
+                        <select name="ktv" id="ktvSelect" class="form-select form-select-sm" onchange="this.form.submit()">
+                            <option value="Tất cả" {% if selected_ktv == 'Tất cả' or not selected_ktv %}selected{% endif %}>Tất cả kỹ thuật viên</option>
                             {% if danh_sach_ktv %}
                                 {% for username, ten in danh_sach_ktv %}
-                                    <option value="{{ username }}" {% if selected_ktv == username %}selected{% endif %}>{{ ten }}</option>
+                                    <!-- Kiểm tra khớp cả username lẫn ten để tránh lệch giá trị -->
+                                    <option value="{{ username }}" {% if selected_ktv == username or selected_ktv == ten %}selected{% endif %}>{{ ten }}</option>
                                 {% endfor %}
                             {% endif %}
                         </select>
@@ -531,7 +533,8 @@
 
                 <!-- Hàng 2: Tab Trạng thái & Tìm kiếm từ khóa -->
                 <div class="row g-2 align-items-center">
-                    <div class="col-12 col-lg-7">
+                    <!-- Cụm lọc trạng thái -->
+                    <div class="col-12 col-lg-6">
                         <input type="hidden" name="status_filter" id="statusFilterInput" value="{{ status_filter or 'Tất cả' }}">
                         <ul class="nav nav-filter d-flex">
                             <li class="nav-item flex-fill text-center">
@@ -549,23 +552,28 @@
                         </ul>
                     </div>
 
-                    <div class="col-12 col-lg-5">
+                    <!-- Cụm Tìm kiếm + Nút Tải báo cáo Excel -->
+                    <div class="col-12 col-lg-6">
                         <div class="input-group">
                             <span class="input-group-text">
                                 <i class="fa-solid fa-magnifying-glass"></i>
                             </span>
-                            <input type="text" name="search" class="form-control" 
-                                   placeholder="Tìm HD, tên, nội dung..." value="{{ search_query or '' }}">
+                            <input type="text" name="search" id="searchInput" class="form-control" 
+                                placeholder="Tìm HD, tên, nội dung..." value="{{ search_query or '' }}">
                             {% if search_query %}
                                 <button type="button" class="btn btn-outline-secondary" onclick="clearSearch()">
                                     <i class="fa-solid fa-xmark"></i>
                                 </button>
                             {% endif %}
-                            <button class="btn btn-info px-4" type="submit">Tìm</button>
+                            <button class="btn btn-info px-3" type="submit">Tìm</button>
+                            
+                            <!-- Nút Tải Báo Cáo Excel -->
+                            <button type="button" class="btn btn-success px-3" onclick="downloadReport()" title="Tải báo cáo Excel">
+                                <i class="fa-solid fa-file-excel me-1"></i> Xuất Excel
+                            </button>
                         </div>
                     </div>
                 </div>
-
             </form>
         </div>
 
@@ -815,10 +823,9 @@
 
         // Clear từ khóa tìm kiếm
         function clearSearch() {
-            const form = document.getElementById('filterForm');
-            const searchInput = form.querySelector('input[name="search"]');
+            const searchInput = document.getElementById('searchInput');
             if (searchInput) searchInput.value = '';
-            form.submit();
+            document.getElementById('filterForm').submit();
         }
 
         // Mở Modal Duyệt / Từ chối
@@ -841,12 +848,11 @@
                 }
             };
 
-// Lấy cấu hình dựa vào status, mặc định nếu không khớp sẽ lấy 'Từ chối'
-const currentConfig = actionConfigs[status] || actionConfigs['Từ chối'];
+            const currentConfig = actionConfigs[status] || actionConfigs['Từ chối'];
 
-// Cập nhật giao diện Modal
-titleEl.innerHTML = currentConfig.title;
-btnConfirm.className = currentConfig.btnClass;
+            // Cập nhật giao diện Modal
+            titleEl.innerHTML = currentConfig.title;
+            btnConfirm.className = currentConfig.btnClass;
 
             document.getElementById('modalGhiChu').value = '';
             approveModalObj.show();
@@ -854,37 +860,23 @@ btnConfirm.className = currentConfig.btnClass;
 
         // Duyệt nhanh 1-Click
         async function quickApprove(itemId, invoiceCode) {
-            if (!confirm(`Xác nhận duyệt nhanh hóa đơn #${invoiceCode}?`)) return;
-            await executeDuyet(itemId, 'Đã duyệt', '');
-        }
-        //Nút xóa đơn
-        async function deleteChamCong(recordId) {
-            if (!confirm("⚠️ Bạn có chắc chắn muốn xóa phiếu chấm công này không? Hành động này không thể hoàn tác!")) {
-                return;
-            }
+            const confirmResult = await Swal.fire({
+                title: 'Duyệt nhanh đơn?',
+                text: `Xác nhận duyệt nhanh hóa đơn #${invoiceCode || itemId}?`,
+                icon: 'question',
+                showCancelButton: true,
+                confirmButtonColor: '#198754',
+                cancelButtonColor: '#6c757d',
+                confirmButtonText: 'Duyệt ngay',
+                cancelButtonText: 'Hủy'
+            });
 
-            try {
-                const response = await fetch(`/cham-cong/api/delete/${recordId}`, {
-                    method: "DELETE",
-                    headers: {
-                        "Content-Type": "application/json"
-                    }
-                });
-
-                const result = await response.json();
-
-                if (response.ok && result.success) {
-                    alert(result.message);
-                    location.reload(); // Reload lại trang để cập nhật danh sách
-                } else {
-                    alert(result.message || "❌ Không thể xóa đơn!");
-                }
-            } catch (error) {
-                console.error("Lỗi xóa đơn:", error);
-                alert("❌ Lỗi kết nối máy chủ!");
+            if (confirmResult.isConfirmed) {
+                await executeDuyet(itemId, 'Đã duyệt', '');
             }
         }
-        // Submit từ Modal
+
+        // Submit từ Modal Duyệt/Từ chối
         async function submitDuyetPhieu() {
             const itemId = document.getElementById('modalItemId').value;
             const trangThai = document.getElementById('modalTargetStatus').value;
@@ -899,7 +891,7 @@ btnConfirm.className = currentConfig.btnClass;
             btnConfirm.innerHTML = '<i class="fa-solid fa-paper-plane me-1"></i> Xác nhận';
         }
 
-        // Gọi API backend
+        // Gọi API Duyệt/Từ chối
         async function executeDuyet(itemId, trangThai, ghiChu) {
             try {
                 const response = await fetch(`/cham-cong/api/duyet/${itemId}`, {
@@ -914,12 +906,143 @@ btnConfirm.className = currentConfig.btnClass;
                 const result = await response.json();
                 if (response.ok && result.success) {
                     if (approveModalObj) approveModalObj.hide();
-                    location.reload();
+                    Swal.fire({
+                        icon: 'success',
+                        title: 'Thành công!',
+                        text: result.message || 'Cập nhật trạng thái thành công.',
+                        timer: 1500,
+                        showConfirmButton: false
+                    }).then(() => location.reload());
                 } else {
-                    alert("❌ Lỗi: " + (result.message || "Thao tác không thành công!"));
+                    Swal.fire('Lỗi!', result.message || 'Thao tác không thành công!', 'error');
                 }
             } catch (err) {
-                alert("❌ Lỗi kết nối đến máy chủ!");
+                Swal.fire('Lỗi kết nối!', 'Không thể kết nối đến máy chủ.', 'error');
+            }
+        }
+
+        // Nút Xóa Đơn Chấm Công
+        async function deleteChamCong(recordId) {
+            const confirmResult = await Swal.fire({
+                title: 'Xác nhận xóa phiếu?',
+                text: '⚠️ Bạn có chắc chắn muốn xóa phiếu chấm công này không? Hành động này không thể hoàn tác!',
+                icon: 'warning',
+                showCancelButton: true,
+                confirmButtonColor: '#dc3545',
+                cancelButtonColor: '#6c757d',
+                confirmButtonText: 'Xóa ngay',
+                cancelButtonText: 'Hủy'
+            });
+
+            if (!confirmResult.isConfirmed) return;
+
+            try {
+                const response = await fetch(`/cham-cong/api/delete/${recordId}`, {
+                    method: "DELETE",
+                    headers: { "Content-Type": "application/json" }
+                });
+
+                const result = await response.json();
+
+                if (response.ok && result.success) {
+                    Swal.fire({
+                        icon: 'success',
+                        title: 'Đã xóa!',
+                        text: result.message || 'Xóa phiếu chấm công thành công.',
+                        timer: 1500,
+                        showConfirmButton: false
+                    }).then(() => location.reload());
+                } else {
+                    Swal.fire('Lỗi!', result.message || 'Không thể xóa đơn!', 'error');
+                }
+            } catch (error) {
+                console.error("Lỗi xóa đơn:", error);
+                Swal.fire('Lỗi kết nối!', 'Không thể kết nối đến máy chủ.', 'error');
+            }
+        }
+
+        // Xử lý Download Báo Cáo Excel (Fetch Blob + Downloads History)
+        async function downloadReport() {
+            // 1. Lấy thông số từ Bộ lọc HTML mới
+            const thang = document.getElementById('thangSelect')?.value || '0';
+            const nam = document.getElementById('namSelect')?.value || '2026';
+            const ktvSelect = document.getElementById('ktvSelect');
+            const ktv = ktvSelect ? ktvSelect.value : 'Tất cả';
+            const status = document.getElementById('statusFilterInput')?.value || 'Tất cả';
+            const search = document.getElementById('searchInput')?.value.trim() || '';
+
+            // Tên hiển thị KTV & Tháng
+            const ktvText = (ktvSelect && ktvSelect.selectedIndex >= 0) ? ktvSelect.options[ktvSelect.selectedIndex].text : 'Tất cả';
+            const thangText = thang === '0' ? `Tất cả các tháng / ${nam}` : `Tháng ${thang}/${nam}`;
+
+            // 2. Hiển thị xác nhận tải qua SweetAlert2
+            const confirmResult = await Swal.fire({
+                title: 'Xác nhận tải báo cáo Excel?',
+                html: `
+                    <div style="text-align: left; font-size: 0.95rem; line-height: 1.7; background: #f8f9fa; padding: 12px; border-radius: 6px;">
+                        <b>📅 Thời gian:</b> <span class="text-primary">${thangText}</span><br>
+                        <b>👤 Kỹ thuật viên:</b> ${ktvText}<br>
+                        <b>📌 Trạng thái:</b> ${status}<br>
+                        ${search ? `<b>🔍 Từ khóa:</b> "${search}"` : ''}
+                    </div>
+                `,
+                icon: 'question',
+                showCancelButton: true,
+                confirmButtonColor: '#1F4E79',
+                cancelButtonColor: '#6c757d',
+                confirmButtonText: '<i class="fa-solid fa-file-excel me-1"></i> Tải về ngay',
+                cancelButtonText: 'Hủy',
+                reverseButtons: true
+            });
+
+            if (!confirmResult.isConfirmed) return;
+
+            // 3. Hiển thị Loading
+            Swal.fire({
+                title: 'Đang khởi tạo tệp Excel...',
+                text: 'Hệ thống đang tổng hợp dữ liệu, vui lòng đợi trong giây lát.',
+                allowOutsideClick: false,
+                didOpen: () => { Swal.showLoading(); }
+            });
+
+            // 4. Chuẩn hóa tham số tháng gửi về Backend (MM/YYYY hoặc YYYY)
+            let monthParam = `${nam}`;
+            if (thang !== '0') {
+                monthParam = `${String(thang).padStart(2, '0')}/${nam}`;
+            }
+
+            // 5. Tạo URL endpoint đầy đủ bộ lọc
+            const downloadUrl = `/admin/report/export-excel?month=${encodeURIComponent(monthParam)}&selected_nv=${encodeURIComponent(ktv)}&selected_tt=${encodeURIComponent(status)}&search=${encodeURIComponent(search)}`;
+
+            try {
+                const response = await fetch(downloadUrl);
+                if (!response.ok) throw new Error('Không thể khởi tạo file báo cáo.');
+
+                const blob = await response.blob();
+                
+                // Tạo Blob URL để bắt trình duyệt lưu vào Downloads History
+                const blobUrl = window.URL.createObjectURL(blob);
+                const a = document.createElement('a');
+                a.style.display = 'none';
+                a.href = blobUrl;
+                
+                const fileName = `Bao_Cao_Cham_Cong_${thang !== '0' ? thang + '_' : ''}${nam}.xlsx`;
+                a.download = fileName;
+                
+                document.body.appendChild(a);
+                a.click();
+                
+                window.URL.revokeObjectURL(blobUrl);
+                document.body.removeChild(a);
+
+                Swal.close();
+            } catch (error) {
+                Swal.fire({
+                    icon: 'error',
+                    title: 'Lỗi tải tệp!',
+                    text: 'Không tìm thấy dữ liệu phù hợp hoặc máy chủ gặp sự cố.',
+                    confirmButtonColor: '#1F4E79'
+                });
             }
         }
     </script>
