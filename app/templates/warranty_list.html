@@ -1,0 +1,900 @@
+{% extends "base.html" %}
+
+{% block head %}
+<style>
+    /* Ép kiểu cho ô input date hiển thị icon & giao diện lịch chuẩn Dark Mode */
+    input[type="date"]::-webkit-calendar-picker-indicator {
+        filter: invert(0.8);
+        cursor: pointer;
+    }
+</style>
+{% endblock %}
+
+{% block content %}
+<div class="min-h-screen bg-slate-950 text-slate-100 py-6 px-4 sm:px-6 lg:px-8 space-y-6">
+
+    <!-- TOP HEADER & ACTION BAR -->
+    <div class="bg-slate-900/90 backdrop-blur-md p-5 rounded-2xl border border-slate-800 shadow-xl flex flex-col lg:flex-row lg:items-center justify-between gap-4">
+        <div class="flex items-center gap-4">
+            <div class="h-8 w-[1px] bg-slate-800 hidden sm:block"></div>
+            <div class="flex items-center gap-3">
+                <div class="w-11 h-11 rounded-xl bg-indigo-500/10 border border-indigo-500/20 text-indigo-400 flex items-center justify-center shrink-0">
+                    <i class="fa-solid fa-shield-halved text-xl"></i>
+                </div>
+                <div>
+                    <h1 class="text-lg font-bold text-slate-100 tracking-tight flex items-center gap-2">
+                        Quản Lý Bảo Hành
+                    </h1>
+                    <p class="text-xs text-slate-400 mt-0.5">Tra cứu, quản lý và áp dụng chính sách bảo hành tự động</p>
+                </div>
+            </div>
+        </div>
+        
+        <div class="flex items-center gap-2.5 w-full lg:w-auto">
+            <button onclick="addInlineRow()" 
+                    class="flex-1 lg:flex-initial inline-flex items-center justify-center gap-2 bg-indigo-600 hover:bg-indigo-500 text-white font-semibold px-4 py-2.5 rounded-xl text-xs transition border border-indigo-500 shadow-lg shadow-indigo-600/30 active:scale-[0.98] cursor-pointer">
+                <i class="fa-solid fa-plus"></i>
+                <span>Thêm Hàng Mới</span>
+            </button>
+
+            <button id="btnSaveBatch" onclick="saveBatchRows()" 
+                    class="hidden flex-1 lg:flex-initial inline-flex items-center justify-center gap-2 bg-amber-600 hover:bg-amber-500 text-white font-semibold px-4 py-2.5 rounded-xl text-xs transition border border-amber-500 shadow-lg shadow-amber-600/30 active:scale-[0.98] cursor-pointer">
+                <i class="fa-solid fa-floppy-disk"></i>
+                <span>Lưu Tất Cả (<span id="newRowCount">0</span>)</span>
+            </button>
+        </div>
+    </div>
+
+    <!-- BỘ LỌC TÌM KIẾM -->
+    <div class="bg-slate-900/90 p-4 rounded-2xl border border-slate-800/80 shadow-2xl backdrop-blur-md">
+        <form method="GET" action="/warranty/list" class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-12 gap-3 items-end">
+            
+            <!-- 1. Từ khóa tìm kiếm (Col 3) -->
+            <div class="lg:col-span-3">
+                <label class="block text-[10px] font-bold text-slate-400 uppercase tracking-wider mb-1.5 flex items-center gap-1.5">
+                    <i class="fa-solid fa-magnifying-glass text-indigo-400 text-[10px]"></i> Từ khóa
+                </label>
+                <div class="relative flex items-center">
+                    <i class="fa-solid fa-barcode absolute left-3 text-slate-500 text-xs pointer-events-none"></i>
+                    <input type="text" id="searchInput" name="q" value="{{ request.query_params.get('q', '') }}" 
+                        placeholder="S/N, Khách hàng, SĐT..." autocomplete="off"
+                        class="w-full h-10 pl-8 pr-8 bg-slate-950/80 border border-slate-800 rounded-xl focus:border-indigo-500 focus:ring-1 focus:ring-indigo-500/50 text-xs text-slate-200 placeholder:text-slate-600 outline-none transition">
+                    <i id="searchSpinner" class="fa-solid fa-spinner fa-spin absolute right-3 text-indigo-400 text-xs hidden"></i>
+                </div>
+            </div>
+
+            <!-- 2. Lọc Danh Mục (Col 2) -->
+            <div class="lg:col-span-2">
+                <label class="block text-[10px] font-bold text-slate-400 uppercase tracking-wider mb-1.5 flex items-center gap-1.5">
+                    <i class="fa-solid fa-layer-group text-indigo-400 text-[10px]"></i> Danh mục
+                </label>
+                <div class="relative flex items-center">
+                    <select name="category" class="w-full h-10 px-3 bg-slate-950/80 border border-slate-800 rounded-xl focus:border-indigo-500 focus:ring-1 focus:ring-indigo-500/50 text-xs text-slate-200 outline-none appearance-none cursor-pointer transition">
+                        <option value="" class="bg-slate-900 text-slate-400">-- Tất cả --</option>
+                        {% for cat in categories %}
+                            <option value="{{ cat }}" class="bg-slate-900 text-slate-200" {% if request.query_params.get('category') == cat %}selected{% endif %}>{{ cat }}</option>
+                        {% endfor %}
+                    </select>
+                    <i class="fa-solid fa-chevron-down absolute right-3 text-[10px] text-slate-500 pointer-events-none"></i>
+                </div>
+            </div>
+
+            <!-- 3. Lọc Nhân Viên (Col 2) -->
+            <div class="lg:col-span-2">
+                <label class="block text-[10px] font-bold text-slate-400 uppercase tracking-wider mb-1.5 flex items-center gap-1.5">
+                    <i class="fa-solid fa-user-pen text-indigo-400 text-[10px]"></i> Nhân viên
+                </label>
+                <div class="relative flex items-center">
+                    <select name="created_by" class="w-full h-10 px-3 bg-slate-950/80 border border-slate-800 rounded-xl focus:border-indigo-500 focus:ring-1 focus:ring-indigo-500/50 text-xs text-slate-200 outline-none appearance-none cursor-pointer transition">
+                        <option value="" class="bg-slate-900 text-slate-400">-- Tất cả --</option>
+                        {% for creator_name in creators %}
+                            {% if creator_name %}
+                                <option value="{{ creator_name }}" class="bg-slate-900 text-slate-200" {% if request.query_params.get('created_by') == creator_name %}selected{% endif %}>{{ creator_name }}</option>
+                            {% endif %}
+                        {% endfor %}
+                    </select>
+                    <i class="fa-solid fa-chevron-down absolute right-3 text-[10px] text-slate-500 pointer-events-none"></i>
+                </div>
+            </div>
+
+            <!-- 4. Khoảng thời gian (Col 3) -->
+            <div class="lg:col-span-3">
+                <label class="block text-[10px] font-bold text-slate-400 uppercase tracking-wider mb-1.5 flex items-center gap-1.5">
+                    <i class="fa-regular fa-calendar-days text-indigo-400 text-[10px]"></i> Khoảng thời gian
+                </label>
+                <div class="grid grid-cols-2 gap-1.5">
+                    <input type="date" name="start_date" value="{{ request.query_params.get('start_date', '') }}" 
+                        class="w-full h-10 px-2 bg-slate-950/80 border border-slate-800 rounded-xl focus:border-indigo-500 focus:ring-1 focus:ring-indigo-500/50 text-[11px] font-mono text-slate-200 text-center outline-none [color-scheme:dark] transition cursor-pointer">
+                    <input type="date" name="end_date" value="{{ request.query_params.get('end_date', '') }}" 
+                        class="w-full h-10 px-2 bg-slate-950/80 border border-slate-800 rounded-xl focus:border-indigo-500 focus:ring-1 focus:ring-indigo-500/50 text-[11px] font-mono text-slate-200 text-center outline-none [color-scheme:dark] transition cursor-pointer">
+                </div>
+            </div>
+
+            <!-- 5. Thao tác Lọc & Reset (Col 2) -->
+            <div class="lg:col-span-2">
+                <div class="flex items-center gap-1.5 w-full h-10">
+                    <!-- Nút Lọc -->
+                    <button type="submit" class="flex-1 h-full bg-indigo-600 hover:bg-indigo-500 active:bg-indigo-700 text-white rounded-xl font-semibold text-xs transition shadow-lg shadow-indigo-600/20 flex items-center justify-center gap-1.5 cursor-pointer shrink-0">
+                        <i class="fa-solid fa-filter text-[11px]"></i> Lọc
+                    </button>
+                    
+                    <!-- Nút Reset -->
+                    {% if request.query_params %}
+                    <a href="/warranty/list" class="h-full w-10 shrink-0 bg-slate-800 hover:bg-slate-700 text-slate-300 hover:text-white rounded-xl text-xs transition border border-slate-700/60 flex items-center justify-center cursor-pointer" title="Bỏ lọc">
+                        <i class="fa-solid fa-rotate-left text-[11px]"></i>
+                    </a>
+                    {% endif %}
+                </div>
+            </div>
+
+        </form>
+    </div>
+
+    <!-- BẢNG DỮ LIỆU CẢI TIẾN -->
+    <div class="bg-slate-900/90 rounded-2xl border border-slate-800 shadow-2xl overflow-hidden">
+        <div class="overflow-x-auto">
+            <table class="w-full text-left border-collapse text-xs" id="warrantyTable">
+                <thead>
+                    <tr class="bg-slate-800/80 border-b border-slate-700/80 text-slate-400 uppercase tracking-wider text-[10px] font-bold">
+                        <th class="py-3.5 px-3 min-w-[130px]">Số Serial (S/N)</th>
+                        <th class="py-3.5 px-3 min-w-[180px]">Khách Hàng & SĐT</th>
+                        <th class="py-3.5 px-3 min-w-[220px]">Model / Danh Mục / Tình Trạng</th>
+                        <th class="py-3.5 px-3 min-w-[180px]">Gói Bảo Hành Áp Dụng</th>
+                        <th class="py-3.5 px-3 min-w-[110px]">Counter</th>
+                        <th class="py-3.5 px-3 min-w-[150px]">KTV & Ngày Tạo</th>
+                        <th class="py-3.5 px-3 text-center min-w-[90px]">Thao Tác</th>
+                    </tr>
+                </thead>
+                <tbody id="warrantyTbody" class="divide-y divide-slate-800/60 text-slate-300">
+                   {% if items %}
+                        {% set user_role = request.session.get('role', 'Staff') %}
+                        {% set session_user = request.session.get('user') %}
+                        {% set user_dict = session_user if session_user is mapping else {} %}
+                        
+                        {# 1. Bổ sung đầy đủ ho_ten, display_name, username từ Session để không sót truờng hợp nào #}
+                        {% set s_hoten = (request.session.get('ho_ten') or user_dict.get('ho_ten') or '') | string | lower | trim %}
+                        {% set s_display = (request.session.get('display_name') or user_dict.get('display_name') or user_dict.get('name') or '') | string | lower | trim %}
+                        {% set s_username = (request.session.get('username') or user_dict.get('username') or '') | string | lower | trim %}
+                        {% set s_raw_user = (session_user if session_user is string else '') | string | lower | trim %}
+
+                        {# 2. Phân cấp quyền #}
+                        {% set role_levels = {'Staff': 1, 'KTV': 1, 'Admin': 2, 'Super Admin': 3, 'System Admin': 4} %}
+                        {% set current_user_level = role_levels.get(user_role, 1) %}
+                        {% set can_delete = (user_role == 'System Admin') %}
+
+                        {% for item in items %}
+                            {# 3. Bóc tách staff_name từ DB (Xử lý an toàn nếu là Dict hoặc String) #}
+                            {% if item.staff_name is mapping %}
+                                {% set db_staff = (item.staff_name.get('ho_ten') or item.staff_name.get('display_name') or item.staff_name.get('username') or '') | string | lower | trim %}
+                            {% else %}
+                                {% set db_staff = (item.staff_name or '') | string | lower | trim %}
+                            {% endif %}
+
+                            {# 4. Kiểm tra chính chủ: Khớp với BẤT KỲ danh tính nào của Session #}
+                            {% set is_author = (db_staff != '') and (
+                                db_staff == s_hoten or 
+                                db_staff == s_display or 
+                                db_staff == s_username or 
+                                db_staff == s_raw_user
+                            ) %}
+                            
+                            {# Quyền SỬA: Là tác giả HOẶC thuộc nhóm Admin (Cấp bậc > 1) #}
+                            {% set can_edit = is_author or (current_user_level > 2) %}
+
+                        <tr class="hover:bg-slate-800/40 transition border-b border-slate-800/60" id="row-{{ item.id }}" data-item-id="{{ item.id }}">
+
+                            <!-- 1. Serial Number -->
+                            <td class="py-2.5 px-3 align-middle min-w-[140px]">
+                                <div class="serial-wrapper flex items-center gap-1 bg-slate-900/60 border border-slate-700/50 rounded-lg px-2 py-1 focus-within:border-indigo-500 transition">
+                                    <input 
+                                        type="text" 
+                                        class="row-sn min-w-0 w-full bg-transparent text-xs text-indigo-300 font-mono font-semibold uppercase outline-none" 
+                                        value="{{ item.serial_number or '' }}" 
+                                        placeholder="S/N Bắt buộc *" 
+                                        required
+                                        oninput="this.value = this.value.toUpperCase(); validateSerialInput(this);"
+                                    >
+                                    {% if item.serial_number %}
+                                    <button type="button" onclick="copyToClipboard('{{ item.serial_number }}')" class="text-indigo-400/60 hover:text-indigo-300 shrink-0 p-0.5" title="Copy S/N">
+                                        <i class="fa-regular fa-copy text-[11px]"></i>
+                                    </button>
+                                    {% endif %}
+                                </div>
+                            </td>
+
+                            <!-- 2. Khách hàng & SĐT -->
+                            <td class="py-2.5 px-3 align-middle min-w-[70]">
+                                <input type="text" class="row-customer min-w-0 w-full bg-transparent border border-transparent focus:border-indigo-500 rounded px-1 py-0.5 text-xs text-slate-100 font-bold outline-none disabled:bg-transparent disabled:text-slate-100 disabled:opacity-100" value="{{ item.customer_name or '' }}" disabled required>
+                                <input type="text" class="row-phone min-w-0 w-full bg-transparent border border-transparent focus:border-indigo-500 rounded px-1 py-0.5 text-[11px] text-slate-400 font-mono outline-none disabled:bg-transparent disabled:text-slate-400 disabled:opacity-100" value="{{ item.phone_number or '' }}" disabled required>
+                            </td>
+
+                            <!-- 3. Model / Danh Mục / Tình Trạng -->
+                            <td class="py-2.5 px-3 align-middle min-w-[300px]">
+                                <div class="flex flex-col justify-center gap-1 h-[56px]">
+                                    <!-- Tầng 1: Model Name (h-5) -->
+                                    <div class="h-5 flex items-center min-w-0">
+                                        <input type="text" class="row-model min-w-0 w-full bg-transparent border border-transparent focus:border-indigo-500 rounded px-1 text-xs font-bold text-slate-100 uppercase tracking-wide outline-none disabled:bg-transparent disabled:text-slate-100 disabled:opacity-100 truncate" value="{{ item.model_name or '' }}" placeholder="Chưa có model" disabled>
+                                    </div>
+                                    <!-- Tầng 2: Category & Condition (h-7) -->
+                                    <div class="grid grid-cols-2 gap-2 h-7">
+                                        <select class="row-category w-full h-7 min-w-0 bg-slate-800/90 text-indigo-300 text-[10px] font-semibold px-2 rounded-md border border-indigo-700/50 outline-none appearance-none text-center disabled:cursor-default truncate" disabled>
+                                            {% for cat in categories %}
+                                                <option value="{{ cat }}" class="bg-slate-900 text-slate-100" {% if item.category == cat %}selected{% endif %}>{{ cat }}</option>
+                                            {% endfor %}
+                                        </select>
+                                        <select class="row-condition w-full h-7 min-w-0 text-[10px] font-semibold px-2 rounded-md border outline-none appearance-none text-center disabled:cursor-default truncate {% if item.condition == 'Đã qua sử dụng' %}bg-amber-950/60 text-amber-300 border-amber-800/60{% else %}bg-emerald-950/60 text-emerald-300 border-emerald-800/60{% endif %}" disabled>
+                                            {% for cond in conditions or ['Mới', 'Đã qua sử dụng'] %}
+                                                <option value="{{ cond }}" class="bg-slate-900 text-slate-100" {% if (item.condition or '')|trim == cond %}selected{% endif %}>{{ cond }}</option>
+                                            {% endfor %}
+                                        </select>
+                                    </div>
+                                </div>
+                            </td>
+
+                            <!-- 4. Gói Bảo Hành Áp Dụng -->
+                            <td class="py-2.5 px-3 align-middle min-w-[185px]">
+                                <div class="flex flex-col justify-center gap-1 h-[56px]">
+                                    <!-- Tầng 1: Label Tiêu Đề (h-5) -->
+                                    <div class="h-5 flex items-center min-w-0 px-0.5">
+                                        <span class="text-[9px] font-bold text-slate-400 uppercase tracking-wider truncate">Gói bảo hành</span>
+                                    </div>
+                                    <!-- Tầng 2: Select Gói BH (h-7) -->
+                                    <select class="row-policy w-full h-7 min-w-0 bg-amber-500/10 text-amber-300 border border-amber-500/30 text-[10px] font-semibold px-2 rounded-md outline-none appearance-none disabled:bg-amber-500/10 disabled:border-amber-500/20 disabled:text-amber-300 disabled:opacity-100 disabled:cursor-default focus:border-amber-400 transition truncate" onchange="onPolicyChange(this)" disabled>
+                                        <option value="NULL" class="bg-slate-900 text-slate-300" data-category="" data-condition="" data-has-page-limit="false">-- Chưa áp dụng --</option>
+                                        {% if policies %}
+                                            {% for p in policies %}
+                                                {% if p.is_active != False %}
+                                                    {% set body_limit = p.page_limit_body or 0 %}
+                                                    {% set head_limit = p.page_limit_head or 0 %}
+                                                    {% set is_no_limit = p.no_page_limit in [True, 'true', 'True', 1] %}
+                                                    {% set has_limit = (not is_no_limit) and (body_limit > 0 or head_limit > 0) %}
+                                                    <option value="{{ p.policy_name }}" 
+                                                            class="bg-slate-900 text-slate-100 py-1"
+                                                            data-category="{{ p.category }}" 
+                                                            data-condition="{{ p.condition }}"
+                                                            data-has-page-limit="{{ 'true' if has_limit else 'false' }}"
+                                                            {% if item.applied_policy_name == p.policy_name %}selected{% endif %}>
+                                                        {{ p.policy_name }}
+                                                    </option>
+                                                {% endif %}
+                                            {% endfor %}
+                                        {% endif %}
+                                    </select>
+                                </div>
+                            </td>
+
+                            <!-- 5. Counter Hiện Tại -->
+                            <td class="py-2.5 px-3 align-middle min-w-[115px]">
+                                <div class="flex flex-col justify-center gap-1 h-[56px]">
+                                    <!-- Tầng 1: Label Tiêu Đề (h-5) -->
+                                    <div class="h-5 flex items-center min-w-0 justify-end px-0.5">
+                                        <span class="text-[9px] font-bold text-slate-400 uppercase tracking-wider truncate">Số Counter</span>
+                                    </div>
+                                    <!-- Tầng 2: Input Counter (h-7) -->
+                                    <div class="flex items-center justify-between h-7 min-w-0 bg-emerald-500/10 border border-emerald-500/30 px-2 rounded-md w-full">
+                                        <span class="text-[10px] text-emerald-400 font-mono font-bold shrink-0">#</span>
+                                        <input type="number" class="row-counter min-w-0 w-full bg-transparent text-emerald-300 font-mono font-bold text-[11px] text-right outline-none disabled:bg-transparent disabled:text-emerald-300 disabled:opacity-100" value="{{ item.current_counter or 0 }}" min="0" disabled>
+                                    </div>
+                                </div>
+                            </td>
+
+                            <!-- 6. Nhân viên & Ngày Mua/Ngày Tạo -->
+                            <td class="py-2.5 px-3 align-middle space-y-1 min-w-[145px]">
+                                <div class="flex items-center gap-1.5 text-slate-100 font-medium text-[11px] truncate" title="{{ item.staff_name or 'Hệ thống' }}">
+                                    <i class="fa-solid fa-user-circle text-slate-400 text-[11px] shrink-0"></i>
+                                    <span class="truncate">{{ item.staff_name or 'Hệ thống' }}</span>
+                                </div>
+                                <div class="flex items-center gap-1.5 text-slate-300 text-[11px] font-mono">
+                                    <i class="fa-regular fa-calendar-days text-[10px] text-indigo-400 shrink-0"></i>
+                                    <input type="date" class="row-date bg-transparent border-0 p-0 text-slate-300 text-[11px] font-mono outline-none disabled:bg-transparent disabled:text-slate-300 disabled:opacity-100 [color-scheme:dark]" value="{{ item.purchase_date or item.created_at or '' }}" disabled>
+                                </div>
+                            </td>
+
+                            <!-- 7. Thao Tác Inline Edit -->
+                            <td class="py-2.5 px-3 align-middle text-center min-w-[90px]">
+                                <div class="action-view-mode flex justify-center items-center gap-1">
+                                    {% if can_edit %}
+                                    <button type="button" onclick="enableEditRow(this)" class="p-1.5 text-slate-400 hover:text-indigo-300 transition rounded-lg hover:bg-slate-800" title="Sửa nhanh hàng này">
+                                        <i class="fa-solid fa-pen-to-square text-xs"></i>
+                                    </button>
+                                    {% endif %}
+                                    {% if can_delete %}
+                                    <button type="button" onclick="confirmDelete('{{ item.id }}', '{{ item.serial_number or item.customer_name }}')" class="p-1.5 text-slate-400 hover:text-rose-400 transition rounded-lg hover:bg-slate-800" title="Xóa">
+                                        <i class="fa-solid fa-trash-can text-xs"></i>
+                                    </button>
+                                    {% endif %}
+                                </div>
+                                <div class="action-edit-mode hidden flex justify-center items-center gap-1">
+                                    <button type="button" onclick="saveEditRow('{{ item.id }}', this)" class="p-1.5 bg-emerald-600 hover:bg-emerald-500 text-white rounded-lg text-xs transition shadow-md" title="Lưu thay đổi">
+                                        <i class="fa-solid fa-check"></i>
+                                    </button>
+                                    <button type="button" onclick="cancelEditRow(this)" class="p-1.5 bg-slate-800 hover:bg-slate-700 text-slate-300 rounded-lg text-xs transition border border-slate-700" title="Hủy">
+                                        <i class="fa-solid fa-xmark"></i>
+                                    </button>
+                                </div>
+                            </td>
+
+                        </tr>
+                        {% endfor %}
+                    {% else %}
+                        <tr id="emptyRow">
+                            <td colspan="7" class="py-12 text-center text-slate-500">
+                                Chưa có dữ liệu. Bấm <b>+ Thêm Hàng Mới</b> để tạo phiếu bảo hành.
+                            </td>
+                        </tr>
+                    {% endif %}
+                </tbody>
+            </table>
+        </div>
+    </div>
+</div>
+
+<!-- TEMPLATE INLINE INPUT KHI BẤM THÊM HÀNG MỚI -->
+<template id="inlineRowTemplate">
+    <tr class="bg-indigo-950/40 border-b border-indigo-900/60 new-inline-row">
+        <!-- Serial -->
+        <td class="py-2.5 px-2">
+            <input type="text" class="row-sn w-full bg-slate-950 border border-slate-700 focus:border-indigo-500 rounded-lg px-2.5 py-1.5 text-xs text-indigo-200 font-mono uppercase outline-none" placeholder="VD: SN123456">
+        </td>
+
+        <!-- Khách hàng & SĐT -->
+        <td class="py-2.5 px-2 space-y-1">
+            <input type="text" class="row-customer w-full bg-slate-950 border border-slate-700 focus:border-indigo-500 rounded-lg px-2.5 py-1 text-xs text-slate-100 outline-none" placeholder="Tên khách hàng *" required>
+            
+            <div class="phone-wrapper relative">
+                <input type="text" class="row-phone w-full bg-slate-950 border border-slate-700 focus:border-indigo-500 rounded-lg px-2.5 py-1 text-xs text-slate-300 font-mono outline-none" placeholder="Số điện thoại *" required oninput="validatePhoneInput(this)">
+            </div>
+        </td>
+
+        <!-- Model, Danh Mục & Tình Trạng -->
+         <td class="py-2.5 px-2 space-y-1">
+            <!-- Model máy (KTV tự nhập) -->
+            <input type="text" class="row-model w-full bg-slate-950 border border-slate-700 focus:border-indigo-500 rounded-lg px-2.5 py-1 text-xs text-slate-100 uppercase outline-none" placeholder="Model máy">
+            
+            <!-- Danh mục & Tình trạng (Tự động nhảy theo Gói Bảo Hành - Khóa thao tác) -->
+            <div class="grid grid-cols-2 gap-1">
+                <select class="row-category w-full bg-slate-900/80 border border-slate-800 text-indigo-300 text-[11px] px-1.5 py-1 rounded-lg outline-none appearance-none text-center cursor-not-allowed opacity-70" disabled title="Tự động nhảy theo gói bảo hành">
+                    <option value="">-- Danh mục --</option>
+                    {% for cat in categories or ['Máy In Phun', 'Máy Laser', 'Máy In Kim', 'Thiết bị khác'] %}
+                        <option value="{{ cat }}">{{ cat }}</option>
+                    {% endfor %}
+                </select>
+
+                <select class="row-condition w-full bg-slate-900/80 border border-slate-800 text-emerald-400 text-[11px] px-1.5 py-1 rounded-lg outline-none appearance-none text-center cursor-not-allowed opacity-70" disabled title="Tự động nhảy theo gói bảo hành">
+                    <option value="">-- Tình trạng --</option>
+                    {% for cond in conditions or ['Mới', 'Đã qua sử dụng'] %}
+                        <option value="{{ cond }}">{{ cond }}</option>
+                    {% endfor %}
+                </select>
+            </div>
+        </td>
+
+        <!-- Select Gói Bảo Hành -->
+        <td class="py-2.5 px-2">
+            <select class="row-policy w-full bg-slate-950 border border-slate-700 focus:border-indigo-500 rounded-lg px-2 py-1.5 text-xs text-slate-200 outline-none" onchange="onPolicyChange(this)">
+                <option value="NULL" data-category="" data-condition="" data-has-page-limit="false">-- Chọn gói bảo hành --</option>
+                {% if policies %}
+                    {% for p in policies %}
+                        {% if p.is_active != False %}
+                            {% set body_limit = p.page_limit_body or 0 %}
+                            {% set head_limit = p.page_limit_head or 0 %}
+                            {% set is_no_limit = p.no_page_limit in [True, 'true', 'True', 1] %}
+                            {% set has_limit = (not is_no_limit) and (body_limit > 0 or head_limit > 0) %}
+
+                            <option value="{{ p.policy_name }}" 
+                                    data-category="{{ p.category }}" 
+                                    data-condition="{{ p.condition }}"
+                                    data-has-page-limit="{{ 'true' if has_limit else 'false' }}">
+                                {{ p.policy_name }} ({{ p.warranty_months }}T{% if p.head_warranty_months %}/Đầu {{ p.head_warranty_months }}T{% endif %})
+                            </option>
+                        {% endif %}
+                    {% endfor %}
+                {% endif %}
+            </select>
+        </td>
+
+        <!-- Counter đầu -->
+        <td class="py-2.5 px-2">
+            <input type="number" 
+                class="row-counter w-full bg-slate-950 border border-slate-700 focus:border-indigo-500 rounded-lg px-2 py-1.5 text-xs text-slate-200 font-mono outline-none disabled:opacity-40 disabled:bg-slate-900/80 disabled:cursor-not-allowed disabled:border-slate-800" 
+                value="0" 
+                min="0" 
+                placeholder="Counter" 
+                disabled>
+        </td>
+
+        <!-- Ngày mua -->
+        <td class="py-2.5 px-2">
+            <input type="date" class="row-date w-full bg-slate-950 border border-slate-700 focus:border-indigo-500 rounded-lg px-2 py-1.5 text-xs text-slate-300 font-mono outline-none">
+        </td>
+
+        <!-- Thao tác -->
+        <td class="py-2.5 px-2 text-center">
+            <div class="flex items-center justify-center gap-1">
+                <button type="button" onclick="saveSingleRow(this)" class="p-1.5 bg-emerald-600 hover:bg-emerald-500 text-white rounded-lg text-xs transition" title="Lưu">
+                    <i class="fa-solid fa-check"></i>
+                </button>
+                <button type="button" onclick="removeInlineRow(this)" class="p-1.5 bg-rose-950/80 hover:bg-rose-900 text-rose-400 rounded-lg text-xs transition" title="Hủy">
+                    <i class="fa-solid fa-xmark"></i>
+                </button>
+            </div>
+        </td>
+    </tr>
+</template>
+{% endblock %}
+
+{% block scripts %}
+<script>
+// Biến lưu trữ dữ liệu gốc trước khi sửa
+const originalRowData = {};
+
+// ==========================================
+// 1. QUẢN LÝ KHÓA/MỞ & TỰ ĐỘNG THÔNG TIN THEO GÓI
+// ==========================================
+
+// Hàm đổi màu sắc badge Condition động dựa trên giá trị được chọn
+function updateConditionBadgeStyle(selectEl) {
+    if (!selectEl) return;
+    
+    // Xóa màu sắc cũ
+    selectEl.classList.remove(
+        'bg-amber-950/60', 'text-amber-400', 'border-amber-800/60',
+        'bg-emerald-950/60', 'text-emerald-400', 'border-emerald-800/60'
+    );
+
+    // Thêm màu sắc mới tương ứng
+    if (selectEl.value === 'Đã qua sử dụng') {
+        selectEl.classList.add('bg-amber-950/60', 'text-amber-400', 'border-amber-800/60');
+    } else {
+        selectEl.classList.add('bg-emerald-950/60', 'text-emerald-400', 'border-emerald-800/60');
+    }
+}
+
+// Hàm xử lý sự kiện khi thay đổi Gói Bảo Hành
+function onPolicyChange(selectPolicy) {
+    if (!selectPolicy) return;
+
+    const tr = selectPolicy.closest('tr');
+    if (!tr) return;
+
+    const selectedOption = selectPolicy.options[selectPolicy.selectedIndex];
+    const category = selectedOption.getAttribute('data-category');
+    const condition = selectedOption.getAttribute('data-condition');
+    const hasPageLimit = selectedOption.getAttribute('data-has-page-limit') === 'true';
+
+    const catSelect = tr.querySelector('.row-category');
+    const condSelect = tr.querySelector('.row-condition');
+    const counterInput = tr.querySelector('.row-counter');
+
+    if (selectPolicy.value && selectPolicy.value !== 'NULL') {
+        if (category && category !== 'ALL' && catSelect) catSelect.value = category;
+        if (condition && condition !== 'ALL' && condSelect) {
+            condSelect.value = condition;
+            updateConditionBadgeStyle(condSelect);
+        }
+
+        if (catSelect) catSelect.disabled = true;
+        if (condSelect) condSelect.disabled = true;
+
+        if (counterInput && !selectPolicy.disabled) {
+            if (hasPageLimit) {
+                counterInput.disabled = false;
+                counterInput.focus();
+                counterInput.select();
+            } else {
+                counterInput.disabled = true;
+                counterInput.value = 0;
+            }
+        }
+    } else {
+        if (catSelect) { catSelect.value = ""; catSelect.disabled = true; }
+        if (condSelect) { condSelect.value = ""; condSelect.disabled = true; updateConditionBadgeStyle(condSelect); }
+        if (counterInput) { counterInput.disabled = true; counterInput.value = 0; }
+    }
+}
+
+// ==========================================
+// 2. VALIDATION REALTIME (SERIAL & PHONE)
+// ==========================================
+
+function validateSerialInput(inputEl) {
+    const wrapper = inputEl.closest('.serial-wrapper') || inputEl.parentElement;
+    const val = inputEl.value.trim();
+    
+    if (!val) {
+        wrapper.classList.remove('border-slate-700/50', 'focus-within:border-indigo-500', 'border-slate-700');
+        wrapper.classList.add('border-red-500', 'bg-red-950/20');
+        return false;
+    } else {
+        wrapper.classList.remove('border-red-500', 'bg-red-950/20');
+        wrapper.classList.add('border-slate-700/50', 'focus-within:border-indigo-500');
+        return true;
+    }
+}
+
+function validatePhoneInput(inputEl) {
+    const val = inputEl.value.trim();
+    const cleanVal = val.replace(/\s+/g, '');
+    const isNumeric = /^\d+$/.test(cleanVal);
+
+    if (val && (!isNumeric || cleanVal.length < 9 || cleanVal.length > 11)) {
+        inputEl.classList.remove('border-slate-700', 'focus:border-indigo-500');
+        inputEl.classList.add('border-red-500');
+        return false;
+    } else {
+        inputEl.classList.remove('border-red-500');
+        inputEl.classList.add('border-slate-700', 'focus:border-indigo-500');
+        return true;
+    }
+}
+
+// ==========================================
+// 3. TRÍCH XUẤT VÀ KIỂM TRA DỮ LIỆU HÀNG
+// ==========================================
+
+function extractRowData(tr) {
+    const snInput = tr.querySelector('.row-sn');
+    const customerInput = tr.querySelector('.row-customer');
+    const phoneInput = tr.querySelector('.row-phone');
+    const modelInput = tr.querySelector('.row-model');
+
+    const snVal = snInput ? snInput.value.trim().toUpperCase() : '';
+    const customerVal = customerInput ? customerInput.value.trim() : '';
+    const phoneVal = phoneInput ? phoneInput.value.trim().replace(/\s+/g, '') : '';
+    const modelVal = modelInput ? modelInput.value.trim() : '';
+    
+    const categoryVal = tr.querySelector('.row-category')?.value || '';
+    const conditionVal = tr.querySelector('.row-condition')?.value || '';
+    const policyVal = tr.querySelector('.row-policy')?.value || 'NULL';
+    const counterVal = parseInt(tr.querySelector('.row-counter')?.value || 0, 10);
+    const dateVal = tr.querySelector('.row-date')?.value || null;
+
+    let isValid = true;
+
+    // Kiểm tra Serial bắt buộc
+    if (!snVal) {
+        isValid = false;
+        if (snInput) validateSerialInput(snInput);
+    }
+
+    // Kiểm tra Tên khách hàng
+    if (!customerVal) {
+        isValid = false;
+        if (customerInput) customerInput.classList.add('border-red-500');
+    }
+
+    // Kiểm tra Số điện thoại bắt buộc, phải là số và đúng độ dài (9-11 số)
+    const isPhoneValid = /^\d+$/.test(phoneVal) && phoneVal.length >= 9 && phoneVal.length <= 11;
+    if (!phoneVal || !isPhoneValid) {
+        isValid = false;
+        if (phoneInput) {
+            phoneInput.classList.add('border-red-500');
+        }
+    }
+
+    if (!isValid) return null;
+
+    return {
+        serial_number: snVal,
+        customer_name: customerVal,
+        phone_number: phoneVal,
+        model_name: modelVal || null,
+        category: categoryVal,
+        condition: conditionVal,
+        applied_policy_name: policyVal,
+        initial_counter: counterVal,
+        current_counter: counterVal,
+        purchase_date: dateVal
+    };
+}
+
+// ==========================================
+// 4. CHỨC NĂNG SỬA TRỰC TIẾP TRÊN HÀNG (INLINE EDIT)
+// ==========================================
+
+function enableEditRow(btn) {
+    const tr = btn.closest('tr');
+    if (!tr) return;
+
+    const rowId = tr.getAttribute('data-item-id') || tr.id;
+    const inputs = tr.querySelectorAll('input, select');
+
+    originalRowData[rowId] = {};
+    inputs.forEach((e, idx) => {
+        originalRowData[rowId][idx] = e.value;
+    });
+
+    inputs.forEach(el => {
+        el.disabled = false;
+        el.classList.remove('bg-transparent', 'border-transparent');
+        if (el.tagName === 'INPUT') {
+            el.classList.add('bg-slate-950', 'border-slate-700');
+        }
+    });
+
+    const policySelect = tr.querySelector('.row-policy');
+    if (policySelect) onPolicyChange(policySelect);
+
+    tr.querySelector('.action-view-mode')?.classList.add('hidden');
+    tr.querySelector('.action-edit-mode')?.classList.remove('hidden');
+}
+
+function cancelEditRow(btn) {
+    const tr = btn.closest('tr');
+    if (!tr) return;
+
+    const rowId = tr.getAttribute('data-item-id') || tr.id;
+    const inputs = tr.querySelectorAll('input, select');
+
+    if (originalRowData[rowId]) {
+        inputs.forEach((e, idx) => {
+            if (originalRowData[rowId][idx] !== undefined) {
+                e.value = originalRowData[rowId][idx];
+            }
+        });
+        delete originalRowData[rowId];
+    }
+
+    inputs.forEach(el => {
+        el.disabled = true;
+        el.classList.add('bg-transparent', 'border-transparent');
+        if (el.tagName === 'INPUT') {
+            el.classList.remove('bg-slate-950', 'border-slate-700');
+        }
+    });
+
+    const condSelect = tr.querySelector('.row-condition');
+    if (condSelect) updateConditionBadgeStyle(condSelect);
+
+    tr.querySelector('.action-edit-mode')?.classList.add('hidden');
+    tr.querySelector('.action-view-mode')?.classList.remove('hidden');
+}
+
+async function saveEditRow(itemId, btn) {
+    const tr = document.getElementById(`row-${itemId}`) || btn.closest('tr');
+    const payload = extractRowData(tr);
+
+    if (!payload) {
+        alert("⚠️ Vui lòng kiểm tra lại:\n- Số Serial không được để trống.\n- Tên khách hàng không được để trống.\n- Số điện thoại phải là số hợp lệ (9-11 chữ số).");
+        return;
+    }
+
+    try {
+            const response = await fetch(`/warranty/api/update/${itemId}`, {            
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify(payload)
+        });
+
+        const result = await response.json();
+        if (response.ok && result.success) {
+            window.location.reload();
+        } else {
+            alert(result.message || 'Có lỗi xảy ra khi lưu dữ liệu!');
+        }
+    } catch (err) {
+        console.error(err);
+        alert('Lỗi kết nối máy chủ!');
+    }
+}
+
+// ==========================================
+// 5. XỬ LÝ THÊM HÀNG MỚI (INLINE ADD & BATCH)
+// ==========================================
+
+function getTodayString() {
+    return new Date().toISOString().split('T')[0];
+}
+
+function addInlineRow() {
+    const emptyRow = document.getElementById('emptyRow');
+    if (emptyRow) emptyRow.remove();
+
+    const tbody = document.getElementById('warrantyTbody');
+    const template = document.getElementById('inlineRowTemplate');
+    const clone = template.content.cloneNode(true);
+
+    clone.querySelector('.row-date').value = getTodayString();
+
+    tbody.insertBefore(clone, tbody.firstChild);
+    updateBatchCount();
+}
+
+function removeInlineRow(btn) {
+    const row = btn.closest('tr');
+    row.remove();
+    updateBatchCount();
+}
+
+function updateBatchCount() {
+    const count = document.querySelectorAll('.new-inline-row').length;
+    const btnBatch = document.getElementById('btnSaveBatch');
+    const countSpan = document.getElementById('newRowCount');
+    
+    if (countSpan) countSpan.innerText = count;
+    if (btnBatch) {
+        if (count > 0) {
+            btnBatch.classList.remove('hidden');
+        } else {
+            btnBatch.classList.add('hidden');
+        }
+    }
+}
+
+async function saveSingleRow(btn) {
+    const tr = btn.closest('tr');
+    const payload = extractRowData(tr);
+
+    if (!payload) {
+        alert("⚠️ Vui lòng điền đầy đủ Số Serial, Tên khách hàng và Số điện thoại hợp lệ!");
+        return;
+    }
+
+    try {
+        const res = await fetch('/warranty/api/batch-create', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ items: [payload] })
+        });
+        const result = await res.json();
+
+        if (res.ok && result.success) {
+            window.location.reload();
+        } else {
+            alert("❌ Lỗi: " + (result.message || result.detail || "Không thể lưu phiếu"));
+        }
+    } catch (err) {
+        alert("❌ Lỗi kết nối máy chủ: " + err.message);
+    }
+}
+
+async function saveBatchRows() {
+    const rows = document.querySelectorAll('.new-inline-row');
+    if (rows.length === 0) return;
+
+    const items = [];
+    for (const tr of rows) {
+        const data = extractRowData(tr);
+        if (!data) {
+            alert("⚠️ Có dòng chưa điền đủ thông tin bắt buộc (Serial, Tên KH, SĐT hợp lệ)!");
+            return;
+        }
+        items.push(data);
+    }
+
+    // Kiểm tra trùng lặp Serial ngay trên giao diện
+    const serialList = items.map(i => i.serial_number);
+    if (new Set(serialList).size !== serialList.length) {
+        alert("🚫 Có số Serial bị trùng lặp trong danh sách thêm mới!");
+        return;
+    }
+
+    try {
+        const res = await fetch('/warranty/api/batch-create', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ items: items })
+        });
+        const result = await res.json();
+
+        if (res.ok && result.success) {
+            window.location.reload();
+        } else {
+            alert("❌ Lỗi: " + (result.message || result.detail || "Thất bại"));
+        }
+    } catch (err) {
+        alert("❌ Lỗi kết nối máy chủ: " + err.message);
+    }
+}
+
+// ==========================================
+// 6. TIỆN ÍCH & LIVE SEARCH
+// ==========================================
+
+function copyToClipboard(text) {
+    navigator.clipboard.writeText(text).then(() => {
+        alert(`Đã sao chép S/N: ${text}`);
+    });
+}
+
+async function confirmDelete(warrantyId, identifier) {
+    if (!confirm(`Bạn có chắc chắn muốn xóa phiếu bảo hành: ${identifier}?`)) return;
+
+    try {
+        const response = await fetch(`/warranty/api/delete/${warrantyId}`, {
+            method: 'DELETE',
+            headers: { 'Content-Type': 'application/json' }
+        });
+        const result = await response.json();
+
+        if (response.ok && result.success) {
+            alert('Xóa thành công!');
+            window.location.reload();
+        } else {
+            alert(result.message || 'Xóa thất bại');
+        }
+    } catch (error) {
+        alert('Lỗi kết nối máy chủ!');
+    }
+}
+
+document.addEventListener("DOMContentLoaded", () => {
+    document.querySelectorAll('.row-condition').forEach(selectEl => {
+        updateConditionBadgeStyle(selectEl);
+        selectEl.addEventListener('change', () => updateConditionBadgeStyle(selectEl));
+    });
+
+    // Tự động xóa viền đỏ khi người dùng bắt đầu gõ lại dữ liệu
+    document.addEventListener('input', function(e) {
+        if (e.target.classList.contains('row-customer') || 
+            e.target.classList.contains('row-model') || 
+            e.target.classList.contains('row-sn') ||
+            e.target.classList.contains('row-phone')) {
+            if (e.target.value.trim() !== '') {
+                e.target.classList.remove('border-red-500', 'border-rose-500');
+                if (e.target.classList.contains('row-sn')) {
+                    e.target.closest('.serial-wrapper')?.classList.remove('border-red-500');
+                }
+            }
+        }
+        
+        // Gọi realtime validate cho phone và serial nếu có hàm tương ứng
+        if (e.target.classList.contains('row-phone')) {
+            validatePhoneInput(e.target);
+        }
+        if (e.target.classList.contains('row-sn')) {
+            validateSerialInput(e.target);
+            e.target.value = e.target.value.toUpperCase();
+        }
+    });
+
+    const searchInput = document.getElementById("searchInput");
+    const searchSpinner = document.getElementById("searchSpinner");
+    const filterForm = searchInput?.closest("form");
+    let debounceTimer;
+
+    if (!searchInput || !filterForm) return;
+
+    searchInput.addEventListener("input", () => {
+        if (searchSpinner) searchSpinner.classList.remove("hidden");
+
+        clearTimeout(debounceTimer);
+        debounceTimer = setTimeout(() => {
+            fetchLiveSearchResults();
+        }, 400);
+    });
+
+    async function fetchLiveSearchResults() {
+        const formData = new FormData(filterForm);
+        const params = new URLSearchParams(formData).toString();
+        const url = `${filterForm.action}?${params}`;
+
+        try {
+            const response = await fetch(url);
+            const htmlText = await response.text();
+
+            const parser = new DOMParser();
+            const doc = parser.parseFromString(htmlText, "text/html");
+
+            const newTbody = doc.getElementById("warrantyTbody") || doc.querySelector("tbody");
+            const currentTbody = document.getElementById("warrantyTbody") || document.querySelector("tbody");
+            if (newTbody && currentTbody) currentTbody.innerHTML = newTbody.innerHTML;
+
+            const newPagination = doc.querySelector(".bg-slate-900.border-t");
+            const currentPagination = document.querySelector(".bg-slate-900.border-t");
+            if (newPagination && currentPagination) {
+                currentPagination.innerHTML = newPagination.innerHTML;
+            } else if (!newPagination && currentPagination) {
+                currentPagination.innerHTML = '';
+            }
+
+            window.history.pushState({}, "", url);
+        } catch (error) {
+            console.error("Lỗi Live Search:", error);
+        } finally {
+            if (searchSpinner) searchSpinner.classList.add("hidden");
+        }
+    }
+});
+</script>
+{% endblock %}

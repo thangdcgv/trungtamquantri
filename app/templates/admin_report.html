@@ -1,0 +1,317 @@
+{% extends "admin.html" %}
+
+{% block content %}
+<script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+
+<div class="container-fluid py-4">
+    <div class="d-flex justify-content-between align-items-center mb-4">
+        <h3 class="fw-bold text-primary mb-0">📊 Báo Cáo Thống Kê & Lương Lắp Đặt</h3>
+        <button id="btnExportExcel" class="btn btn-success fw-bold">
+            📥 Xuất Báo Cáo Excel
+        </button>
+    </div>
+
+    <!-- BỘ LỌC DỮ LIỆU -->
+    <div class="card shadow-sm mb-4 border-0">
+        <div class="card-body bg-light rounded">
+            <div class="row g-3">
+                <div class="col-md-4">
+                    <label class="form-label fw-bold">📅 Chọn tháng báo cáo</label>
+                    <select id="selMonth" class="form-select">
+                        <!-- JS sẽ tự render 12 tháng gần nhất -->
+                    </select>
+                </div>
+                
+                {% if current_user.role in ['Admin', 'Super Admin', 'System Admin', 'Manager'] %}
+                <div class="col-md-4">
+                    <label class="form-label fw-bold">👤 Nhân viên</label>
+                    <select id="selNv" class="form-select">
+                        <option value="Tất cả">Tất cả</option>
+                    </select>
+                </div>
+                {% else %}
+                <div class="col-md-4">
+                    <label class="form-label fw-bold">👤 Nhân viên</label>
+                    <input type="text" class="form-control" value="{{ current_user.ho_ten or current_user.username }}" disabled>
+                </div>
+                {% endif %}
+
+                <div class="col-md-4">
+                    <label class="form-label fw-bold">📌 Trạng thái</label>
+                    <select id="selTt" class="form-select">
+                        <option value="Tất cả">Tất cả</option>
+                        <option value="Chờ duyệt">Chờ duyệt</option>
+                        <option value="Đã duyệt">Đã duyệt</option>
+                        <option value="Từ chối">Từ chối</option>
+                    </select>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- KPIS DASHBOARD -->
+    <div class="row g-3 mb-4">
+        <div class="col-md-4">
+            <div class="card bg-primary text-white shadow-sm border-0">
+                <div class="card-body text-center p-3">
+                    <div class="text-uppercase small fw-bold opacity-75">💰 Thu Nhập Thực Tế (Đã Duyệt)</div>
+                    <div class="fs-2 fw-bold id-rev-sum">0 VNĐ</div>
+                </div>
+            </div>
+        </div>
+        <div class="col-md-4">
+            <div class="card bg-warning text-dark shadow-sm border-0">
+                <div class="card-body text-center p-3">
+                    <div class="text-uppercase small fw-bold opacity-75">⏳ Đang Chờ Duyệt</div>
+                    <div class="fs-2 fw-bold id-pending-sum">0 VNĐ</div>
+                </div>
+            </div>
+        </div>
+        <div class="col-md-4">
+            <div class="card bg-success text-white shadow-sm border-0">
+                <div class="card-body text-center p-3">
+                    <div class="text-uppercase small fw-bold opacity-75">📊 Tỉ Lệ Duyệt Đơn</div>
+                    <div class="fs-2 fw-bold id-approval-rate">0/0 đơn</div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- BIỂU ĐỒ (Dành cho Cấp quản lý) -->
+    {% if current_user.role in ['Admin', 'Super Admin', 'System Admin', 'Manager'] %}
+    <div class="row g-3 mb-4" id="chartSection">
+        <div class="col-md-6">
+            <div class="card shadow-sm border-0 p-3">
+                <h6 class="fw-bold text-secondary mb-3">📊 Tổng số đơn đã duyệt</h6>
+                <canvas id="barChart" style="max-height: 280px;"></canvas>
+            </div>
+        </div>
+        <div class="col-md-6">
+            <div class="card shadow-sm border-0 p-3">
+                <h6 class="fw-bold text-secondary mb-3">💰 Chi phí lương lắp đặt</h6>
+                <canvas id="pieChart" style="max-height: 280px;"></canvas>
+            </div>
+        </div>
+    </div>
+    {% endif %}
+
+    <!-- DANH SÁCH BẢNG DỮ LIỆU -->
+    <div class="card shadow-sm border-0">
+        <div class="card-header bg-white d-flex justify-content-between align-items-center py-3">
+            <h5 class="fw-bold mb-0">📝 Chi Tiết Danh Sách Đơn</h5>
+            {% if current_user.role in ['Admin', 'Super Admin', 'System Admin'] %}
+            <button id="btnDeleteSelected" class="btn btn-outline-danger btn-sm d-none" onclick="handleBulkDelete()">
+                🗑️ Xóa các mục đã chọn (<span id="selectedCount">0</span>)
+            </button>
+            {% endif %}
+        </div>
+        <div class="card-body p-0">
+            <div class="table-responsive" style="max-height: 480px;">
+                <table class="table table-hover align-middle mb-0 text-center">
+                    <thead class="table-dark sticky-top">
+                        <tr>
+                            {% if current_user.role in ['Admin', 'Super Admin', 'System Admin'] %}
+                            <th><input type="checkbox" id="selectAll" onclick="toggleSelectAll(this)"></th>
+                            {% endif %}
+                            <th>STT</th>
+                            <th>🕒 Thời Gian</th>
+                            {% if current_user.role in ['Admin', 'Super Admin', 'System Admin', 'Manager'] %}
+                            <th>👤 Nhân Viên</th>
+                            {% endif %}
+                            <th>Số HĐ</th>
+                            <th class="text-start">Địa Chỉ</th>
+                            <th>🛣️ Km</th>
+                            <th>📦 Máy</th>
+                            <th>💰 Thành Tiền</th>
+                            <th>📌 Trạng Thái</th>
+                            <th>💬 Ghi Chú</th>
+                        </tr>
+                    </thead>
+                    <tbody id="reportTableBody">
+                        <!-- Render JS -->
+                    </tbody>
+                </table>
+            </div>
+        </div>
+    </div>
+</div>
+
+<script>
+let barChartInstance = null;
+let pieChartInstance = null;
+const userRole = "{{ current_user.role }}";
+const isAdmin = ["Admin", "Super Admin", "System Admin"].includes(userRole);
+
+// 1. Khởi tạo danh sách Tháng/Năm Dropdown
+function initMonthOptions() {
+    const sel = document.getElementById("selMonth");
+    const now = new Date();
+    for (let i = 0; i < 12; i++) {
+        const d = new Date(now.getFullYear(), now.getMonth() - i, 1);
+        const m = String(d.getMonth() + 1).padStart(2, '0');
+        const y = d.getFullYear();
+        const opt = document.createElement("option");
+        opt.value = `${m}/${y}`;
+        opt.textContent = `📅 Tháng ${m}/${y}`;
+        sel.appendChild(opt);
+    }
+}
+
+// 2. Fetch Data từ FastAPI Backend
+async function loadReportData() {
+    const month = document.getElementById("selMonth").value;
+    const selNv = document.getElementById("selNv") ? document.getElementById("selNv").value : "Tất cả";
+    const selTt = document.getElementById("selTt").value;
+
+    const res = await fetch(`/admin/report/api/data?month=${month}&selected_nv=${encodeURIComponent(selNv)}&selected_tt=${encodeURIComponent(selTt)}`);
+    const data = await res.json();
+
+    // Cap nhat KPIs
+    document.querySelector(".id-rev-sum").textContent = data.kpis.rev_sum.toLocaleString('vi-VN') + " ₫";
+    document.querySelector(".id-pending-sum").textContent = data.kpis.pending_sum.toLocaleString('vi-VN') + " ₫";
+    document.querySelector(".id-approval-rate").textContent = `${data.kpis.approved_count}/${data.kpis.total_orders} đơn`;
+
+    // Render danh sach Nhan vien neu co
+    if (document.getElementById("selNv") && data.nv_options.length > 0) {
+        const nvSelect = document.getElementById("selNv");
+        const currentVal = nvSelect.value;
+        nvSelect.innerHTML = "";
+        data.nv_options.forEach(nv => {
+            const opt = document.createElement("option");
+            opt.value = nv;
+            opt.textContent = nv;
+            if (nv === currentVal) opt.selected = true;
+            nvSelect.appendChild(opt);
+        });
+    }
+
+    // Render Bieu do
+    if (data.chart_data && data.chart_data.length > 0) {
+        renderCharts(data.chart_data);
+    }
+
+    // Render Table
+    renderTable(data.items);
+}
+
+// 3. Render Table
+function renderTable(items) {
+    const tbody = document.getElementById("reportTableBody");
+    tbody.innerHTML = "";
+
+    if (items.length === 0) {
+        tbody.innerHTML = `<tr><td colspan="11" class="text-muted py-4">Không có dữ liệu phù hợp.</td></tr>`;
+        return;
+    }
+
+    items.forEach(item => {
+        const tr = document.createElement("tr");
+        let statusBadge = 'bg-secondary';
+        if (item.trang_thai === 'Đã duyệt') statusBadge = 'bg-success';
+        if (item.trang_thai === 'Chờ duyệt') statusBadge = 'bg-warning text-dark';
+        if (item.trang_thai === 'Từ chối') statusBadge = 'bg-danger';
+
+        let checkTd = isAdmin ? `<td><input type="checkbox" class="row-checkbox" value="${item.id}" onclick="updateSelectedCount()"></td>` : '';
+        let nvTd = ["Admin", "Super Admin", "System Admin", "Manager"].includes(userRole) ? `<td>${item.ten}</td>` : '';
+
+        tr.innerHTML = `
+            ${checkTd}
+            <td>${item.stt}</td>
+            <td>${item.thoi_gian_str}</td>
+            ${nvTd}
+            <td class="fw-bold">${item.so_hoa_don}</td>
+            <td class="text-start">${item.noi_dung}</td>
+            <td>${item.quang_duong} Km</td>
+            <td>${item.combo}</td>
+            <td class="fw-bold text-primary">${item.thanh_tien.toLocaleString('vi-VN')} ₫</td>
+            <td><span class="badge ${statusBadge}">${item.trang_thai}</span></td>
+            <td><small class="text-muted">${item.ghi_chu_duyet || ''}</small></td>
+        `;
+        tbody.appendChild(tr);
+    });
+}
+
+// 4. Render Chart.js
+function renderCharts(chartData) {
+    const labels = chartData.map(c => c.Tên);
+    const donValues = chartData.map(c => c.so_don);
+    const revValues = chartData.map(c => c.doanh_thu);
+
+    if (barChartInstance) barChartInstance.destroy();
+    if (pieChartInstance) pieChartInstance.destroy();
+
+    const ctxBar = document.getElementById("barChart").getContext("2d");
+    barChartInstance = new Chart(ctxBar, {
+        type: "bar",
+        data: {
+            labels: labels,
+            datasets: [{ label: "Số đơn", data: donValues, backgroundColor: "#36A2EB" }]
+        },
+        options: { responsive: true, plugins: { legend: { display: false } } }
+    });
+
+    const ctxPie = document.getElementById("pieChart").getContext("2d");
+    pieChartInstance = new Chart(ctxPie, {
+        type: "doughnut",
+        data: {
+            labels: labels,
+            datasets: [{ data: revValues, backgroundColor: ["#FF6384", "#36A2EB", "#FFCE56", "#4BC0C0", "#9966FF"] }]
+        },
+        options: { responsive: true }
+    });
+}
+
+// 5. Select Checkbox & Bulk Delete
+function toggleSelectAll(master) {
+    document.querySelectorAll(".row-checkbox").forEach(cb => cb.checked = master.checked);
+    updateSelectedCount();
+}
+
+function updateSelectedCount() {
+    const selected = document.querySelectorAll(".row-checkbox:checked");
+    const countSpan = document.getElementById("selectedCount");
+    const btn = document.getElementById("btnDeleteSelected");
+    if (countSpan && btn) {
+        countSpan.textContent = selected.length;
+        if (selected.length > 0) btn.classList.remove("d-none");
+        else btn.classList.add("d-none");
+    }
+}
+
+async function handleBulkDelete() {
+    const selectedIds = Array.from(document.querySelectorAll(".row-checkbox:checked")).map(cb => parseInt(cb.value));
+    if (!confirm(`CẢNH BÁO: Bạn có chắc chắn muốn xóa vĩnh viễn ${selectedIds.length} bản ghi đã chọn?`)) return;
+
+    const res = await fetch("/admin/report/api/bulk-delete", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ ids: selectedIds })
+    });
+    if (res.ok) {
+        alert("Đã xóa thành công!");
+        loadReportData();
+    } else {
+        alert("Xóa thất bại!");
+    }
+}
+
+// 6. Export Excel Event
+document.getElementById("btnExportExcel").onclick = () => {
+    const month = document.getElementById("selMonth").value;
+    const selNv = document.getElementById("selNv") ? document.getElementById("selNv").value : "Tất cả";
+    const selTt = document.getElementById("selTt").value;
+    window.location.href = `/admin/report/export-excel?month=${month}&selected_nv=${encodeURIComponent(selNv)}&selected_tt=${encodeURIComponent(selTt)}`;
+};
+
+// Listeners
+document.getElementById("selMonth").onchange = loadReportData;
+if (document.getElementById("selNv")) document.getElementById("selNv").onchange = loadReportData;
+document.getElementById("selTt").onchange = loadReportData;
+
+// Init
+document.addEventListener("DOMContentLoaded", () => {
+    initMonthOptions();
+    loadReportData();
+});
+</script>
+{% endblock %}

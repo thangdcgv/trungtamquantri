@@ -1,0 +1,1051 @@
+{% extends "base.html" %}
+
+{% block title %}Quản Lý Chấm Công Lắp Đặt{% endblock %}
+
+{% block head %}
+    <script src="https://cdn.jsdelivr.net/npm/sweetalert2@11"></script>
+    <!-- Bootstrap 5.3 & FontAwesome 6 -->
+    <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css" rel="stylesheet">
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+    <style>
+        :root {
+            color-scheme: dark;
+            --bg: #070d18;
+            --surface: #0e1a2c;
+            --surface-2: #122038;
+            --surface-3: #172943;
+            --border: rgba(148,163,184,.16);
+            --border-strong: rgba(148,163,184,.25);
+            --text: #f8fafc;
+            --text-soft: #d7e0ec;
+            --text-muted: #8fa0b5;
+            --text-faint: #64748b;
+            --cyan: #22d3ee;
+            --blue: #38bdf8;
+            --blue-strong: #0ea5e9;
+            --green: #34d399;
+            --yellow: #fbbf24;
+            --red: #fb7185;
+            --radius-sm: 9px;
+            --radius-md: 13px;
+            --radius-lg: 17px;
+            --shadow-sm: 0 4px 18px rgba(0,0,0,.16);
+            --shadow-md: 0 14px 36px rgba(0,0,0,.24);
+            --focus: 0 0 0 3px rgba(56,189,248,.16);
+        }
+
+        *,*::before,*::after { box-sizing: border-box; }
+
+        html {
+            color-scheme: dark;
+            background: var(--bg);
+            scroll-behavior: smooth;
+        }
+
+        body {
+            min-width: 320px;
+            margin: 0;
+            background:
+                radial-gradient(900px 500px at 8% -10%, rgba(14,165,233,.10), transparent 65%),
+                radial-gradient(700px 450px at 100% 5%, rgba(167,139,250,.055), transparent 65%),
+                var(--bg);
+            color: var(--text);
+            font-family: Inter,ui-sans-serif,system-ui,-apple-system,BlinkMacSystemFont,"Segoe UI",Roboto,Arial,sans-serif;
+            font-size: 15px;
+            line-height: 1.5;
+            letter-spacing: -.005em;
+            padding-bottom: 42px;
+        }
+
+        ::selection { background: rgba(56,189,248,.24); color: #fff; }
+
+        .container { width: min(100% - 2rem,1320px); }
+        .min-w-0 { min-width: 0; }
+        .text-muted { color: var(--text-muted) !important; }
+        .text-light { color: var(--text-soft) !important; }
+        .text-white { color: #fff !important; }
+
+        .app-header {
+            position: sticky;
+            top: 0;
+            z-index: 1030;
+            background: rgba(7,13,24,.84);
+            border-bottom: 1px solid var(--border);
+            backdrop-filter: blur(18px) saturate(140%);
+            -webkit-backdrop-filter: blur(18px) saturate(140%);
+        }
+
+        .app-header .container { min-height: 74px; }
+        .app-header h5 {
+            margin: 0;
+            color: #fff;
+            font-size: 1.08rem;
+            font-weight: 750;
+            letter-spacing: -.025em;
+        }
+        .app-header small { color: var(--text-muted) !important; font-size: .78rem; }
+
+        .kpi-card {
+            position: relative;
+            min-height: 86px;
+            overflow: hidden;
+            display: flex;
+            align-items: center;
+            gap: .85rem;
+            padding: 1rem 1.05rem;
+            background: linear-gradient(145deg,rgba(18,32,56,.94),rgba(12,24,42,.94));
+            border: 1px solid var(--border);
+            border-radius: var(--radius-lg);
+            box-shadow: var(--shadow-sm);
+            transition: transform .2s ease,border-color .2s ease,box-shadow .2s ease;
+        }
+        .kpi-card::after {
+            content: "";
+            position: absolute;
+            inset: 0;
+            pointer-events: none;
+            background: linear-gradient(115deg,rgba(255,255,255,.025),transparent 35%);
+        }
+        .kpi-card:hover {
+            transform: translateY(-2px);
+            border-color: var(--border-strong);
+            box-shadow: var(--shadow-md);
+        }
+        .kpi-icon {
+            width: 46px;
+            height: 46px;
+            flex: 0 0 46px;
+            display: inline-flex;
+            align-items: center;
+            justify-content: center;
+            border-radius: 13px;
+            font-size: 1.08rem;
+            box-shadow: inset 0 0 0 1px rgba(255,255,255,.14);
+        }
+        .kpi-card .fs-5 { font-weight: 760; letter-spacing: -.025em; }
+
+        .filter-panel,.ticket-card {
+            background: linear-gradient(145deg,rgba(14,26,44,.97),rgba(11,22,38,.97));
+            border: 1px solid var(--border);
+            border-radius: var(--radius-lg);
+            box-shadow: var(--shadow-sm);
+        }
+        .filter-panel { padding: clamp(1rem,2vw,1.25rem) !important; }
+
+        .form-label {
+            margin-bottom: .4rem;
+            color: var(--text-muted) !important;
+            font-size: .78rem;
+            font-weight: 650;
+        }
+        .form-select,.form-control,.input-group-text {
+            min-height: 38px;
+            color: var(--text-soft) !important;
+            background: #0a1425 !important;
+            border: 1px solid var(--border-strong) !important;
+            border-radius: var(--radius-sm);
+        }
+        .form-select::placeholder,.form-control::placeholder { color: var(--text-faint) !important; }
+        .form-select:hover,.form-control:hover { border-color: rgba(148,163,184,.34) !important; }
+        .form-select:focus,.form-control:focus,textarea:focus {
+            color: #fff !important;
+            border-color: rgba(56,189,248,.72) !important;
+            box-shadow: var(--focus) !important;
+        }
+        .form-select option { background: #0e1a2c; color: #f8fafc; }
+
+        .nav-filter {
+            display: flex;
+            gap: 4px;
+            width: 100%;
+            padding: 4px;
+            background: #091321;
+            border: 1px solid var(--border);
+            border-radius: 12px;
+            overflow-x: auto;
+            scrollbar-width: none;
+        }
+        .nav-filter::-webkit-scrollbar { display: none; }
+        .nav-filter .nav-item { flex: 1 1 0; min-width: 92px; }
+        .nav-filter .nav-link {
+            width: 100%;
+            min-height: 40px;
+            padding: 8px 12px;
+            border: 0;
+            border-radius: 9px;
+            color: var(--text-muted);
+            background: transparent;
+            font-size: .84rem;
+            font-weight: 700;
+            white-space: nowrap;
+            transition: background .18s ease,color .18s ease,box-shadow .18s ease;
+        }
+        .nav-filter .nav-link:hover {
+            color: var(--text-soft);
+            background: rgba(148,163,184,.075);
+        }
+        .nav-filter .nav-link.active {
+            color: #fff;
+            background: linear-gradient(135deg,#0ea5e9,#0284c7);
+            box-shadow: 0 5px 16px rgba(14,165,233,.2);
+        }
+
+        .ticket-card {
+            position: relative;
+            min-width: 0;
+            overflow: hidden;
+            display: flex;
+            flex-direction: column;
+            justify-content: space-between;
+            transition: transform .2s ease,border-color .2s ease,box-shadow .2s ease;
+        }
+        .ticket-card:hover {
+            transform: translateY(-2px);
+            border-color: var(--border-strong);
+            box-shadow: var(--shadow-md);
+        }
+        .ticket-card .border-secondary-subtle { border-color: rgba(148,163,184,.11) !important; }
+        .ticket-card .bg-dark { background: #091525 !important; }
+        .ticket-card p,.ticket-card span { overflow-wrap: anywhere; }
+        .ticket-card .text-info { color: var(--cyan) !important; }
+
+        .line-clamp-2 {
+            display: -webkit-box;
+            display: box;
+            line-clamp: 2;
+            -webkit-line-clamp: 2;
+            -webkit-box-orient: vertical;
+            overflow: hidden;
+        }
+
+        .badge-status {
+            flex: 0 0 auto;
+            display: inline-flex;
+            align-items: center;
+            gap: 5px;
+            padding: .38rem .65rem;
+            border-radius: 999px;
+            font-size: .73rem;
+            line-height: 1.2;
+            font-weight: 750;
+            white-space: nowrap;
+        }
+        .status-pending {
+            color: #fcd34d;
+            background: rgba(251,191,36,.09);
+            border: 1px solid rgba(251,191,36,.28);
+        }
+        .status-approved {
+            color: #6ee7b7;
+            background: rgba(52,211,153,.09);
+            border: 1px solid rgba(52,211,153,.28);
+        }
+        .status-rejected {
+            color: #fda4af;
+            background: rgba(251,113,133,.09);
+            border: 1px solid rgba(251,113,133,.28);
+        }
+
+        .img-container {
+            width: 88px;
+            height: 88px;
+            flex: 0 0 88px;
+            position: relative;
+            overflow: hidden;
+            border: 1px solid var(--border-strong);
+            border-radius: 12px;
+            background: #081220;
+            box-shadow: 0 4px 16px rgba(0,0,0,.18);
+        }
+        .img-container img {
+            width: 100%;
+            height: 100%;
+            display: block;
+            object-fit: cover;
+            cursor: pointer;
+            transition: transform .3s ease,filter .3s ease;
+        }
+        .img-container img:hover { transform: scale(1.05); filter: brightness(1.04); }
+
+        .btn-action-sm {
+            min-height: 36px;
+            padding: .38rem .72rem;
+            border-radius: 9px;
+            font-size: .8rem;
+            font-weight: 700;
+        }
+        .btn-outline-secondary {
+            color: #cbd5e1;
+            border-color: rgba(148,163,184,.30);
+            background: rgba(15,27,46,.55);
+        }
+        .btn-outline-secondary:hover,.btn-outline-secondary:focus {
+            color: #fff;
+            background: #253752;
+            border-color: rgba(148,163,184,.48);
+        }
+        .btn:focus-visible,.nav-link:focus-visible,.form-control:focus-visible,.form-select:focus-visible {
+            outline: none;
+            box-shadow: var(--focus) !important;
+        }
+
+        .modal-content-custom {
+            color: var(--text);
+            background: linear-gradient(145deg,#122038,#0d192b);
+            border: 1px solid var(--border-strong);
+            border-radius: var(--radius-lg);
+            box-shadow: 0 24px 80px rgba(0,0,0,.42);
+        }
+        .modal .border-secondary { border-color: var(--border) !important; }
+        .modal-backdrop.show { opacity: .74; }
+        .extra-small { font-size: .75rem; }
+
+        @media (max-width: 991.98px) {
+            .container { width: min(100% - 1.5rem,900px); }
+            .app-header .container { min-height: 68px; }
+            .kpi-card { min-height: 78px; padding: .85rem; }
+            .kpi-icon { width: 42px; height: 42px; flex-basis: 42px; }
+            .filter-panel { padding: 1rem !important; }
+        }
+
+        @media (max-width: 575.98px) {
+            body { font-size: 14px; padding-bottom: 28px; }
+            .container { width: calc(100% - 1rem); }
+            .app-header { margin-bottom: .75rem !important; }
+            .app-header .container { min-height: 62px; gap: .55rem; }
+            .app-header h5 { font-size: .92rem; }
+            .app-header small { display: block; max-width: 210px; font-size: .68rem; line-height: 1.25; }
+            .app-header .badge { padding: .36rem .55rem !important; font-size: .68rem; }
+
+            .kpi-card {
+                min-height: 70px;
+                gap: .65rem;
+                padding: .7rem;
+                border-radius: 13px;
+            }
+            .kpi-icon {
+                width: 36px;
+                height: 36px;
+                flex-basis: 36px;
+                border-radius: 10px;
+                font-size: .9rem;
+            }
+            .kpi-card .fs-5 { font-size: .98rem !important; }
+            .kpi-card .text-muted { font-size: .68rem !important; }
+
+            .filter-panel { padding: .8rem !important; border-radius: 14px; }
+            .form-label { font-size: .72rem; }
+            .form-select,.form-control,.input-group-text { min-height: 40px; }
+
+            .nav-filter { padding: 3px; border-radius: 11px; }
+            .nav-filter .nav-item { min-width: 78px; }
+            .nav-filter .nav-link { min-height: 38px; padding: 7px 8px; font-size: .73rem; }
+
+            .ticket-card { padding: .8rem !important; border-radius: 14px; }
+            .ticket-card > div:first-child > .d-flex:first-child {
+                align-items: flex-start !important;
+                flex-wrap: wrap;
+                gap: .45rem !important;
+            }
+            .ticket-card > div:first-child > .d-flex:first-child > .d-flex {
+                min-width: 0;
+                flex: 1 1 100%;
+            }
+            .ticket-card .badge-status { margin-left: 0; }
+            .img-container {
+                width: 70px;
+                height: 70px;
+                flex-basis: 70px;
+                border-radius: 10px;
+            }
+            .ticket-card .d-flex.gap-3 { gap: .65rem !important; }
+            .ticket-card .d-flex.flex-wrap.gap-3 { gap: .35rem .75rem !important; }
+
+            .ticket-card .pt-2.d-flex {
+                align-items: stretch !important;
+                flex-direction: column;
+                gap: .5rem;
+            }
+            .ticket-card .pt-2.d-flex > .d-flex {
+                width: 100%;
+                display: grid !important;
+                grid-template-columns: minmax(0,1fr) minmax(0,1fr);
+                gap: .45rem !important;
+            }
+            .ticket-card .pt-2.d-flex > .d-flex .btn,
+            .ticket-card .pt-2.d-flex > .btn { width: 100%; }
+            .input-group .btn { padding-inline: .85rem !important; }
+            .modal-dialog { margin: .55rem; }
+        }
+
+        @media (max-width: 380px) {
+            .kpi-card { padding: .58rem; }
+            .kpi-card .text-muted { font-size: .64rem !important; }
+            .kpi-card .fs-5 { font-size: .88rem !important; }
+            .img-container { width: 62px; height: 62px; flex-basis: 62px; }
+            .ticket-card .pt-2.d-flex > .d-flex { grid-template-columns: 1fr; }
+        }
+
+        @media (prefers-reduced-motion: reduce) {
+            *,*::before,*::after {
+                scroll-behavior: auto !important;
+                transition-duration: .01ms !important;
+                animation-duration: .01ms !important;
+                animation-iteration-count: 1 !important;
+            }
+        }
+    </style>
+</head>
+<body>
+
+    <!-- NAVBAR HEADER -->
+    <header class="app-header py-3 mb-4">
+        <div class="container d-flex align-items-center justify-content-between">
+            <div class="d-flex align-items-center gap-3">
+                <a href="/" class="btn btn-outline-secondary btn-sm rounded-circle text-white border-0">
+                    <i class="fa-solid fa-arrow-left"></i>
+                </a>
+                <div>
+                    <h5 class="fw-bold mb-0 text-white">Chấm Công Lắp Đặt</h5>
+                    <small class="text-muted">Quản lý phiếu chấm công kỹ thuật viên</small>
+                </div>
+            </div>
+            <div>
+                {% if user_role in ('Admin', 'System Admin', 'Super Admin') %}
+                    <span class="badge bg-danger-subtle text-danger border border-danger-subtle rounded-pill px-3 py-2">
+                        <i class="fa-solid fa-user-shield me-1"></i> Admin
+                    </span>
+                {% else %}
+                    <span class="badge bg-primary-subtle text-primary border border-primary-subtle rounded-pill px-3 py-2">
+                        <i class="fa-solid fa-user me-1"></i> {{ current_username }}
+                    </span>
+                {% endif %}
+            </div>
+        </div>
+    </header>
+
+    <main class="container">
+
+        <!-- STATS BANNER -->
+        <div class="row g-3 mb-4">
+            <div class="col-6 col-lg-3">
+                <div class="kpi-card">
+                    <div class="kpi-icon bg-info-subtle text-info">
+                        <i class="fa-solid fa-receipt"></i>
+                    </div>
+                    <div>
+                        <div class="text-muted small">Hiển thị</div>
+                        <div class="fw-bold fs-5">{{ danh_sach|length if danh_sach else 0 }} đơn</div>
+                    </div>
+                </div>
+            </div>
+            <div class="col-6 col-lg-3">
+                <div class="kpi-card">
+                    <div class="kpi-icon bg-warning-subtle text-warning">
+                        <i class="fa-solid fa-clock"></i>
+                    </div>
+                    <div>
+                        <div class="text-muted small">Chờ duyệt</div>
+                        <div class="fw-bold fs-5 text-warning">
+                            {{ danh_sach | selectattr('trang_thai', 'equalto', 'Chờ duyệt') | list | length if danh_sach else 0 }}
+                        </div>
+                    </div>
+                </div>
+            </div>
+            <div class="col-6 col-lg-3">
+                <div class="kpi-card">
+                    <div class="kpi-icon bg-success-subtle text-success">
+                        <i class="fa-solid fa-circle-check"></i>
+                    </div>
+                    <div>
+                        <div class="text-muted small">Đã duyệt</div>
+                        <div class="fw-bold fs-5 text-success">
+                            {{ danh_sach | selectattr('trang_thai', 'equalto', 'Đã duyệt') | list | length if danh_sach else 0 }}
+                        </div>
+                    </div>
+                </div>
+            </div>
+            <div class="col-6 col-lg-3">
+                <div class="kpi-card">
+                    <div class="kpi-icon bg-danger-subtle text-danger">
+                        <i class="fa-solid fa-circle-xmark"></i>
+                    </div>
+                    <div>
+                        <div class="text-muted small">Từ chối</div>
+                        <div class="fw-bold fs-5 text-danger">
+                            {{ danh_sach | selectattr('trang_thai', 'equalto', 'Từ chối') | list | length if danh_sach else 0 }}
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <!-- SEARCH & FILTER TOOLBAR -->
+        <div class="filter-panel p-3 mb-4">
+            <form method="GET" action="/cham-cong/list" id="filterForm">
+                <!-- Hàng 1: Bộ lọc Thời gian (Tháng, Năm), Nhân viên, Giới hạn hiển thị -->
+                <div class="row g-2 mb-3">
+                    <div class="col-6 col-md-3">
+                        <label class="form-label text-muted extra-small mb-1"><i class="fa-regular fa-calendar me-1"></i>Tháng</label>
+                        <select name="thang" id="thangSelect" class="form-select form-select-sm" onchange="this.form.submit()">
+                            <option value="0" {% if selected_month == 0 or not selected_month %}selected{% endif %}>Tất cả tháng</option>
+                            {% for m in range(1, 13) %}
+                                <option value="{{ m }}" {% if selected_month == m %}selected{% endif %}>Tháng {{ m }}</option>
+                            {% endfor %}
+                        </select>
+                    </div>
+
+                    <div class="col-6 col-md-3">
+                        <label class="form-label text-muted extra-small mb-1"><i class="fa-regular fa-calendar-days me-1"></i>Năm</label>
+                        <select name="nam" id="namSelect" class="form-select form-select-sm" onchange="this.form.submit()">
+                            {% set current_year_val = current_year if current_year else 2026 %}
+                            {% for y in range(current_year_val - 2, current_year_val + 2) %}
+                                <option value="{{ y }}" {% if selected_year == y %}selected{% endif %}>Năm {{ y }}</option>
+                            {% endfor %}
+                        </select>
+                    </div>
+
+                    {% if user_role in ('Admin', 'System Admin', 'Super Admin') %}
+                    <div class="col-12 col-md-3">
+                        <label class="form-label text-muted extra-small mb-1"><i class="fa-solid fa-user-gear me-1"></i>Kỹ thuật viên</label>
+                        <select name="ktv" id="ktvSelect" class="form-select form-select-sm" onchange="this.form.submit()">
+                            <option value="Tất cả" {% if selected_ktv == 'Tất cả' or not selected_ktv %}selected{% endif %}>Tất cả kỹ thuật viên</option>
+                            {% if danh_sach_ktv %}
+                                {% for username, ten in danh_sach_ktv %}
+                                    <!-- Kiểm tra khớp cả username lẫn ten để tránh lệch giá trị -->
+                                    <option value="{{ username }}" {% if selected_ktv == username or selected_ktv == ten %}selected{% endif %}>{{ ten }}</option>
+                                {% endfor %}
+                            {% endif %}
+                        </select>
+                    </div>
+                    {% endif %}
+
+                    <div class="col-12 {% if user_role in ('Admin', 'System Admin', 'Super Admin') %}col-md-3{% else %}col-md-6{% endif %}">
+                        <label class="form-label text-muted extra-small mb-1"><i class="fa-solid fa-list-ol me-1"></i>Hiển thị tối đa</label>
+                        <select name="limit" class="form-select form-select-sm" onchange="this.form.submit()">
+                            <option value="30" {% if limit == 30 %}selected{% endif %}>30 đơn gần nhất</option>
+                            <option value="50" {% if limit == 50 or not limit %}selected{% endif %}>50 đơn gần nhất</option>
+                            <option value="100" {% if limit == 100 %}selected{% endif %}>100 đơn gần nhất</option>
+                            <option value="200" {% if limit == 200 %}selected{% endif %}>200 đơn gần nhất</option>
+                        </select>
+                    </div>
+                </div>
+
+                <!-- Hàng 2: Tab Trạng thái & Tìm kiếm từ khóa -->
+                <div class="row g-2 align-items-center">
+                    <!-- Cụm lọc trạng thái -->
+                    <div class="col-12 col-lg-6">
+                        <input type="hidden" name="status_filter" id="statusFilterInput" value="{{ status_filter or 'Tất cả' }}">
+                        <ul class="nav nav-filter d-flex">
+                            <li class="nav-item flex-fill text-center">
+                                <button type="button" class="nav-link w-100 {% if status_filter == 'Tất cả' or not status_filter %}active{% endif %}" onclick="setStatusAndSubmit('Tất cả')">Tất cả</button>
+                            </li>
+                            <li class="nav-item flex-fill text-center">
+                                <button type="button" class="nav-link w-100 {% if status_filter == 'Chờ duyệt' %}active{% endif %}" onclick="setStatusAndSubmit('Chờ duyệt')">Chờ duyệt</button>
+                            </li>
+                            <li class="nav-item flex-fill text-center">
+                                <button type="button" class="nav-link w-100 {% if status_filter == 'Đã duyệt' %}active{% endif %}" onclick="setStatusAndSubmit('Đã duyệt')">Đã duyệt</button>
+                            </li>
+                            <li class="nav-item flex-fill text-center">
+                                <button type="button" class="nav-link w-100 {% if status_filter == 'Từ chối' %}active{% endif %}" onclick="setStatusAndSubmit('Từ chối')">Từ chối</button>
+                            </li>
+                        </ul>
+                    </div>
+
+                    <!-- Cụm Tìm kiếm + Nút Tải báo cáo Excel -->
+                    <div class="col-12 col-lg-6">
+                        <div class="input-group">
+                            <span class="input-group-text">
+                                <i class="fa-solid fa-magnifying-glass"></i>
+                            </span>
+                            <input type="text" name="search" id="searchInput" class="form-control" 
+                                placeholder="Tìm HD, tên, nội dung..." value="{{ search_query or '' }}">
+                            {% if search_query %}
+                                <button type="button" class="btn btn-outline-secondary" onclick="clearSearch()">
+                                    <i class="fa-solid fa-xmark"></i>
+                                </button>
+                            {% endif %}
+                            <button class="btn btn-info px-3" type="submit">Tìm</button>
+                            
+                            <!-- Nút Tải Báo Cáo Excel -->
+                            <button type="button" class="btn btn-success px-3" onclick="downloadReport()" title="Tải báo cáo Excel">
+                                <i class="fa-solid fa-file-excel me-1"></i> Xuất Excel
+                            </button>
+                        </div>
+                    </div>
+                </div>
+            </form>
+        </div>
+
+        <!-- LIST CARDS -->
+        {% if danh_sach %}
+            <div class="row g-3">
+                {% for item in danh_sach %}
+                <div class="col-12 col-md-6">
+                    <div class="ticket-card p-3 h-100">
+                        <div>
+                            <!-- Header Card: Hóa đơn, Tên KTV, Trạng thái -->
+                            <div class="d-flex justify-content-between align-items-center mb-3 pb-2 border-bottom border-secondary-subtle">
+                                <div class="d-flex align-items-center gap-2">
+                                    <span class="fw-bold text-info fs-6">
+                                        #{{ item.so_hoa_don }}
+                                    </span>
+                                    <span class="badge bg-dark text-light border border-secondary fw-bold px-2 py-1">
+                                        <i class="fa-regular fa-user me-1 text-info"></i>{{ item.ten or item.username }}
+                                    </span>
+                                </div>
+                                {% if item.trang_thai == 'Chờ duyệt' %}
+                                    <span class="badge-status status-pending">
+                                        <i class="fa-solid fa-hourglass-half"></i> Chờ duyệt
+                                    </span>
+                                {% elif item.trang_thai == 'Đã duyệt' %}
+                                    <span class="badge-status status-approved">
+                                        <i class="fa-solid fa-circle-check"></i> Đã duyệt
+                                    </span>
+                                {% else %}
+                                    <span class="badge-status status-rejected">
+                                        <i class="fa-solid fa-circle-xmark"></i> Từ chối
+                                    </span>
+                                {% endif %}
+                            </div>
+
+                            <!-- Body Card: Ảnh + Chi tiết đơn -->
+                            <div class="d-flex gap-3 mb-3 min-w-0">
+                                <div class="img-container">
+                                    {% if item.hinh_anh %}
+                                        {% set clean_img = item.hinh_anh.strip() %}
+                                        {% if clean_img.startswith('http://') or clean_img.startswith('https://') or clean_img.startswith('/') or clean_img.startswith('data:') %}
+                                            {% set img_src = clean_img %}
+                                        {% else %}
+                                            {% set img_src = 'data:image/jpeg;base64,' ~ clean_img %}
+                                        {% endif %}
+
+                                        <!-- Đã thêm class "zoomable-img" vào thẻ img bên dưới -->
+                                        <img src="{{ img_src }}" class="img-preview-trigger zoomable-img" data-src="{{ img_src }}" alt="Chứng từ">
+                                    {% else %}
+                                        <div class="w-100 h-100 d-flex flex-column align-items-center justify-content-center text-muted small">
+                                            <i class="fa-regular fa-image mb-1 fs-5"></i>
+                                            <span style="font-size: 10px;">Không có ảnh</span>
+                                        </div>
+                                    {% endif %}
+                                </div>
+
+                                <div class="flex-grow-1 min-w-0">
+                                    <p class="mb-2 text-light text-break small line-clamp-2" title="{{ item.noi_dung }}">
+                                        {{ item.noi_dung }}
+                                    </p>
+                                    <div class="d-flex flex-wrap gap-3 text-muted small">
+                                        <span>
+                                            <i class="fa-regular fa-clock me-1 text-info"></i>
+                                            {% if item.thoi_gian %}
+                                                {% if item.thoi_gian is string %}
+                                                    {{ item.thoi_gian[8:10] }}/{{ item.thoi_gian[5:7] }}/{{ item.thoi_gian[0:4] }} {{ item.thoi_gian[11:16] }}
+                                                {% else %}
+                                                    {{ item.thoi_gian.strftime('%d/%m/%Y %H:%M') }}
+                                                {% endif %}
+                                            {% else %}
+                                                N/A
+                                            {% endif %}
+                                        </span>
+                                        <span><i class="fa-solid fa-route me-1 text-warning"></i>{{ item.quang_duong or 0 }} KM</span>
+                                        {% if item.combo and item.combo > 0 %}
+                                            <span><i class="fa-solid fa-boxes-packing me-1 text-success"></i>{{ item.combo }} thiết bị</span>
+                                        {% endif %}
+                                    </div>
+                                </div>
+                            </div>
+
+                            <!-- Tổng Tiền -->
+                            <div class="d-flex justify-content-between align-items-center bg-dark p-2 px-3 rounded-3 mb-3">
+                                <span class="small text-muted">Thành tiền:</span>
+                                <span class="fw-bold text-warning fs-6">
+                                    {{ "{:,.0f}".format(item.thanh_tien or 0) }} <small class="text-muted fw-normal fs-7">VNĐ</small>
+                                </span>
+                            </div>
+
+                            <!-- Ghi Chú Phản Hồi Từ Admin -->
+                            {% if item.ghi_chu_duyet %}
+                                <div class="p-2 rounded-3 small mb-2" style="background: rgba(245, 158, 11, 0.1); border: 1px solid rgba(245, 158, 11, 0.3); color: #fde047;">
+                                    <i class="fa-solid fa-comment-dots me-1"></i><strong class="text-white">Ghi chú duyệt:</strong> {{ item.ghi_chu_duyet }}
+                                </div>
+                            {% endif %}
+                        </div>
+
+                        <!-- Footer Actions: Phân quyền Admin & User chính chủ -->
+                        {% set is_admin = user_role in ('Admin', 'System Admin') %}
+                        {% set is_owner = (current_user and item.username == current_user.username) %}
+                        {% set can_user_edit = (is_owner and item.trang_thai != 'Đã duyệt') %}
+
+                        {% if is_admin or can_user_edit %}
+                        <div class="pt-2 border-top border-secondary-subtle d-flex justify-content-between align-items-center mt-2">
+                            <div class="d-flex gap-2">
+                                <!-- Nút Sửa dành cho Admin HOẶC User chính chủ chưa duyệt -->
+                                <a href="/cham-cong/form?edit_id={{ item.id }}" class="btn btn-action-sm btn-outline-warning">
+                                    <i class="fa-solid fa-pen-to-square me-1"></i> Sửa
+                                </a>
+
+                                <!-- Nút Xóa: Admin cấp cao HOẶC User chính chủ chưa duyệt -->
+                                {% if user_role in ('System Admin', 'Super Admin') or can_user_edit %}
+                                    <button type="button" class="btn btn-danger btn-sm" onclick="deleteChamCong('{{ item.id }}')">
+                                        🗑️ Xóa
+                                    </button>
+                                {% endif %}
+                            </div>
+
+                            <!-- Nhóm nút Phê duyệt chỉ dành riêng cho Admin -->
+                            {% if is_admin %}
+                            <div class="d-flex gap-2">
+                                {% if item.trang_thai != 'Từ chối' %}
+                                    <button class="btn btn-action-sm btn-outline-danger text-white" onclick="openApproveModal('{{ item.id }}', 'Từ chối', '{{ item.so_hoa_don }}')">
+                                        <i class="fa-solid fa-xmark me-1"></i> Từ chối
+                                    </button>
+                                {% endif %}
+                                {% if item.trang_thai != 'Đã duyệt' %}
+                                    <button class="btn btn-action-sm btn-success" onclick="quickApprove('{{ item.id }}', '{{ item.so_hoa_don }}')">
+                                        <i class="fa-solid fa-check me-1"></i> Duyệt nhanh
+                                    </button>
+                                    <button class="btn btn-action-sm btn-outline-warning" onclick="openApproveModal('{{ item.id }}', 'Đã duyệt', '{{ item.so_hoa_don }}')" title="Duyệt kèm ghi chú">
+                                        <i class="fa-solid fa-comment-medical"></i>
+                                    </button>
+                                {% endif %}
+                            </div>
+                            {% endif %}
+                        </div>
+                        {% endif %}
+
+                    </div>
+                </div>
+                {% endfor %}
+            </div>
+        {% else %}
+            <!-- EMPTY STATE -->
+            <div class="text-center py-5 rounded-3 my-4" style="background: var(--panel-bg); border: 1px solid var(--panel-border);">
+                <i class="fa-solid fa-inbox text-secondary fs-1 mb-3"></i>
+                <h6 class="text-light">Không tìm thấy đơn chấm công nào</h6>
+                <p class="text-muted small mb-3">Thử điều chỉnh bộ lọc thời gian, kỹ thuật viên hoặc từ khóa tìm kiếm.</p>
+                <a href="/cham-cong/list" class="btn btn-sm btn-outline-info px-4">
+                    <i class="fa-solid fa-rotate-left me-1"></i> Xóa bộ lọc
+                </a>
+            </div>
+        {% endif %}
+
+    </main>
+
+    <!-- MODAL PHÊ DUYỆT / TỪ CHỐI KÈM GHI CHÚ -->
+    <div class="modal fade" id="approveModal" tabindex="-1" aria-hidden="true">
+        <div class="modal-dialog modal-dialog-centered">
+            <div class="modal-content modal-content-custom shadow-lg">
+                <div class="modal-header border-secondary">
+                    <h6 class="modal-title fw-bold" id="modalActionTitle">
+                        <i class="fa-solid fa-gavel me-2"></i>Xử Lý Đơn Chấm Công
+                    </h6>
+                    <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal"></button>
+                </div>
+                <div class="modal-body p-4">
+                    <input type="hidden" id="modalItemId">
+                    <input type="hidden" id="modalTargetStatus">
+                    
+                    <!-- Box hiển thị hóa đơn trực quan -->
+                    <div class="d-flex align-items-center justify-content-between p-3 rounded-3 mb-3" style="background: rgba(10, 15, 29, 0.7); border: 1px solid var(--border-color);">
+                        <div class="d-flex align-items-center gap-3">
+                            <div class="rounded-circle d-flex align-items-center justify-content-center" style="width: 40px; height: 40px; background: rgba(2, 132, 199, 0.15); color: var(--primary-light);">
+                                <i class="fa-solid fa-file-invoice fs-5"></i>
+                            </div>
+                            <div>
+                                <div class="text-muted extra-small text-uppercase fw-semibold">Hóa đơn thao tác</div>
+                                <strong id="modalInvoiceCode" class="text-info fs-6">---</strong>
+                            </div>
+                        </div>
+                        <span class="badge border border-secondary text-muted fw-normal px-2 py-1" style="background: rgba(255,255,255,0.03);">Hệ thống</span>
+                    </div>
+
+                    <!-- Khung nhập ghi chú phản hồi -->
+                    <div class="mb-2">
+                        <label for="modalGhiChu" class="form-label small text-muted d-flex align-items-center mb-2">
+                            <i class="fa-solid fa-comment-pen me-1 text-warning"></i> Ghi chú phản hồi <span class="text-muted ms-1 fw-normal">(Không bắt buộc)</span>
+                        </label>
+                        <textarea id="modalGhiChu" class="form-control text-light shadow-none" 
+                                rows="3" 
+                                placeholder="Nhập lý do từ chối hoặc ghi chú gửi cho kỹ thuật viên..."
+                                style="background: rgba(10, 15, 29, 0.5); border-color: var(--border-color); border-radius: 10px;"></textarea>
+                        <div class="form-text text-muted extra-small mt-2">
+                            <i class="fa-solid fa-circle-info me-1 text-info"></i> Ghi chú sẽ được hiển thị công khai để kỹ thuật viên nắm bắt thông tin.
+                        </div>
+                    </div>
+                </div>
+                <div class="modal-footer border-secondary">
+                    <button type="button" class="btn btn-sm btn-outline-secondary" data-bs-dismiss="modal">Hủy</button>
+                    <button type="button" id="btnConfirmApprove" class="btn btn-sm btn-info px-4" onclick="submitDuyetPhieu()">
+                        <i class="fa-solid fa-paper-plane me-1"></i> Xác nhận
+                    </button>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- MODAL XEM ẢNH LỚN -->
+    <div class="modal fade" id="imageModal" tabindex="-1" aria-hidden="true">
+        <div class="modal-dialog modal-dialog-centered modal-lg">
+            <div class="modal-content bg-transparent border-0 text-center">
+                <div class="position-relative d-inline-block mx-auto">
+                    <button type="button" class="btn-close btn-close-white position-absolute top-0 end-0 m-3 z-3 bg-dark p-2 rounded-circle" data-bs-dismiss="modal"></button>
+                    <img id="fullImage" src="" class="img-fluid rounded-3 shadow-lg border border-secondary" style="max-height: 85vh;" alt="Chứng từ">
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- JAVASCRIPT HANDLERS -->
+    <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/js/bootstrap.bundle.min.js"></script>
+    <script>
+        let approveModalObj, imageModalObj;
+
+        document.addEventListener("DOMContentLoaded", function() {
+            approveModalObj = new bootstrap.Modal(document.getElementById('approveModal'));
+            imageModalObj = new bootstrap.Modal(document.getElementById('imageModal'));
+
+            // Sự kiện click phóng to ảnh
+            document.addEventListener("click", function(e) {
+                if (e.target && e.target.classList.contains("img-preview-trigger")) {
+                    const imgSrc = e.target.getAttribute("data-src");
+                    if (imgSrc) {
+                        document.getElementById('fullImage').src = imgSrc;
+                        imageModalObj.show();
+                    }
+                }
+            });
+        });
+
+        // Set trạng thái và submit form
+        function setStatusAndSubmit(status) {
+            document.getElementById('statusFilterInput').value = status;
+            document.getElementById('filterForm').submit();
+        }
+
+        // Clear từ khóa tìm kiếm
+        function clearSearch() {
+            const searchInput = document.getElementById('searchInput');
+            if (searchInput) searchInput.value = '';
+            document.getElementById('filterForm').submit();
+        }
+
+        // Mở Modal Duyệt / Từ chối
+        function openApproveModal(itemId, status, invoiceCode) {
+            document.getElementById('modalItemId').value = itemId;
+            document.getElementById('modalTargetStatus').value = status;
+            document.getElementById('modalInvoiceCode').innerText = '#' + (invoiceCode || itemId);
+            const titleEl = document.getElementById('modalActionTitle');
+            const btnConfirm = document.getElementById('btnConfirmApprove');
+
+            // Cấu hình giao diện theo từng trạng thái
+            const actionConfigs = {
+                'Đã duyệt': {
+                    title: '<i class="fa-solid fa-circle-check text-success me-2"></i>Duyệt Đơn Chấm Công',
+                    btnClass: 'btn btn-sm btn-success px-4 shadow-sm'
+                },
+                'Từ chối': {
+                    title: '<i class="fa-solid fa-circle-xmark text-danger me-2"></i>Từ Chối Đơn Chấm Công',
+                    btnClass: 'btn btn-sm btn-danger px-4 shadow-sm'
+                }
+            };
+
+            const currentConfig = actionConfigs[status] || actionConfigs['Từ chối'];
+
+            // Cập nhật giao diện Modal
+            titleEl.innerHTML = currentConfig.title;
+            btnConfirm.className = currentConfig.btnClass;
+
+            document.getElementById('modalGhiChu').value = '';
+            approveModalObj.show();
+        }
+
+        // Duyệt nhanh 1-Click
+        async function quickApprove(itemId, invoiceCode) {
+            const confirmResult = await Swal.fire({
+                title: 'Duyệt nhanh đơn?',
+                text: `Xác nhận duyệt nhanh hóa đơn #${invoiceCode || itemId}?`,
+                icon: 'question',
+                showCancelButton: true,
+                confirmButtonColor: '#198754',
+                cancelButtonColor: '#6c757d',
+                confirmButtonText: 'Duyệt ngay',
+                cancelButtonText: 'Hủy'
+            });
+
+            if (confirmResult.isConfirmed) {
+                await executeDuyet(itemId, 'Đã duyệt', '');
+            }
+        }
+
+        // Submit từ Modal Duyệt/Từ chối
+        async function submitDuyetPhieu() {
+            const itemId = document.getElementById('modalItemId').value;
+            const trangThai = document.getElementById('modalTargetStatus').value;
+            const ghiChu = document.getElementById('modalGhiChu').value.trim();
+            const btnConfirm = document.getElementById('btnConfirmApprove');
+
+            btnConfirm.disabled = true;
+            btnConfirm.innerHTML = '<span class="spinner-border spinner-border-sm me-1"></span> Đang xử lý...';
+
+            await executeDuyet(itemId, trangThai, ghiChu);
+            btnConfirm.disabled = false;
+            btnConfirm.innerHTML = '<i class="fa-solid fa-paper-plane me-1"></i> Xác nhận';
+        }
+
+        // Gọi API Duyệt/Từ chối
+        async function executeDuyet(itemId, trangThai, ghiChu) {
+            try {
+                const response = await fetch(`/cham-cong/api/duyet/${itemId}`, {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({
+                        trang_thai: trangThai,
+                        ghi_chu_duyet: ghiChu
+                    })
+                });
+
+                const result = await response.json();
+                if (response.ok && result.success) {
+                    if (approveModalObj) approveModalObj.hide();
+                    Swal.fire({
+                        icon: 'success',
+                        title: 'Thành công!',
+                        text: result.message || 'Cập nhật trạng thái thành công.',
+                        timer: 1500,
+                        showConfirmButton: false
+                    }).then(() => location.reload());
+                } else {
+                    Swal.fire('Lỗi!', result.message || 'Thao tác không thành công!', 'error');
+                }
+            } catch (err) {
+                Swal.fire('Lỗi kết nối!', 'Không thể kết nối đến máy chủ.', 'error');
+            }
+        }
+
+        // Nút Xóa Đơn Chấm Công
+        async function deleteChamCong(recordId) {
+            const confirmResult = await Swal.fire({
+                title: 'Xác nhận xóa phiếu?',
+                text: '⚠️ Bạn có chắc chắn muốn xóa phiếu chấm công này không? Hành động này không thể hoàn tác!',
+                icon: 'warning',
+                showCancelButton: true,
+                confirmButtonColor: '#dc3545',
+                cancelButtonColor: '#6c757d',
+                confirmButtonText: 'Xóa ngay',
+                cancelButtonText: 'Hủy'
+            });
+
+            if (!confirmResult.isConfirmed) return;
+
+            try {
+                const response = await fetch(`/cham-cong/api/delete/${recordId}`, {
+                    method: "DELETE",
+                    headers: { "Content-Type": "application/json" }
+                });
+
+                const result = await response.json();
+
+                if (response.ok && result.success) {
+                    Swal.fire({
+                        icon: 'success',
+                        title: 'Đã xóa!',
+                        text: result.message || 'Xóa phiếu chấm công thành công.',
+                        timer: 1500,
+                        showConfirmButton: false
+                    }).then(() => location.reload());
+                } else {
+                    Swal.fire('Lỗi!', result.message || 'Không thể xóa đơn!', 'error');
+                }
+            } catch (error) {
+                console.error("Lỗi xóa đơn:", error);
+                Swal.fire('Lỗi kết nối!', 'Không thể kết nối đến máy chủ.', 'error');
+            }
+        }
+
+        // Xử lý Download Báo Cáo Excel (Fetch Blob + Downloads History)
+        async function downloadReport() {
+            // 1. Lấy thông số từ Bộ lọc HTML mới
+            const thang = document.getElementById('thangSelect')?.value || '0';
+            const nam = document.getElementById('namSelect')?.value || '2026';
+            const ktvSelect = document.getElementById('ktvSelect');
+            const ktv = ktvSelect ? ktvSelect.value : 'Tất cả';
+            const status = document.getElementById('statusFilterInput')?.value || 'Tất cả';
+            const search = document.getElementById('searchInput')?.value.trim() || '';
+
+            // Tên hiển thị KTV & Tháng
+            const ktvText = (ktvSelect && ktvSelect.selectedIndex >= 0) ? ktvSelect.options[ktvSelect.selectedIndex].text : 'Tất cả';
+            const thangText = thang === '0' ? `Tất cả các tháng / ${nam}` : `Tháng ${thang}/${nam}`;
+
+            // 2. Hiển thị xác nhận tải qua SweetAlert2
+            const confirmResult = await Swal.fire({
+                title: 'Xác nhận tải báo cáo Excel?',
+                html: `
+                    <div style="text-align: left; font-size: 0.95rem; line-height: 1.7; background: #f8f9fa; padding: 12px; border-radius: 6px;">
+                        <b>📅 Thời gian:</b> <span class="text-primary">${thangText}</span><br>
+                        <b>👤 Kỹ thuật viên:</b> ${ktvText}<br>
+                        <b>📌 Trạng thái:</b> ${status}<br>
+                        ${search ? `<b>🔍 Từ khóa:</b> "${search}"` : ''}
+                    </div>
+                `,
+                icon: 'question',
+                showCancelButton: true,
+                confirmButtonColor: '#1F4E79',
+                cancelButtonColor: '#6c757d',
+                confirmButtonText: '<i class="fa-solid fa-file-excel me-1"></i> Tải về ngay',
+                cancelButtonText: 'Hủy',
+                reverseButtons: true
+            });
+
+            if (!confirmResult.isConfirmed) return;
+
+            // 3. Hiển thị Loading
+            Swal.fire({
+                title: 'Đang khởi tạo tệp Excel...',
+                text: 'Hệ thống đang tổng hợp dữ liệu, vui lòng đợi trong giây lát.',
+                allowOutsideClick: false,
+                didOpen: () => { Swal.showLoading(); }
+            });
+
+            // 4. Chuẩn hóa tham số tháng gửi về Backend (MM/YYYY hoặc YYYY)
+            let monthParam = `${nam}`;
+            if (thang !== '0') {
+                monthParam = `${String(thang).padStart(2, '0')}/${nam}`;
+            }
+
+            // 5. Tạo URL endpoint đầy đủ bộ lọc
+            const downloadUrl = `/admin/report/export-excel?month=${encodeURIComponent(monthParam)}&selected_nv=${encodeURIComponent(ktv)}&selected_tt=${encodeURIComponent(status)}&search=${encodeURIComponent(search)}`;
+
+            try {
+                const response = await fetch(downloadUrl);
+                if (!response.ok) throw new Error('Không thể khởi tạo file báo cáo.');
+
+                const blob = await response.blob();
+                
+                // Tạo Blob URL để bắt trình duyệt lưu vào Downloads History
+                const blobUrl = window.URL.createObjectURL(blob);
+                const a = document.createElement('a');
+                a.style.display = 'none';
+                a.href = blobUrl;
+                
+                const fileName = `Bao_Cao_Cham_Cong_${thang !== '0' ? thang + '_' : ''}${nam}.xlsx`;
+                a.download = fileName;
+                
+                document.body.appendChild(a);
+                a.click();
+                
+                window.URL.revokeObjectURL(blobUrl);
+                document.body.removeChild(a);
+
+                Swal.close();
+            } catch (error) {
+                Swal.fire({
+                    icon: 'error',
+                    title: 'Lỗi tải tệp!',
+                    text: 'Không tìm thấy dữ liệu phù hợp hoặc máy chủ gặp sự cố.',
+                    confirmButtonColor: '#1F4E79'
+                });
+            }
+        }
+    </script>
+</body>
+{% endblock %}

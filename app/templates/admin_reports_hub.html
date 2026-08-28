@@ -1,0 +1,99 @@
+{% extends "base.html" %}
+
+{% block title %}Trung Tâm Báo Cáo & Thống Kê{% endblock %}
+
+{% block content %}
+<main class="admin-page px-4 sm:px-6 lg:px-8 max-w-7xl mx-auto space-y-5 sm:space-y-6">
+    <!-- Header Trung Tâm Báo Cáo + Nút Quay Lại -->
+    <header class="welcome-shell p-4 sm:p-6 rounded-xl bg-slate-900/80 border border-slate-800 backdrop-blur-md">
+        <div class="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
+            <div class="space-y-1">
+                <h1 class="text-xl sm:text-2xl font-bold tracking-wide text-white flex items-center gap-2.5 sm:gap-3">
+                    <i class="fa-solid fa-chart-column text-cyan-400 text-lg sm:text-xl"></i>
+                    <span>Trung Tâm Báo Cáo & Thống Kê</span>
+                </h1>
+                <p class="text-xs sm:text-sm text-slate-400">
+                    Chọn loại báo cáo bạn muốn xem chi tiết và truy xuất số liệu bên dưới
+                </p>
+            </div>
+            
+            <!-- Nút điều hướng trở về trang Admin Hub chính -->
+            <div class="shrink-0">
+                <a href="/admin" class="inline-flex items-center gap-2 px-3.5 py-2 rounded-lg bg-slate-800 hover:bg-slate-700/80 border border-slate-700 text-slate-200 text-xs sm:text-sm font-medium transition-all shadow-sm group">
+                    <i class="fa-solid fa-arrow-left text-xs transition-transform group-hover:-translate-x-1 text-slate-400 group-hover:text-cyan-400"></i>
+                    <span>Quay lại Dashboard</span>
+                </a>
+            </div>
+        </div>
+    </header>
+
+    <!-- Danh sách 2 Card Báo Cáo (Khắc phục triệt để lỗi SVG tràn màn hình) -->
+    <div class="grid grid-cols-1 md:grid-cols-2 gap-4 sm:gap-6">
+        
+        <!-- Card 1: Báo cáo Phiếu Bảo Hành -->
+        <a href="/admin/bao-cao/bao-hanh" class="admin-card accent-report group flex flex-col justify-between p-5 sm:p-6 rounded-2xl bg-slate-900/70 border border-slate-800 hover:border-cyan-500/50 hover:bg-slate-800/60 transition-all duration-300 shadow-lg">
+            <div>
+                <div class="flex items-start gap-4">
+                    <!-- Khung Icon khống chế kích thước cố định -->
+                    <div class="w-12 h-12 sm:w-14 sm:h-14 shrink-0 rounded-xl bg-cyan-950/60 border border-cyan-800/50 flex items-center justify-center text-cyan-400 group-hover:bg-cyan-500 group-hover:text-slate-950 transition-all duration-300 shadow-inner" aria-hidden="true">
+                        <svg class="w-6 h-6 sm:w-7 sm:h-7" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                            <path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"></path>
+                            <polyline points="14 2 14 8 20 8"></polyline>
+                            <line x1="16" y1="13" x2="8" y2="13"></line>
+                            <line x1="16" y1="17" x2="8" y2="17"></line>
+                            <polyline points="10 9 9 9 8 9"></polyline>
+                        </svg>
+                    </div>
+                    
+                    <div class="min-w-0 flex-1">
+                        <h2 class="text-base sm:text-lg font-bold text-slate-100 group-hover:text-cyan-400 transition-colors">
+                            Báo Cáo Phiếu Bảo Hành
+                        </h2>
+                        <p class="text-xs sm:text-sm text-slate-400 mt-1.5 leading-relaxed">
+                            Thống kê lượng máy bán ra, tỷ lệ máy còn/hết hạn bảo hành, top khách hàng mua nhiều và biểu đồ theo dòng máy.
+                        </p>
+                    </div>
+                </div>
+            </div>
+            
+            <div class="mt-5 sm:mt-6 pt-4 border-t border-slate-800/80 flex items-center justify-between text-xs sm:text-sm font-semibold text-cyan-400 group-hover:text-cyan-300">
+                <span>Xem thống kê bảo hành</span>
+                <i class="fa-solid fa-chevron-right text-xs transition-transform group-hover:translate-x-1"></i>
+            </div>
+        </a>
+
+        <!-- Card 2: Báo cáo Dữ Liệu Chấm Công Lắp Đặt -->
+        <a href="/cham-cong/bao-cao-lap-dat" class="admin-card accent-config group flex flex-col justify-between p-5 sm:p-6 rounded-2xl bg-slate-900/70 border border-slate-800 hover:border-amber-500/50 hover:bg-slate-800/60 transition-all duration-300 shadow-lg">
+            <div>
+                <div class="flex items-start gap-4">
+                    <!-- Khung Icon khống chế kích thước cố định -->
+                    <div class="w-12 h-12 sm:w-14 sm:h-14 shrink-0 rounded-xl bg-amber-950/60 border border-amber-800/50 flex items-center justify-center text-amber-400 group-hover:bg-amber-500 group-hover:text-slate-950 transition-all duration-300 shadow-inner" aria-hidden="true">
+                        <svg class="w-6 h-6 sm:w-7 sm:h-7" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                            <rect x="3" y="4" width="18" height="18" rx="2" ry="2"></rect>
+                            <line x1="16" y1="2" x2="16" y2="6"></line>
+                            <line x1="8" y1="2" x2="8" y2="6"></line>
+                            <line x1="3" y1="10" x2="21" y2="10"></line>
+                            <path d="M9 16l2 2 4-4"></path>
+                        </svg>
+                    </div>
+                    
+                    <div class="min-w-0 flex-1">
+                        <h2 class="text-base sm:text-lg font-bold text-slate-100 group-hover:text-amber-400 transition-colors">
+                            Báo Cáo Chấm Công & Lắp Đặt
+                        </h2>
+                        <p class="text-xs sm:text-sm text-slate-400 mt-1.5 leading-relaxed">
+                            Tổng hợp số km di chuyển, phụ phí đi tỉnh, ca làm ngoài giờ, trợ cấp thợ phụ và lương/đơn giá lắp đặt của kỹ thuật viên.
+                        </p>
+                    </div>
+                </div>
+            </div>
+            
+            <div class="mt-5 sm:mt-6 pt-4 border-t border-slate-800/80 flex items-center justify-between text-xs sm:text-sm font-semibold text-amber-400 group-hover:text-amber-300">
+                <span>Xem dữ liệu chấm công</span>
+                <i class="fa-solid fa-chevron-right text-xs transition-transform group-hover:translate-x-1"></i>
+            </div>
+        </a>
+
+    </div>
+</main>
+{% endblock %}

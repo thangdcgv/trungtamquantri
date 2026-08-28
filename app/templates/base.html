@@ -1,0 +1,547 @@
+<!DOCTYPE html>
+<html lang="vi" class="dark">
+<head>
+    
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, viewport-fit=cover">
+    <!-- Thêm Favicon ở đây -->
+    <link rel="icon" type="image/png" href="/static/icons/favicon.png">
+    <title>{% block title %}Center Hub - Máy In Đại Thành{% endblock %}</title>
+    <!-- Liên kết file Manifest -->
+    <link rel="manifest" href="/static/manifest.json">
+    <meta name="theme-color" content="#0d1117">
+    <!-- Viewer.js CSS & JS -->
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/viewerjs/1.11.6/viewer.min.css">
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/viewerjs/1.11.6/viewer.min.js"></script>
+    <meta name="google-site-verification" content="wG_VHPUULTelV3b6LCLRVAZJyJRWyzYHdaLE1V0U8K8" />
+    <!-- Đăng ký Service Worker tối thiểu (Điều kiện bắt buộc của PWA) -->
+    <script>
+    if ('serviceWorker' in navigator) {
+        window.addEventListener('load', () => {
+        navigator.serviceWorker.register('/static/sw.js').catch(err => console.log('SW setup error:', err));
+        });
+    }
+    </script>
+    <!-- Google Fonts: Inter & Plus Jakarta Sans -->
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&family=Plus+Jakarta+Sans:wght@400;500;600;700;800&display=swap" rel="stylesheet">
+
+    <!-- 1. BỔ SUNG TAILWIND CSS & FONTAWESOME DÙNG CHUNG TOÀN HỆ THỐNG -->
+    <script src="https://cdn.tailwindcss.com"></script>
+    <script>
+        tailwind.config = {
+            darkMode: 'class',
+            theme: {
+                extend: {
+                    fontFamily: {
+                        sans: ['Inter', 'Plus Jakarta Sans', '-apple-system', 'BlinkMacSystemFont', 'Segoe UI', 'Roboto', 'sans-serif'],
+                    }
+                }
+            }
+        }
+    </script>
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.1/css/all.min.css" integrity="sha512-DTOQO9RWCH3ppGqcWaEA1BIZOC6xxalwEsw9c2QQeAIftl+Vegovlnee1c9QX4TctnWMn13TZye+giMm8e2LwA==" crossorigin="anonymous" referrerpolicy="no-referrer" />
+
+    <style>
+    :root {
+        /* Palette Màu: Deep Tech Dark (Đã tinh chỉnh chống chói) */
+        --bg-main: #0b0f19;
+        --bg-card: rgba(22, 32, 54, 0.75);       /* Nền card sáng hơn 5% để giảm gắt */
+        --bg-card-hover: rgba(30, 43, 72, 0.85);
+
+        /* Text Hierarchy - Hạ tông màu chữ chống lóa */
+        --text-main: #e2e8f0;   /* Trắng ngà dịu (Slate 200) thay cho #f8fafc */
+        --text-sub: #cbd5e1;    /* Slate 300 */
+        --text-muted: #94a3b8;  /* Slate 400 */
+
+        /* Accent Colors - Dịu bớt độ phản quang */
+        --primary: #0284c7;
+        --primary-light: #38bdf8;
+        --primary-glow: rgba(56, 189, 248, 0.25);
+        --accent-green: #34d399;
+        --accent-red: #f87171;
+        --border-color: rgba(255, 255, 255, 0.07);
+
+        /* System Layout & Dimensions */
+        --top-header-height: 52px;
+        --bottom-nav-height: 56px;
+        --radius-card: 16px;
+        --radius-btn: 10px;
+        --glass-bg: rgba(11, 15, 25, 0.85);
+        --glass-blur: blur(12px);
+        --shadow-glow: 0 4px 14px rgba(2, 132, 199, 0.25);
+    }
+
+    * {
+        box-sizing: border-box;
+        margin: 0;
+        padding: 0;
+        -webkit-tap-highlight-color: transparent;
+    }
+
+    body {
+        /* Ưu tiên Inter cho UI sắc nét trên Windows */
+        font-family: 'Inter', 'Plus Jakarta Sans', -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
+        background-color: var(--bg-main);
+        color: var(--text-main);
+        min-height: 100vh;
+        display: flex;
+        flex-direction: column;
+
+        /* --- BỘ KHỬ MỜ NÓNG CHO WINDOWS & MAC --- */
+        -webkit-font-smoothing: antialiased;
+        -moz-osx-font-smoothing: grayscale;
+        text-rendering: optimizeLegibility;
+        font-feature-settings: "cv02", "cv03", "cv04", "cv11"; /* Bật nét chuẩn UI của Inter */
+
+        overflow-x: hidden;
+        background-image: 
+            radial-gradient(circle at 50% 0%, rgba(2, 132, 199, 0.10) 0%, transparent 50%),
+            radial-gradient(circle at 100% 100%, rgba(16, 185, 129, 0.04) 0%, transparent 40%);
+        background-attachment: fixed;
+    }
+
+    /* Ambient Glow Background Đồng Bộ */
+    body::before {
+        content: "";
+        position: fixed;
+        top: 0;
+        left: 50%;
+        transform: translateX(-50%);
+        width: 100%;
+        max-width: 600px;
+        height: 220px;
+        background: radial-gradient(circle, rgba(56, 189, 248, 0.07) 0%, transparent 70%);
+        pointer-events: none;
+        z-index: 0;
+        transition: max-width 0.3s ease;
+    }
+
+    /* Top Header Fixed Compact */
+    .app-header {
+        position: fixed;
+        top: 0;
+        left: 0;
+        right: 0;
+        height: calc(var(--top-header-height) + env(safe-area-inset-top));
+        padding-top: env(safe-area-inset-top);
+        background: var(--glass-bg);
+        backdrop-filter: var(--glass-blur);
+        -webkit-backdrop-filter: var(--glass-blur);
+        border-bottom: 1px solid var(--border-color);
+        display: flex;
+        align-items: center;
+        justify-content: space-between;
+        padding-left: 1rem;
+        padding-right: 1rem;
+        z-index: 100;
+    }
+
+    .header-brand {
+        display: flex;
+        align-items: center;
+        gap: 0.65rem;
+        text-decoration: none;
+        min-width: 0;
+    }
+
+    .logo-wrapper {
+        position: relative;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        width: 32px;
+        height: 32px;
+        flex: 0 0 32px;
+        border-radius: 8px;
+        background: rgba(255, 255, 255, 0.04);
+        border: 1px solid var(--border-color);
+    }
+
+    .header-logo {
+        height: 20px;
+        width: auto;
+        object-fit: contain;
+    }
+
+    .header-title-box {
+        display: flex;
+        flex-direction: column;
+        min-width: 0;
+    }
+
+    .header-title {
+        font-size: 0.82rem;
+        font-weight: 800;
+        color: var(--text-main);
+        letter-spacing: 0.03em;
+        line-height: 1.15;
+        text-transform: uppercase;
+        white-space: nowrap;
+        overflow: hidden;
+        text-overflow: ellipsis;
+    }
+
+    .header-subtitle {
+        font-size: 0.63rem;
+        color: var(--primary-light);
+        font-weight: 700;
+        letter-spacing: 0.04em;
+        text-transform: uppercase;
+        display: flex;
+        align-items: center;
+        gap: 4px;
+    }
+
+    .header-subtitle::before {
+        content: '';
+        display: inline-block;
+        width: 5px;
+        height: 5px;
+        background-color: var(--accent-green);
+        border-radius: 50%;
+        box-shadow: 0 0 6px var(--accent-green);
+    }
+
+    .logout-btn {
+        width: 34px;
+        height: 34px;
+        flex: 0 0 34px;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        background: rgba(255, 255, 255, 0.04);
+        border: 1px solid var(--border-color);
+        color: var(--text-sub);
+        border-radius: 9px;
+        text-decoration: none;
+        transition: all 0.2s cubic-bezier(0.4, 0, 0.2, 1);
+    }
+
+    .logout-btn:active {
+        background-color: rgba(239, 68, 68, 0.15);
+        color: var(--accent-red);
+        border-color: rgba(239, 68, 68, 0.3);
+        transform: scale(0.95);
+    }
+
+    /* Container Nội Dung Chính */
+    .app-content {
+        flex: 1;
+        padding-top: calc(var(--top-header-height) + env(safe-area-inset-top) + 0.75rem);
+        padding-bottom: calc(var(--bottom-nav-height) + env(safe-area-inset-bottom) + 0.75rem);
+        padding-left: 0.75rem;
+        padding-right: 0.75rem;
+        max-width: 600px;
+        width: 100%;
+        margin: 0 auto;
+        position: relative;
+        z-index: 1;
+        transition: max-width 0.3s ease, padding 0.3s ease;
+    }
+
+    /* Bottom Navigation Bar Compact */
+    .bottom-nav {
+        position: fixed;
+        bottom: 0;
+        left: 0;
+        right: 0;
+        height: calc(var(--bottom-nav-height) + env(safe-area-inset-bottom));
+        padding-bottom: env(safe-area-inset-bottom);
+        background: var(--glass-bg);
+        backdrop-filter: var(--glass-blur);
+        -webkit-backdrop-filter: var(--glass-blur);
+        border-top: 1px solid var(--border-color);
+        display: flex;
+        align-items: center;
+        justify-content: space-around;
+        z-index: 100;
+    }
+
+    .nav-item {
+        flex: 1;
+        display: flex;
+        flex-direction: column;
+        align-items: center;
+        justify-content: center;
+        height: var(--bottom-nav-height);
+        color: var(--text-muted);
+        text-decoration: none;
+        font-size: 0.68rem;
+        font-weight: 600;
+        gap: 3px;
+        position: relative;
+        transition: all 0.2s cubic-bezier(0.4, 0, 0.2, 1);
+    }
+
+    .nav-item svg {
+        width: 19px;
+        height: 19px;
+        fill: none;
+        stroke: currentColor;
+        stroke-width: 2;
+        stroke-linecap: round;
+        stroke-linejoin: round;
+        transition: transform 0.2s ease, stroke 0.2s ease;
+    }
+
+    .nav-item:active {
+        transform: scale(0.92);
+    }
+
+    .nav-item.active {
+        color: var(--primary-light);
+    }
+
+    .nav-item.active svg {
+        stroke: var(--primary-light);
+        transform: translateY(-1px);
+        filter: drop-shadow(0 2px 6px var(--primary-glow));
+    }
+
+    .nav-item.active::after {
+        content: '';
+        position: absolute;
+        top: 0;
+        width: 24px;
+        height: 2px;
+        background: var(--primary-light);
+        border-radius: 0 0 3px 3px;
+        box-shadow: 0 2px 8px var(--primary-light);
+    }
+
+    /* Base Card Compact */
+    .card {
+        background: var(--bg-card);
+        backdrop-filter: blur(12px);
+        border: 1px solid var(--border-color);
+        border-radius: var(--radius-card);
+        padding: 0.85rem;
+        margin-bottom: 0.75rem;
+        box-shadow: 0 6px 20px -6px rgba(0, 0, 0, 0.4);
+        transition: border-color 0.2s ease;
+    }
+
+    .card:hover {
+        border-color: rgba(255, 255, 255, 0.14);
+    }
+
+    /* Form & Button Base Controls */
+    :where(input, select, textarea) {
+        width: 100%;
+        background-color: rgba(10, 15, 29, 0.6);
+        border: 1px solid var(--border-color);
+        border-radius: var(--radius-btn);
+        color: var(--text-main);
+        padding: 0.45rem 0.75rem;
+        font-family: inherit;
+        font-size: 0.85rem; 
+        outline: none;
+        min-height: 38px;
+        transition: all 0.2s ease;
+    }
+
+    :where(input:focus, select:focus, textarea:focus) {
+        border-color: var(--primary-light);
+        box-shadow: 0 0 0 3px var(--primary-glow);
+        background-color: rgba(10, 15, 29, 0.9);
+    }
+
+    :where(.btn-default) {
+        display: inline-flex;
+        align-items: center;
+        justify-content: center;
+        gap: 0.4rem;
+        background: linear-gradient(135deg, var(--primary) 0%, #0369a1 100%);
+        color: #ffffff;
+        font-weight: 700;
+        font-size: 0.85rem;
+        border: none;
+        border-radius: var(--radius-btn);
+        padding: 0.5rem 1rem;
+        min-height: 38px;
+        cursor: pointer;
+        transition: all 0.2s ease;
+        box-shadow: var(--shadow-glow);
+        text-decoration: none;
+    }
+
+    /* ========================================================
+       RESPONSIVE BREAKPOINTS
+       ======================================================== */
+    @media (max-width: 430px) {
+        .app-content { padding-left: 0.5rem; padding-right: 0.5rem; }
+        .card { padding: 0.75rem; border-radius: 12px; }
+        .header-title { font-size: 0.78rem; }
+        .nav-item { font-size: 0.62rem; }
+        body::before { height: 180px; }
+    }
+
+    @media (min-width: 768px) {
+        .app-content {
+            max-width: 800px;
+            padding-left: 1rem;
+            padding-right: 1rem;
+        }
+        body::before { max-width: 800px; }
+        .card { padding: 1rem; }
+    }
+
+    @media (min-width: 992px) {
+        :root {
+            --bottom-nav-height: 48px;
+        }
+
+        .app-content {
+            max-width: 1280px;
+            padding-left: 1.5rem;
+            padding-right: 1.5rem;
+            padding-top: calc(var(--top-header-height) + 1rem);
+            padding-bottom: calc(var(--bottom-nav-height) + 1rem);
+        }
+        body::before { max-width: 1280px; }
+        .card { padding: 1.15rem; }
+
+        .bottom-nav {
+            justify-content: center;
+            gap: 2.5rem;
+        }
+        .nav-item {
+            flex: 0 0 auto;
+            padding: 0 1rem;
+            flex-direction: row;
+            gap: 6px;
+            font-size: 0.75rem;
+        }
+        .nav-item.active::after {
+            top: auto;
+            bottom: 0;
+            width: 100%;
+            border-radius: 3px 3px 0 0;
+        }
+    }
+</style>
+
+    {% block head %}{% endblock %}
+</head>
+<body>
+
+    <!-- Header Trực quan Compact -->
+    <header class="app-header">
+        <a href="/" class="header-brand">
+            <div class="logo-wrapper">
+                <img src="https://ejbillnpxxiubbiyyaxn.supabase.co/storage/v1/object/public/publicLogo/LOGO.png" alt="Logo Máy In Đại Thành" class="header-logo">
+            </div>
+            <div class="header-title-box">
+                <span class="header-title">Center Hub</span>
+                <span class="header-subtitle">Máy In Đại Thành</span>
+            </div>
+        </a>
+        <a href="/auth/logout" class="logout-btn" title="Đăng xuất">
+            <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                <path d="M9 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h4"></path>
+                <polyline points="16 17 21 12 16 7"></polyline>
+                <line x1="21" y1="12" x2="9" y2="12"></line>
+            </svg>
+        </a>
+    </header>
+    <!-- Khu vực nội dung chính -->
+    <main class="app-content">
+        {% block content %}{% endblock %}
+    </main>
+    <!-- Bottom Navigation Bar Compact -->
+    <nav class="bottom-nav">
+        <!-- 1. Trang chủ Hub -->
+        <a href="/" class="nav-item {% if request.url.path == '/' %}active{% endif %}">
+            <svg viewBox="0 0 24 24">
+                <path d="M3 9l9-7 9 7v11a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2z"></path>
+                <polyline points="9 22 9 12 15 12 15 22"></polyline>
+            </svg>
+            <span>Trang chủ</span>
+        </a>
+
+        <!-- 2. App Chấm Công Lắp Đặt Nội Bộ -->
+        <a href="/cham-cong/form" class="nav-item {% if '/cham-cong' in request.url.path %}active{% endif %}">
+            <svg viewBox="0 0 24 24">
+                <circle cx="12" cy="12" r="10"></circle>
+                <polyline points="12 6 12 12 16 14"></polyline>
+            </svg>
+            <span>Chấm công</span>
+        </a>
+
+        <!-- 3. App Bảo Hành Nội Bộ -->
+        <a href="/warranty/list" class="nav-item {% if '/warranty' in request.url.path %}active{% endif %}">
+            <svg viewBox="0 0 24 24">
+                <path d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10z"></path>
+            </svg>
+            <span>Bảo hành</span>
+        </a>
+
+        <!-- Quản Lý Nhập Xuất Key -->
+         {% if current_user and current_user.role in ('User', 'Super Admin', 'System Admin') %}
+        <a href="/admin/quan-ly-key" class="nav-item {% if request.url.path.startswith('/admin/quan-ly-key') %}active{% endif %}">
+            <svg viewBox="0 0 24 24">
+                <circle cx="7.5" cy="15.5" r="3.5"></circle>
+                <path d="M10 13l10-10 2.5 2.5-2 2 1.5 1.5-2 2-2-2-2.5 2.5"></path>
+            </svg>
+            <span>Quản lý Key</span>
+        </a>
+        {% endif %}
+        <!-- 4. Cụm Quản Trị Hệ Thống -->
+        {% if current_user and current_user.role in ('Admin', 'Super Admin', 'System Admin') %}
+        <a href="/admin" class="nav-item {% if request.url.path.startswith('/admin') %}active{% endif %}">
+            <svg viewBox="0 0 24 24">
+                <path d="M12.22 2h-.44a2 2 0 0 0-2 2v.18a2 2 0 0 1-1 1.73l-.43.25a2 2 0 0 1-2 0l-.15-.08a2 2 0 0 0-2.73.73l-.22.38a2 2 0 0 0 .73 2.73l.15.1a2 2 0 0 1 1 1.72v.51a2 2 0 0 1-1 1.74l-.15.09a2 2 0 0 0-.73 2.73l.22.38a2 2 0 0 0 2.73.73l.15-.08a2 2 0 0 1 2 0l.43.25a2 2 0 0 1 1 1.73V20a2 2 0 0 0 2 2h.44a2 2 0 0 0 2-2v-.18a2 2 0 0 1 1-1.73l.43-.25a2 2 0 0 1 2 0l.15.08a2 2 0 0 0 2.73-.73l.22-.38a2 2 0 0 0-.73-2.73l-.15-.08a2 2 0 0 1-1-1.74v-.5a2 2 0 0 1 1-1.74l.15-.09a2 2 0 0 0 .73-2.73l-.22-.38a2 2 0 0 0-2.73-.73l-.15.08a2 2 0 0 1-2 0l-.43-.25a2 2 0 0 1-1-1.73V4a2 2 0 0 0-2-2z"></path>
+                <circle cx="12" cy="12" r="3"></circle>
+            </svg>
+            <span>Quản trị</span>
+        </a>
+        {% endif %}
+    </nav>
+ <!-- Thư viện Bootstrap 5 JS (bao gồm Popper.js) -->
+    <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/js/bootstrap.bundle.min.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+    {% block scripts %}{% endblock %}
+   
+
+<script>
+document.addEventListener("DOMContentLoaded", function () {
+    // 1. Tìm tất cả ảnh có class "zoomable" hoặc ảnh nằm trong vùng xem chấm công
+    const images = document.querySelectorAll('.zoomable-img, .attendance-card img');
+
+    images.forEach(img => {
+        // Đặt con trỏ chuột dạng kính lúp
+        img.style.cursor = 'zoom-in';
+
+        // 2. Tự động khởi tạo Viewer khi click vào ảnh
+        img.addEventListener('click', function () {
+            const viewer = new Viewer(img, {
+                inline: false,
+                button: true,       // Nút đóng
+                navbar: false,      // Ẩn thanh chọn nhiều ảnh nếu chỉ xem 1 ảnh
+                title: false,       // Ẩn tiêu đề ảnh
+                toolbar: {
+                    zoomIn: 4,      // Phóng to
+                    zoomOut: 4,     // Thu nhỏ
+                    oneToOne: 4,    // Về kích thước gốc 100%
+                    reset: 4,      // Reset vị trí
+                    rotateLeft: 4,  // Xoay trái
+                    rotateRight: 4, // Xoay phải
+                },
+                // CẤU HÌNH CHO PHÉP CON LĂN CHUỘT ZOOM VÔ HẠN
+                zoomRatio: 0.3,     // Tốc độ zoom mỗi lần lăn chuột
+                minZoomRatio: 0.1,  // Mức thu nhỏ tối đa
+                maxZoomRatio: 10,   // Cho phép phóng to gấp 10 lần (1000%)
+                
+                hidden: function () {
+                    viewer.destroy(); // Dọn dẹp bộ nhớ khi đóng
+                }
+            });
+            viewer.show();
+        });
+    });
+});
+</script>
+</body>
+</html>

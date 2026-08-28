@@ -1,0 +1,581 @@
+{% extends "base.html" %}
+
+{% block title %}Trang chủ - Máy In Đại Thành Center Hub{% endblock %}
+
+{% block head %}
+<style>
+    /* ==========================================
+       1. TOP SECTION: WELCOME & LAUNCHPAD GRID
+       ========================================== */
+    .top-section {
+        display: grid;
+        grid-template-columns: 1fr;
+        gap: 1rem;
+        margin-bottom: 1.75rem;
+    }
+
+    @media (min-width: 992px) {
+        .top-section {
+            grid-template-columns: 350px 1fr;
+            align-items: stretch;
+        }
+    }
+
+    /* Card Chào Mừng & Thẻ Khung - Nền Dịu Mắt */
+    .welcome-card, .feed-card {
+        background: rgba(18, 25, 41, 0.65);
+        border: 1px solid rgba(255, 255, 255, 0.05);
+        border-radius: var(--radius-card);
+        backdrop-filter: var(--glass-blur);
+        box-shadow: 0 4px 16px rgba(0, 0, 0, 0.2);
+    }
+
+    .welcome-card {
+        padding: 1.25rem 1.5rem;
+        display: flex;
+        flex-direction: column;
+        justify-content: center;
+    }
+
+    /* Hạ độ chói của Tiêu đề */
+    .user-greeting {
+        font-size: 1.2rem;
+        font-weight: 700;
+        color: #e2e8f0; /* Slate-200 trắng ngà dịu mắt */
+        margin-bottom: 0.3rem;
+        display: flex;
+        align-items: center;
+        gap: 0.5rem;
+    }
+
+    .user-subtitle {
+        font-size: 0.8rem;
+        color: var(--text-muted);
+        font-weight: 500;
+    }
+
+    /* Launchpad Action Buttons (Nút bấm nhanh) */
+    .quick-launchpad {
+        display: grid;
+        grid-template-columns: repeat(2, 1fr);
+        gap: 0.75rem;
+    }
+
+    @media (min-width: 576px) {
+        .quick-launchpad {
+            grid-template-columns: repeat(4, 1fr);
+        }
+    }
+
+    /* ==========================================
+    QUICK LAUNCHPAD - COLORS & STATES
+    ========================================== */
+    .quick-btn {
+        background: rgba(18, 25, 41, 0.7);
+        border: 1px solid rgba(255, 255, 255, 0.08);
+        border-radius: var(--radius-card);
+        padding: 1rem 0.75rem;
+        text-decoration: none;
+        display: flex;
+        flex-direction: column;
+        align-items: center;
+        justify-content: center;
+        gap: 0.5rem;
+        transition: all 0.25s cubic-bezier(0.4, 0, 0.2, 1);
+        backdrop-filter: var(--glass-blur);
+    }
+
+    .quick-btn i {
+        font-size: 1.35rem;
+    }
+
+    .quick-btn span {
+        font-size: 0.8rem;
+        font-weight: 700;
+        letter-spacing: -0.01em;
+    }
+
+    /* 1. Nút Tạo Bảo Hành (Green) */
+    .quick-btn.btn-green i,
+    .quick-btn.btn-green span {
+        color: #10b981;
+    }
+    .quick-btn.btn-green:hover:not(.disabled-btn) {
+        background: rgba(16, 185, 129, 0.12);
+        border-color: rgba(16, 185, 129, 0.4);
+        box-shadow: 0 4px 15px rgba(16, 185, 129, 0.2);
+        transform: translateY(-2px);
+    }
+
+    /* 2. Nút Duyệt Chấm Công (Cyan) */
+    .quick-btn.btn-cyan i,
+    .quick-btn.btn-cyan span {
+        color: #06b6d4;
+    }
+    .quick-btn.btn-cyan:hover:not(.disabled-btn) {
+        background: rgba(6, 182, 212, 0.12);
+        border-color: rgba(6, 182, 212, 0.4);
+        box-shadow: 0 4px 15px rgba(6, 182, 212, 0.2);
+        transform: translateY(-2px);
+    }
+
+    /* 3. Nút Thư Viện Máy In (Amber) */
+    .quick-btn.btn-amber i,
+    .quick-btn.btn-amber span {
+        color: #f59e0b;
+    }
+    .quick-btn.btn-amber:hover:not(.disabled-btn) {
+        background: rgba(245, 158, 11, 0.12);
+        border-color: rgba(245, 158, 11, 0.4);
+        box-shadow: 0 4px 15px rgba(245, 158, 11, 0.2);
+        transform: translateY(-2px);
+    }
+
+    /* 4. Nút Quản Trị Admin (Purple) */
+    .quick-btn.btn-purple i,
+    .quick-btn.btn-purple span {
+        color: #a855f7;
+    }
+    .quick-btn.btn-purple:hover:not(.disabled-btn) {
+        background: rgba(168, 85, 247, 0.12);
+        border-color: rgba(168, 85, 247, 0.4);
+        box-shadow: 0 4px 15px rgba(168, 85, 247, 0.2);
+        transform: translateY(-2px);
+    }
+
+    /* Trạng thái không có quyền truy cập (Disabled) */
+    .quick-btn.disabled-btn {
+        opacity: 0.45;
+        cursor: not-allowed;
+    }
+    .quick-btn.disabled-btn:hover {
+        transform: none;
+        box-shadow: none;
+    }
+
+    /* ==========================================
+       2. SECTION TITLE
+       ========================================== */
+    .section-title {
+        font-size: 0.8rem;
+        font-weight: 800;
+        color: var(--text-muted);
+        text-transform: uppercase;
+        letter-spacing: 0.08em;
+        margin: 0 0 1rem 0;
+        display: flex;
+        align-items: center;
+        gap: 0.75rem;
+    }
+
+    .section-title::after {
+        content: '';
+        flex: 1;
+        height: 1px;
+        background: var(--border-color);
+    }
+
+    /* ==========================================
+       3. FEED GRID & CARDS
+       ========================================== */
+    .feed-grid {
+        display: grid;
+        grid-template-columns: 1fr;
+        gap: 1.25rem;
+    }
+
+    @media (min-width: 992px) {
+        .feed-grid {
+            grid-template-columns: repeat(2, minmax(0, 1fr));
+        }
+    }
+
+    .feed-card {
+        padding: 1.25rem;
+        display: flex;
+        flex-direction: column;
+        height: 100%;
+        transition: border-color 0.25s ease, box-shadow 0.25s ease;
+        box-sizing: border-box;
+    }
+
+    .feed-card:hover {
+        border-color: rgba(255, 255, 255, 0.12);
+        box-shadow: 0 8px 25px rgba(0, 0, 0, 0.35);
+    }
+
+    .feed-card-header {
+        display: flex;
+        align-items: center;
+        justify-content: space-between;
+        padding-bottom: 0.85rem;
+        margin-bottom: 0.85rem;
+        border-bottom: 1px dashed rgba(255, 255, 255, 0.08);
+    }
+
+    .feed-card-title-group {
+        display: flex;
+        align-items: center;
+        gap: 0.65rem;
+        min-width: 0;
+    }
+
+    .feed-icon-box {
+        width: 36px;
+        height: 36px;
+        border-radius: 10px;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        flex-shrink: 0;
+        font-size: 1rem;
+    }
+
+    .feed-card-name {
+        font-size: 0.88rem;
+        font-weight: 700;
+        color: #e2e8f0;
+        white-space: nowrap;
+        overflow: hidden;
+        text-overflow: ellipsis;
+    }
+
+    .feed-card-action {
+        font-size: 0.72rem;
+        font-weight: 700;
+        text-decoration: none;
+        display: inline-flex;
+        align-items: center;
+        gap: 0.35rem;
+        padding: 0.35rem 0.65rem;
+        border-radius: 7px;
+        flex-shrink: 0;
+        opacity: 0.85;
+        transition: all 0.2s ease;
+    }
+    .feed-card-action:hover { opacity: 1; }
+
+    /* Color Accents Soft (Đã dịu màu Pastel) */
+    .accent-green .feed-icon-box { background: rgba(16, 185, 129, 0.08); color: #34d399; }
+    .accent-green .feed-card-action { color: #34d399; background: rgba(16, 185, 129, 0.08); border: 1px solid rgba(16, 185, 129, 0.18); }
+    .accent-green .feed-card-action:hover { background: rgba(16, 185, 129, 0.2); }
+
+    .accent-blue .feed-icon-box { background: rgba(56, 189, 248, 0.08); color: #38bdf8; }
+    .accent-blue .feed-card-action { color: #38bdf8; background: rgba(56, 189, 248, 0.08); border: 1px solid rgba(56, 189, 248, 0.18); }
+    .accent-blue .feed-card-action:hover { background: rgba(56, 189, 248, 0.2); }
+
+    /* ==========================================
+       4. LIST & ITEM STYLING (HÀNG DỮ LIỆU)
+       ========================================== */
+    .feed-list {
+        display: flex;
+        flex-direction: column;
+        gap: 0.55rem;
+        flex: 1;
+    }
+
+    .feed-item {
+        display: flex;
+        align-items: center;
+        justify-content: space-between;
+        padding: 0.7rem 0.85rem;
+        background: rgba(15, 21, 35, 0.5);
+        border: 1px solid rgba(255, 255, 255, 0.03);
+        border-radius: 10px;
+        text-decoration: none;
+        color: #cbd5e1;
+        transition: all 0.2s ease;
+        box-sizing: border-box;
+    }
+
+    .feed-item:hover {
+        background: rgba(30, 41, 65, 0.4);
+        border-color: rgba(255, 255, 255, 0.08);
+        transform: translateX(3px);
+    }
+
+    .feed-info {
+        display: flex;
+        flex-direction: column;
+        gap: 0.35rem;
+        overflow: hidden;
+        min-width: 0;
+        flex: 1;
+        margin-right: 0.5rem;
+    }
+
+    .feed-title {
+        display: flex;
+        align-items: center;
+        gap: 0.4rem;
+        width: 100%;
+    }
+
+    .feed-title-name {
+        font-size: 0.84rem;
+        font-weight: 600;
+        color: #e2e8f0;
+        white-space: nowrap;
+        overflow: hidden;
+        text-overflow: ellipsis;
+        flex: 1;
+        min-width: 0; 
+    }
+
+    .feed-meta {
+        font-size: 0.72rem;
+        color: #94a3b8;
+        display: flex;
+        align-items: center;
+        flex-wrap: wrap;
+        gap: 0.35rem;
+        line-height: 1.4;
+    }
+
+    .feed-empty {
+        font-size: 0.8rem;
+        color: var(--text-muted);
+        text-align: center;
+        padding: 2rem 0.75rem;
+        background: rgba(255, 255, 255, 0.01);
+        border-radius: 10px;
+        border: 1px dashed rgba(255, 255, 255, 0.06);
+        margin: auto 0;
+    }
+
+    /* Badges Trạng Thái chống chói */
+    .status-pill {
+        display: inline-flex;
+        align-items: center;
+        padding: 0.15rem 0.45rem;
+        border-radius: 5px;
+        font-size: 0.65rem;
+        font-weight: 700;
+        background: rgba(56, 189, 248, 0.08);
+        color: #38bdf8;
+        border: 1px solid rgba(56, 189, 248, 0.15);
+        flex-shrink: 0;
+    }
+
+    .status-pill.green {
+        background: rgba(16, 185, 129, 0.08); 
+        color: #34d399; 
+        border: 1px solid rgba(16, 185, 129, 0.15);
+    }
+
+    .meta-divider {
+        color: rgba(255, 255, 255, 0.18);
+    }
+
+    .action-icon-link {
+        display: inline-flex;
+        align-items: center;
+        justify-content: center;
+        width: 26px;
+        height: 26px;
+        border-radius: 7px;
+        background: transparent;
+        border: transparent;
+        color: #64748b;
+        flex-shrink: 0;
+        transition: all 0.2s ease;
+        font-size: 0.7rem;
+    }
+
+    .accent-green .feed-item:hover .action-icon-link { color: #34d399; }
+    .accent-blue .feed-item:hover .action-icon-link { color: #38bdf8; }
+
+    /* ==========================================
+       5. MOBILE OPTIMIZATION
+       ========================================== */
+    @media (max-width: 576px) {
+        .welcome-card { padding: 0.6rem 0.8rem; }
+        .user-greeting { font-size: 1.05rem; }
+        .quick-launchpad { gap: 0.5rem; }
+        .quick-btn { padding: 0.5rem 0.25rem; }
+        .quick-btn i { font-size: 0.95rem; }
+        .quick-btn span { font-size: 0.72rem; }
+        .feed-grid { gap: 0.85rem; }
+        .feed-card { padding: 0.85rem; }
+        .feed-card-header { padding-bottom: 0.65rem; margin-bottom: 0.65rem; }
+        .feed-icon-box { width: 32px; height: 32px; font-size: 0.9rem; }
+        .feed-card-name { font-size: 0.82rem; }
+        .feed-card-action { padding: 0.25rem 0.5rem; font-size: 0.68rem; }
+        .feed-item { padding: 0.45rem 0.6rem; border-radius: 8px; }
+        .feed-title-name { font-size: 0.8rem; }
+        .feed-meta { font-size: 0.68rem; }
+    }
+</style>
+{% endblock %}
+
+{% block content %}
+<div class="dashboard-app">
+    <!-- TOP SECTION: WELCOME BANNER & LAUNCHPAD -->
+    <div class="top-section">
+        <div class="welcome-card">
+            <div class="user-greeting">
+                <span>Xin chào, {% if current_user and current_user.is_authenticated %}{{ current_user.name }}{% else %}Quản trị viên{% endif %}!</span>
+                <span>👋</span>
+            </div>
+            <div class="user-subtitle">Trung tâm điều hành nội bộ Máy In Đại Thành</div>
+        </div>
+
+        <div class="quick-launchpad">
+            <a href="/warranty/list" class="quick-btn btn-green">
+                <i class="fa-solid fa-plus-circle"></i>
+                <span>Tạo Bảo Hành</span>
+            </a>
+
+            <a href="/cham-cong/list" class="quick-btn btn-cyan">
+                <i class="fa-solid fa-clipboard-check"></i>
+                <span>Duyệt Chấm Công</span>
+            </a>
+
+            <a href="https://printer-guide.onrender.com" target="_blank" rel="noopener noreferrer" class="quick-btn btn-amber">
+                <i class="fa-solid fa-book-open"></i>
+                <span>Thư Viện Máy In</span>
+            </a>
+
+            {% if current_user and current_user.role in ['Admin', 'Super Admin', 'System Admin'] %}
+                <!-- Dành cho Admin -->
+                <a href="/admin" class="quick-btn btn-purple">
+                    <i class="fa-solid fa-sliders"></i>
+                    <span>Quản Trị Admin</span>
+                </a>
+            {% else %}
+                <!-- Dành cho User thường -->
+                <a href="javascript:void(0);" 
+                onclick="alert('⚠️ Bạn không có quyền truy cập vào trang Quản Trị!')" 
+                class="quick-btn btn-purple disabled-btn">
+                    <i class="fa-solid fa-sliders"></i>
+                    <span>Quản Trị Admin</span>
+                </a>
+            {% endif %}
+        </div>
+    </div>
+
+    <!-- SECTION TITLE -->
+    <div class="section-title">Hoạt động gần đây</div>
+
+    <!-- EQUAL HEIGHT RESPONSIVE GRID (2 CARDS) -->
+    <div class="feed-grid">  
+        
+        <!-- 1. Card Bảo Hành Điện Tử -->
+        <div class="feed-card accent-green">
+            <div class="feed-card-header">
+                <div class="feed-card-title-group">
+                    <div class="feed-icon-box">
+                        <i class="fa-solid fa-shield-halved"></i>
+                    </div>
+                    <div class="feed-card-name">Phiếu Bảo Hành Mới Tạo</div>
+                </div>
+                <a href="/warranty/list" class="feed-card-action">
+                    <i class="fa-solid fa-list"></i>
+                    <span>Danh sách phiếu</span>
+                </a>
+            </div>
+            <div class="feed-list">
+                {% if recent_warranties %}
+                    {% for item in recent_warranties %}
+                    <a href="/warranty/{{ item.id }}" class="feed-item">
+                        <div class="feed-info">
+                            <!-- Dòng 1: Khách hàng (linh hoạt co giãn) + Model Máy (cố định, không bị bóp méo) -->
+                            <div class="feed-title">
+                                <span class="feed-title-name">{{ item.customer_name | default('Khách hàng') }}</span>
+                                <span class="status-pill green">{{ item.model_name | default('N/A') }}</span>
+                            </div>
+
+                            <!-- Dòng 2: Meta info tự động xuống dòng (flex-wrap) nếu màn hình quá chật -->
+                            <div class="feed-meta">
+                                <span>S/N: {{ item.serial_number | default('N/A') }}</span>
+                                <span class="meta-divider">•</span>
+                                <span>{{ item.category | default('Máy in') }}</span>
+                                <span class="meta-divider">•</span>
+                                <span>
+                                    {% if item.created_at %}
+                                        <!-- Rút gọn năm để tối ưu mobile: DD/MM HH:MM -->
+                                        {{ item.created_at[8:10] }}/{{ item.created_at[5:7] }} {{ item.created_at[11:16] }}
+                                    {% else %}
+                                        N/A
+                                    {% endif %}
+                                </span>
+                            </div>
+                        </div>
+                        <div class="action-icon-link">
+                            <i class="fa-solid fa-chevron-right"></i>
+                        </div>
+                    </a>
+                    {% endfor %}
+                {% else %}
+                    <div class="feed-empty">Chưa có phiếu bảo hành nào gần đây.</div>
+                {% endif %}
+            </div>
+        </div>
+
+        <!-- 2. Card Chấm Công Lắp Đặt -->
+        <div class="feed-card accent-blue">
+            <div class="feed-card-header">
+                <div class="feed-card-title-group">
+                    <div class="feed-icon-box">
+                        <i class="fa-solid fa-clipboard-user"></i>
+                    </div>
+                    <div class="feed-card-name">Đơn Chấm Công Gần Nhất</div>
+                </div>
+                <a href="/cham-cong/list" class="feed-card-action">
+                    <i class="fa-solid fa-list"></i>
+                    <span>Danh sách</span>
+                </a>
+            </div>
+            <div class="feed-list">
+                {% if recent_installations %}
+                    {% for item in recent_installations %}
+                    <a href="/cham-cong/detail/{{ item.id }}" class="feed-item">
+                        <div class="feed-info">
+                            <!-- Dòng 1: Tên KTV + Trạng thái -->
+                            <div class="feed-title">
+                                <span class="feed-title-name">{{ item.ten | default('KTV') }}</span>
+                                <span class="status-pill">{{ item.trang_thai | default('Chờ duyệt') }}</span>
+                            </div>
+                            
+                            <!-- Dòng 2: HĐ + Thành tiền + Thời gian -->
+                            <div class="feed-meta">
+                                <span style="color: var(--text-main); font-weight: 600;">HĐ: {{ item.so_hoa_don | default('N/A') }}</span>
+                                
+                                <span class="meta-divider">•</span>
+                                <!-- Bổ sung Thành tiền -->
+                                <span style="color: #10b981; font-weight: 700;">
+                                    {% if item.thanh_tien is defined and item.thanh_tien is not none %}
+                                        {{ "{:,.0f}".format(item.thanh_tien | float).replace(',', '.') }}đ
+                                    {% else %}
+                                        0đ
+                                    {% endif %}
+                                </span>
+
+                                <span class="meta-divider">•</span>
+                                <span>
+                                    {% if item.thoi_gian %}
+                                        {% if item.thoi_gian is string %}
+                                            {{ item.thoi_gian[8:10] }}/{{ item.thoi_gian[5:7] }} {{ item.thoi_gian[11:16] }}
+                                        {% else %}
+                                            {{ item.thoi_gian.strftime('%d/%m %H:%M') }}
+                                        {% endif %}
+                                    {% else %}
+                                        N/A
+                                    {% endif %}
+                                </span>
+                            </div>
+                        </div>
+                        <div class="action-icon-link">
+                            <i class="fa-solid fa-chevron-right"></i>
+                        </div>
+                    </a>
+                    {% endfor %}
+                {% else %}
+                    <div class="feed-empty">Chưa có đơn chấm công nào gần đây.</div>
+                {% endif %}
+            </div>
+        </div>
+
+    </div>
+</div>
+{% endblock %}  
