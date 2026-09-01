@@ -4,6 +4,8 @@ from fastapi import FastAPI
 from fastapi.responses import FileResponse
 from fastapi.staticfiles import StaticFiles
 from starlette.middleware.sessions import SessionMiddleware
+from fastapi.exceptions import RequestValidationError
+from fastapi.responses import JSONResponse
 
 # Import các routers từ thư mục app
 from app.routes import router as main_router
@@ -13,9 +15,11 @@ from app.warranty import router as warranty_router
 from app.cham_cong import router as cham_cong_router
 from app.admin_key import router as kho_key_router, api_router as kho_key_api_router
 from app.admin_quan_ly_key import router as quan_ly_key_router, api_router as quan_ly_key_api_router
-from app.report import router as report_router  # 👈 Sửa alias khớp với phần include_router phía dưới
+from app.report import router as report_router
 from app.warranty_report import router as warranty_report_router
 
+# 👈 IMPORT MODULE QUẢN LÝ KHO & SERI MÁY IN MỚI
+from app.inventory import router as inventory_router, api_router as inventory_api_router
 
 
 app = FastAPI(
@@ -29,12 +33,10 @@ os.makedirs("app/static", exist_ok=True)
 app.mount("/static", StaticFiles(directory="app/static"), name="static")
 
 @app.get('/favicon.png', include_in_schema=False)
-@app.get('/favicon.ico', include_in_schema=False)  # 👈 Bổ sung đường dẫn favicon.ico để tránh log lỗi 404 từ trình duyệt
+@app.get('/favicon.ico', include_in_schema=False)
 async def favicon():
     return FileResponse('app/static/favicon.png')
 
-from fastapi.exceptions import RequestValidationError
-from fastapi.responses import JSONResponse
 
 @app.exception_handler(RequestValidationError)
 async def validation_exception_handler(request, exc):
@@ -71,6 +73,11 @@ app.include_router(quan_ly_key_router)
 app.include_router(quan_ly_key_api_router, prefix="/admin")
 app.include_router(report_router)  
 app.include_router(warranty_report_router)
+
+# 👈 ĐĂNG KÝ ROUTER QUẢN LÝ KHO & SERI MÁY IN
+app.include_router(inventory_router)      # Giao diện quét mã: /inventory/scan
+app.include_router(inventory_api_router)  # API lưu Seri: /api/inventory/scan-serial
+
 
 if __name__ == "__main__":
     uvicorn.run("main:app", host="127.0.0.1", port=8000, reload=True)

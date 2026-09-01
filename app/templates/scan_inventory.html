@@ -1,0 +1,729 @@
+<!DOCTYPE html>
+<html lang="vi">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Quét & Nhập Kho Seri Máy In</title>
+    
+    <!-- Bootstrap 5.3 CSS -->
+    <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css" rel="stylesheet">
+    <!-- FontAwesome 6 -->
+    <link href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css" rel="stylesheet">
+    <!-- Tailwind CSS (Play CDN for utility classes) -->
+    <script src="https://cdn.tailwindcss.com"></script>
+    <!-- HTML5 QRCode Scanner -->
+    <script src="https://unpkg.com/html5-qrcode" type="text/javascript"></script>
+
+    <style>
+        body {
+            background-color: #0f172a;
+            color: #f8fafc;
+            font-family: system-ui, -apple-system, "Segoe UI", Roboto, sans-serif;
+            min-height: 100vh;
+        }
+
+        /* MOBILE-FIRST CONTAINER */
+        .app-container {
+            max-width: 600px;
+            margin: 0 auto;
+            padding: 12px 12px 100px 12px;
+        }
+
+        .scan-card {
+            background: rgba(18, 25, 41, 0.9);
+            border: 1px solid rgba(255, 255, 255, 0.1);
+            border-radius: 16px;
+            padding: 1rem;
+            backdrop-filter: blur(12px);
+        }
+
+        .form-label-sm {
+            font-size: 0.8rem;
+            font-weight: 600;
+            color: #94a3b8;
+            margin-bottom: 4px;
+            display: block;
+        }
+
+        .glass-input {
+            background: rgba(15, 23, 42, 0.7) !important;
+            border: 1px solid rgba(255, 255, 255, 0.15) !important;
+            color: #f8fafc !important;
+            border-radius: 10px !important;
+            height: 46px;
+            font-size: 0.95rem;
+        }
+
+        .glass-input:focus {
+            border-color: #10b981 !important;
+            box-shadow: 0 0 0 0.2rem rgba(16, 185, 129, 0.25) !important;
+        }
+
+        /* SWITCH TỰ ĐỘNG LƯU (AUTO-SAVE) */
+        .auto-save-box {
+            background: rgba(15, 23, 42, 0.8);
+            border: 1px solid rgba(255, 255, 255, 0.12);
+            border-radius: 12px;
+            padding: 8px 14px;
+        }
+
+        .form-check-input {
+            width: 2.6em !important;
+            height: 1.3em !important;
+            cursor: pointer;
+        }
+
+        .form-check-input:checked {
+            background-color: #10b981;
+            border-color: #10b981;
+        }
+
+        /* PREVIEW ẢNH MẮT CẮT KHI SCAN */
+        .photo-preview-box {
+            width: 58px;
+            height: 58px;
+            border-radius: 10px;
+            border: 1px dashed rgba(255, 255, 255, 0.25);
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            overflow: hidden;
+            background: rgba(15, 23, 42, 0.6);
+            position: relative;
+            flex-shrink: 0;
+        }
+
+        .photo-preview-box img {
+            width: 100%;
+            height: 100%;
+            object-fit: cover;
+        }
+
+        /* BẢNG BẢN GHI/LỊCH SỬ QUÉT */
+        .sheet-card {
+            background: rgba(18, 25, 41, 0.75);
+            border: 1px solid rgba(255, 255, 255, 0.08);
+            border-radius: 14px;
+            overflow: hidden;
+        }
+
+        .sheet-table {
+            width: 100%;
+            border-collapse: collapse;
+            font-size: 0.82rem;
+        }
+
+        .sheet-table th {
+            background: rgba(30, 41, 59, 0.9);
+            color: #94a3b8;
+            padding: 0.6rem 0.5rem;
+            font-weight: 600;
+            font-size: 0.72rem;
+            text-transform: uppercase;
+            border-bottom: 1px solid rgba(255, 255, 255, 0.08);
+        }
+
+        .sheet-table td {
+            padding: 0.6rem 0.5rem;
+            border-bottom: 1px solid rgba(255, 255, 255, 0.04);
+            color: #cbd5e1;
+            vertical-align: middle;
+        }
+
+        /* FAB CONTAINER */
+        .fab-container {
+            position: fixed;
+            bottom: 16px;
+            left: 50%;
+            transform: translateX(-50%);
+            display: flex;
+            align-items: center;
+            gap: 14px;
+            z-index: 999;
+            background: rgba(15, 23, 42, 0.9);
+            padding: 8px 20px;
+            border-radius: 50px;
+            border: 1px solid rgba(255, 255, 255, 0.15);
+            backdrop-filter: blur(16px);
+            box-shadow: 0 8px 30px rgba(0,0,0,0.6);
+        }
+
+        .fab-btn {
+            width: 44px;
+            height: 44px;
+            border-radius: 50%;
+            border: none;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-size: 1.1rem;
+            color: #fff;
+            cursor: pointer;
+            transition: transform 0.1s ease;
+        }
+
+        .fab-btn:active { transform: scale(0.92); }
+        .fab-btn.btn-reset { background: #475569; }
+        .fab-btn.btn-scan { background: #059669; width: 52px; height: 52px; font-size: 1.3rem; }
+        .fab-btn.btn-save-all { background: #2563eb; }
+
+        #reader-modal-body video {
+            object-fit: cover !important;
+            border-radius: 8px;
+        }
+        .custom-dropdown {
+            position: absolute;
+            top: 100%;
+            left: 0;
+            right: 0;
+            z-index: 1050;
+            background: #1e293b;
+            border: 1px solid rgba(255, 255, 255, 0.15);
+            border-radius: 10px;
+            max-height: 220px;
+            overflow-y: auto;
+            margin-top: 4px;
+            box-shadow: 0 10px 25px -5px rgba(0, 0, 0, 0.5);
+        }
+
+        .dropdown-item-custom {
+            padding: 10px 14px;
+            color: #f8fafc;
+            cursor: pointer;
+            font-size: 0.9rem;
+            border-bottom: 1px solid rgba(255, 255, 255, 0.05);
+            transition: background 0.15s ease;
+        }
+
+        .dropdown-item-custom:hover, .dropdown-item-custom.active {
+            background: rgba(16, 185, 129, 0.2);
+            color: #34d399;
+        }
+    </style>
+</head>
+<body>
+
+<div class="app-container">
+
+    <!-- HEADER & CÔNG TẮC BẬT TẮT TỰ ĐỘNG LƯU -->
+    <div class="d-flex align-items-center justify-content-between mb-3 px-1">
+        <div>
+            <h6 class="text-white fw-bold mb-0">Quét & Nhập Kho</h6>
+            <span class="text-slate-400 fs-7">Máy In & Barcode/QR</span>
+        </div>
+        
+        <!-- CÔNG TẮC GẠT AUTO-SAVE -->
+        <div class="auto-save-box d-flex align-items-center gap-2">
+            <span class="fs-7 fw-bold text-emerald-400" id="auto-save-text">Tự động lưu: ON</span>
+            <div class="form-check form-switch mb-0">
+                <input class="form-check-input" type="checkbox" id="toggle-auto-save" checked onchange="onAutoSaveToggle()">
+            </div>
+        </div>
+    </div>
+
+    <!-- FORM NHẬP / THÔNG TIN VỪA QUÉT -->
+    <div class="scan-card mb-3">
+        <form id="scan-form" onsubmit="event.preventDefault();">
+            <input type="hidden" id="image_base64" value="">
+
+            <!-- MODEL MÁY IN -->
+            <div class="mb-2.5 position-relative">
+                <label class="form-label-sm">Model Máy In:</label>
+                <input type="text" id="model_search" class="form-control glass-input text-emerald-400 fw-bold" 
+                    placeholder="Gõ để tìm model (vd: PRO-1000, Epson)..." autocomplete="off" oninput="onModelInput(this)">
+                
+                <!-- Input ẩn chứa ID thực tế để gửi xuống Database -->
+                <input type="hidden" id="printer_id" name="printer_id" required>
+
+                <!-- Dropdown gợi ý tự thiết kế (Custom UI) -->
+                <div id="printer-dropdown" class="custom-dropdown d-none"></div>
+            </div>
+
+            <!-- QUÉT / NHẬP SERIAL -->
+            <div class="mb-2.5">
+                <label class="form-label-sm">Số Seri (Serial No.):</label>
+                <div class="d-flex gap-2">
+                    <input type="text" id="serial_number" class="form-control glass-input fw-bold text-emerald-400 flex-grow-1" 
+                           placeholder="Nhập tay hoặc bấm Camera để quét..." required autocomplete="off">
+                    
+                    <button type="button" class="btn btn-emerald bg-emerald-600 hover:bg-emerald-500 text-white px-3 d-flex align-items-center gap-1 border-0" onclick="openCameraModal()">
+                        <i class="fa-solid fa-qrcode fs-5"></i>
+                        <span class="fs-7 fw-semibold d-none d-sm-inline">Quét</span>
+                    </button>
+                </div>
+            </div>
+
+            <!-- ẢNH CẮT TỰ ĐỘNG TỪ CAMERA -->
+            <div class="d-flex align-items-center gap-2 pt-1">
+                <div class="photo-preview-box">
+                    <i class="fa-solid fa-image text-slate-500 fs-5" id="img-placeholder"></i>
+                    <img id="img-preview" src="" class="d-none" alt="Ảnh quét">
+                </div>
+                <div class="flex-grow-1">
+                    <span class="fs-7 text-slate-400 d-block">Ảnh thiết bị / Tem mã</span>
+                    <span class="fs-7 text-slate-500" id="img-status-text">Ảnh sẽ tự động chụp khi quét Camera</span>
+                </div>
+            </div>
+        </form>
+
+        <div id="alert-status" class="mt-2.5"></div>
+    </div>
+
+    <!-- DANH SÁCH / LỊCH SỬ QUÉT -->
+    <div class="sheet-card">
+        <div class="p-2.5 bg-slate-800/80 border-bottom border-slate-700/50 d-flex justify-content-between align-items-center">
+            <span class="text-slate-300 fw-bold fs-7" id="table-title">
+                <i class="fa-solid fa-clock-rotate-left me-1"></i> Lịch Sử Quét (Đã Lưu)
+            </span>
+            <span class="badge bg-emerald-500/20 text-emerald-400 border border-emerald-500/30">
+                Mục: <strong id="total-count">0</strong>
+            </span>
+        </div>
+
+        <div class="table-responsive">
+            <table class="sheet-table">
+                <thead>
+                    <tr>
+                        <th style="width: 35px;">#</th>
+                        <th style="width: 45px;">Ảnh</th>
+                        <th>Số Seri</th>
+                        <th>Model</th>
+                        <th style="width: 80px;" class="text-center" id="th-action">Thao Tác</th>
+                    </tr>
+                </thead>
+                <tbody id="sheet-tbody">
+                    <tr id="empty-row">
+                        <td colspan="5" class="text-center text-slate-500 py-3">Chưa có dữ liệu trong danh sách</td>
+                    </tr>
+                </tbody>
+            </table>
+        </div>
+    </div>
+
+    <!-- BANNER NÚT LƯU TOÀN BỘ -->
+    <div class="fab-container">
+        <button type="button" class="fab-btn btn-reset" onclick="resetForm()" title="Làm mới form">
+            <i class="fa-solid fa-rotate-left"></i>
+        </button>
+
+        <button type="button" class="fab-btn btn-scan" onclick="openCameraModal()" title="Mở Camera quét">
+            <i class="fa-solid fa-camera"></i>
+        </button>
+
+        <button type="button" class="fab-btn btn-save-all" id="btn-save-all" onclick="saveAllBatch()" title="Lưu toàn bộ danh sách">
+            <i class="fa-solid fa-cloud-arrow-up"></i>
+        </button>
+    </div>
+
+</div>
+
+<!-- MODAL CAMERA QUÉT BARCODE/QR -->
+<div class="modal fade" id="cameraModal" tabindex="-1" aria-hidden="true">
+    <div class="modal-dialog modal-dialog-centered modal-fullscreen-sm-down">
+        <div class="modal-content bg-slate-900 border-0 text-white">
+            <div class="modal-header border-bottom border-slate-800 py-2">
+                <h6 class="modal-title fw-bold"><i class="fa-solid fa-camera text-emerald-400 me-1"></i> Quét Mã Seri Máy In</h6>
+                <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal" onclick="closeCamera()"></button>
+            </div>
+            <div class="modal-body p-2 d-flex align-items-center justify-content-center">
+                <div id="reader-modal-body" style="width:100%; background:#000; border-radius:12px; overflow:hidden;"></div>
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- Bootstrap 5.3 Bundle JS -->
+<script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/js/bootstrap.bundle.min.js"></script>
+
+<script>
+    let html5QrcodeScanner = null;
+    let localList = [];
+    let searchTimeout = null;
+
+    document.addEventListener("DOMContentLoaded", function() {
+        onAutoSaveToggle();
+    });
+
+    /* ==========================================
+     * 1. XỬ LÝ LIVE-SEARCH / AUTOCOMPLETE MODEL
+     * ========================================== */
+
+    // Bắt sự kiện gõ phím ở input search
+    function onModelInput(inputElem) {
+        const keyword = inputElem.value.trim();
+        const dropdown = document.getElementById('printer-dropdown');
+        document.getElementById('printer_id').value = ''; // Reset ID nếu user thay đổi từ khóa
+
+        if (!keyword) {
+            dropdown.innerHTML = '';
+            dropdown.classList.add('d-none');
+            return;
+        }
+
+        // Debounce 300ms tránh spam API
+        clearTimeout(searchTimeout);
+        searchTimeout = setTimeout(() => {
+            fetchPrinterSuggestions(keyword);
+        }, 300);
+    }
+
+    // Gọi API lấy kết quả khớp từ backend
+    async function fetchPrinterSuggestions(keyword) {
+        try {
+            const response = await fetch(`/api/inventory/printers?q=${encodeURIComponent(keyword)}`);
+            const result = await response.json();
+            const items = result.data || [];
+
+            renderDropdownResults(items);
+        } catch (err) {
+            console.error("Lỗi live search printer:", err);
+        }
+    }
+
+    // Render danh sách gợi ý ra UI Custom Dropdown
+    function renderDropdownResults(items) {
+        const dropdown = document.getElementById('printer-dropdown');
+        dropdown.innerHTML = '';
+
+        if (!items || items.length === 0) {
+            dropdown.innerHTML = `<div class="dropdown-item-custom text-slate-400 italic">Không tìm thấy model phù hợp</div>`;
+            dropdown.classList.remove('d-none');
+            return;
+        }
+
+        items.forEach(item => {
+            const div = document.createElement('div');
+            div.className = 'dropdown-item-custom d-flex justify-content-between align-items-center';
+            div.innerHTML = `
+                <span><strong class="text-emerald-400">${item.brand_name}</strong> - ${item.model_code}</span>
+                <small class="text-slate-500">ID: ${item.id}</small>
+            `;
+            
+            // Lắng nghe sự kiện click chọn Item
+            div.onclick = function() {
+                document.getElementById('model_search').value = `${item.brand_name} - ${item.model_code}`;
+                document.getElementById('printer_id').value = item.id;
+                dropdown.classList.add('d-none');
+            };
+
+            dropdown.appendChild(div);
+        });
+
+        dropdown.classList.remove('d-none');
+    }
+
+    // Tự động ẩn Dropdown khi nhấp ra ngoài
+    document.addEventListener('click', function(e) {
+        const dropdown = document.getElementById('printer-dropdown');
+        const input = document.getElementById('model_search');
+        if (dropdown && !dropdown.contains(e.target) && e.target !== input) {
+            dropdown.classList.add('d-none');
+        }
+    });
+
+    /* ==========================================
+     * 2. XỬ LÝ SCAN, LƯU TRỮ VÀ GIAO DIỆN Kho
+     * ========================================== */
+
+    function onAutoSaveToggle() {
+        const isAuto = document.getElementById('toggle-auto-save').checked;
+        const textLabel = document.getElementById('auto-save-text');
+        const btnSaveAll = document.getElementById('btn-save-all');
+        const tableTitle = document.getElementById('table-title');
+
+        if (isAuto) {
+            textLabel.innerText = "Tự động lưu: ON";
+            textLabel.className = "fs-7 fw-bold text-emerald-400";
+            btnSaveAll.style.display = "none";
+            tableTitle.innerHTML = `<i class="fa-solid fa-clock-rotate-left me-1"></i> Lịch Sử Quét (Đã Lưu)`;
+            showStatus("BẬT tự động lưu: Mỗi khi quét thành công sẽ tự lưu xuống DB", "info");
+        } else {
+            textLabel.innerText = "Tự động lưu: OFF";
+            textLabel.className = "fs-7 fw-bold text-amber-400";
+            btnSaveAll.style.display = "flex";
+            tableTitle.innerHTML = `<i class="fa-solid fa-list-check me-1"></i> Danh Sách Quét Tạm (Chờ Lưu)`;
+            showStatus("TẮT tự động lưu: Mã sẽ đưa vào danh sách chờ bên dưới", "warning");
+        }
+        
+        localList = [];
+        renderTable();
+    }
+
+    function captureCameraFrame() {
+        try {
+            const videoElem = document.querySelector("#reader-modal-body video");
+            if (!videoElem) return null;
+
+            const canvas = document.createElement("canvas");
+            canvas.width = videoElem.videoWidth || 640;
+            canvas.height = videoElem.videoHeight || 480;
+            const ctx = canvas.getContext("2d");
+            ctx.drawImage(videoElem, 0, 0, canvas.width, canvas.height);
+            
+            return canvas.toDataURL("image/jpeg", 0.7);
+        } catch (e) {
+            return null;
+        }
+    }
+
+    function setPreviewImage(base64) {
+        document.getElementById('image_base64').value = base64 || '';
+        const img = document.getElementById('img-preview');
+        const icon = document.getElementById('img-placeholder');
+        const statusText = document.getElementById('img-status-text');
+
+        if (base64) {
+            img.src = base64;
+            img.classList.remove('d-none');
+            icon.classList.add('d-none');
+            statusText.innerText = "Đã chụp ảnh tem quét thành công";
+            statusText.className = "fs-7 text-emerald-400";
+        } else {
+            img.src = '';
+            img.classList.add('d-none');
+            icon.classList.remove('d-none');
+            statusText.innerText = "Ảnh sẽ tự động chụp khi quét Camera";
+            statusText.className = "fs-7 text-slate-500";
+        }
+    }
+
+    function handleScanCompleted(serialNumber) {
+        const printerId = document.getElementById('printer_id').value;
+        const modelDisplay = document.getElementById('model_search').value.trim();
+        const isAuto = document.getElementById('toggle-auto-save').checked;
+
+        if (!printerId) {
+            showStatus("Vui lòng gõ và chọn đúng Model máy in từ danh sách gợi ý!", "danger");
+            document.getElementById('model_search').focus();
+            return;
+        }
+
+        document.getElementById('serial_number').value = serialNumber;
+        const photoBase64 = captureCameraFrame();
+        setPreviewImage(photoBase64);
+
+        const itemData = {
+            serial_number: serialNumber,
+            printer_id: parseInt(printerId, 10),
+            model_display: modelDisplay,
+            image_url: photoBase64
+        };
+
+        if (isAuto) {
+            saveSingleToDatabase(itemData);
+        } else {
+            addToListPending(itemData);
+        }
+    }
+
+    async function saveSingleToDatabase(payload) {
+        try {
+            showStatus(`Đang lưu Seri: ${payload.serial_number}...`, "info");
+            const response = await fetch('/api/inventory/scan-serial', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({
+                    serial_number: payload.serial_number,
+                    printer_id: payload.printer_id,
+                    image_url: payload.image_url
+                })
+            });
+
+            const result = await response.json();
+
+            if (response.ok) {
+                showStatus(`Đã lưu thành công: ${payload.serial_number}`, "success");
+                localList.unshift({ ...payload, status: 'saved' });
+                renderTable();
+                document.getElementById('serial_number').value = '';
+            } else {
+                showStatus(result.detail || "Lỗi lưu dữ liệu!", "danger");
+            }
+        } catch (err) {
+            showStatus("Lỗi kết nối máy chủ!", "danger");
+        }
+    }
+
+    function addToListPending(payload) {
+        const isExist = localList.some(item => item.serial_number === payload.serial_number);
+        if (isExist) {
+            showStatus(`Mã Seri ${payload.serial_number} đã có trong danh sách chờ!`, "warning");
+            return;
+        }
+
+        localList.unshift({ ...payload, status: 'pending' });
+        renderTable();
+        showStatus(`Đã thêm mã ${payload.serial_number} vào danh sách chờ`, "success");
+        document.getElementById('serial_number').value = '';
+    }
+
+    async function saveRowItem(index) {
+        const item = localList[index];
+        if (!item || item.status === 'saved') return;
+
+        try {
+            showStatus(`Đang lưu Seri ${item.serial_number}...`, "info");
+            const response = await fetch('/api/inventory/scan-serial', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({
+                    serial_number: item.serial_number,
+                    printer_id: item.printer_id,
+                    image_url: item.image_url
+                })
+            });
+
+            if (response.ok) {
+                item.status = 'saved';
+                renderTable();
+                showStatus(`Đã lưu thành công Seri: ${item.serial_number}`, "success");
+            } else {
+                showStatus("Lỗi khi lưu dòng này!", "danger");
+            }
+        } catch (err) {
+            showStatus("Lỗi kết nối máy chủ!", "danger");
+        }
+    }
+
+    async function saveAllBatch() {
+        const pendingItems = localList.filter(item => item.status === 'pending');
+        if (pendingItems.length === 0) {
+            showStatus("Không có mã nào đang chờ lưu!", "warning");
+            return;
+        }
+
+        showStatus(`Đang lưu ${pendingItems.length} bản ghi...`, "info");
+        let successCount = 0;
+
+        for (let item of pendingItems) {
+            try {
+                const response = await fetch('/api/inventory/scan-serial', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({
+                        serial_number: item.serial_number,
+                        printer_id: item.printer_id,
+                        image_url: item.image_url
+                    })
+                });
+
+                if (response.ok) {
+                    item.status = 'saved';
+                    successCount++;
+                }
+            } catch (err) {}
+        }
+
+        renderTable();
+        showStatus(`Hoàn tất! Đã lưu thành công ${successCount}/${pendingItems.length} mã`, "success");
+    }
+
+    function renderTable() {
+        const tbody = document.getElementById('sheet-tbody');
+        const isAuto = document.getElementById('toggle-auto-save').checked;
+        tbody.innerHTML = '';
+        document.getElementById('total-count').innerText = localList.length;
+
+        if (localList.length === 0) {
+            tbody.innerHTML = `<tr id="empty-row"><td colspan="5" class="text-center text-slate-500 py-3">Chưa có dữ liệu</td></tr>`;
+            return;
+        }
+
+        localList.forEach((item, index) => {
+            const tr = document.createElement('tr');
+
+            const imgThumb = item.image_url 
+                ? `<img src="${item.image_url}" style="width:30px; height:30px; object-fit:cover; border-radius:6px;">` 
+                : `<i class="fa-solid fa-image text-slate-600"></i>`;
+
+            let actionCol = '';
+            if (isAuto || item.status === 'saved') {
+                actionCol = `<span class="badge bg-emerald-500/20 text-emerald-400 border border-emerald-500/30"><i class="fa-solid fa-check me-1"></i>Đã lưu</span>`;
+            } else {
+                actionCol = `<button type="button" class="btn btn-sm btn-primary py-0 px-2 fs-7" onclick="saveRowItem(${index})">Lưu mã này</button>`;
+            }
+
+            tr.innerHTML = `
+                <td class="text-slate-500 fs-7">${index + 1}</td>
+                <td class="text-center">${imgThumb}</td>
+                <td class="fw-bold text-cyan-400 text-truncate" style="max-width: 120px;">${item.serial_number}</td>
+                <td class="text-slate-200 text-truncate" style="max-width: 100px;">${item.model_display || item.printer_id}</td>
+                <td class="text-center">${actionCol}</td>
+            `;
+            tbody.appendChild(tr);
+        });
+    }
+
+    async function openCameraModal() {
+        const printerId = document.getElementById('printer_id').value;
+        if (!printerId) {
+            showStatus("Vui lòng chọn Model máy in hợp lệ từ gợi ý trước khi quét!", "warning");
+            document.getElementById('model_search').focus();
+            return;
+        }
+
+        if (!window.isSecureContext && window.location.hostname !== "localhost" && window.location.hostname !== "127.0.0.1") {
+            alert("Lỗi: Yêu cầu HTTPS để dùng Camera trên điện thoại!");
+            return;
+        }
+
+        const modal = new bootstrap.Modal(document.getElementById('cameraModal'));
+        modal.show();
+
+        setTimeout(() => {
+            html5QrcodeScanner = new Html5Qrcode("reader-modal-body");
+            html5QrcodeScanner.start(
+                { facingMode: "environment" },
+                { fps: 15, qrbox: { width: 250, height: 140 } },
+                onScanSuccess
+            ).catch(err => {
+                showStatus("Không mở được camera: " + err, "danger");
+                closeCamera();
+                bootstrap.Modal.getInstance(document.getElementById('cameraModal')).hide();
+            });
+        }, 300);
+    }
+
+    function closeCamera() {
+        if (html5QrcodeScanner) {
+            html5QrcodeScanner.stop().then(() => html5QrcodeScanner = null).catch(e => {});
+        }
+    }
+
+    function onScanSuccess(decodedText) {
+        playBeep();
+        handleScanCompleted(decodedText.trim());
+        closeCamera();
+        bootstrap.Modal.getInstance(document.getElementById('cameraModal')).hide();
+    }
+
+    function resetForm() {
+        document.getElementById('serial_number').value = '';
+        setPreviewImage('');
+        document.getElementById('serial_number').focus();
+    }
+
+    function showStatus(msg, type) {
+        const alertDiv = document.getElementById('alert-status');
+        const colors = {
+            success: 'color:#34d399; background:rgba(16,185,129,0.15); border:1px solid rgba(16,185,129,0.3)',
+            danger: 'color:#f87171; background:rgba(239,68,68,0.15); border:1px solid rgba(239,68,68,0.3)',
+            warning: 'color:#fbbf24; background:rgba(245,158,11,0.15); border:1px solid rgba(245,158,11,0.3)',
+            info: 'color:#38bdf8; background:rgba(56,189,248,0.15); border:1px solid rgba(56,189,248,0.3)'
+        };
+        alertDiv.innerHTML = `<div class="py-1.5 px-2.5 rounded-2 fs-7 fw-bold" style="${colors[type]}">${msg}</div>`;
+    }
+
+    function playBeep() {
+        try {
+            const ctx = new (window.AudioContext || window.webkitAudioContext)();
+            const osc = ctx.createOscillator();
+            osc.connect(ctx.destination);
+            osc.frequency.value = 850;
+            osc.start();
+            osc.stop(ctx.currentTime + 0.1);
+        } catch(e) {}
+    }
+</script>
+</body>
+</html>

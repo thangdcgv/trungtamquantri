@@ -3,7 +3,7 @@ from datetime import datetime, timezone, timedelta
 from typing import Dict, Any, Optional
 
 from fastapi import APIRouter, Request, Depends
-from fastapi.responses import RedirectResponse, JSONResponse
+from fastapi.responses import RedirectResponse
 from fastapi.templating import Jinja2Templates
 
 from config import supabase
@@ -30,23 +30,13 @@ def get_current_user_from_session(request: Request) -> Optional[Dict[str, Any]]:
     }
 
 
-def get_first_day_of_month_utc_iso() -> str:
-    """Lấy ngày đầu tiên của tháng theo giờ VN nhưng đổi về định dạng UTC ISO chuẩn để query DB."""
-    now_vn = datetime.now(VIETNAM_TZ)
-    first_day_vn = datetime(now_vn.year, now_vn.month, 1, 0, 0, 0, tzinfo=VIETNAM_TZ)
-    # Chuyển về UTC chuẩn
-    first_day_utc = first_day_vn.astimezone(timezone.utc)
-    return first_day_utc.strftime("%Y-%m-%dT%H:%M:%SZ")
-
-
 @router.get("/")
 def index(
     request: Request,
     current_user: Optional[Dict[str, Any]] = Depends(get_current_user_from_session)
 ):
     """
-    Trang chủ Dashboard: Hiển thị 5 phiếu bảo hành, 5 lượt chấm công.
-    Dùng 'def' để FastAPI tự đẩy I/O của Supabase sang ThreadPool.
+    Trang chủ Dashboard: Hiển thị 5 phiếu bảo hành và 5 lượt chấm công mới nhất.
     """
     # 1. Điều hướng nếu chưa đăng nhập
     if not current_user:
@@ -55,28 +45,23 @@ def index(
     warranties = []
     installations = []
 
-    # 2. Lấy mốc thời gian ISO chuẩn UTC
-    first_day_iso = get_first_day_of_month_utc_iso()
-
     try:
         if supabase:
-            # Lấy 5 phiếu bảo hành gần nhất trong tháng
+            # Lấy 5 phiếu bảo hành MỚI NHẤT (Bỏ lọc .gte để tránh bị rỗng khi đầu tháng chưa có dữ liệu)
             res_warranty = (
                 supabase.table('warranty_records')
                 .select('id, serial_number, customer_name, model_name, created_at, category')
-                .gte('created_at', first_day_iso)
                 .order('created_at', desc=True)
                 .limit(5)
                 .execute()
             )
             warranties = res_warranty.data or []
 
-            # Lấy 5 đơn chấm công gần nhất trong tháng
+            # Lấy 5 đơn chấm công MỚI NHẤT (Sắp xếp theo thoi_gian thay vì id)
             res_cham_cong = (
                 supabase.table('cham_cong')
-                .select('id, ten, thoi_gian, so_hoa_don, thanh_tien,trang_thai')
-                .gte('thoi_gian', first_day_iso)
-                .order('id', desc=True)
+                .select('id, ten, thoi_gian, so_hoa_don, thanh_tien, trang_thai')
+                .order('thoi_gian', desc=True)
                 .limit(5)
                 .execute()
             )
@@ -94,16 +79,3 @@ def index(
             "recent_installations": installations
         }
     )
-
-
-@router.get("/api/health-status")
-def health_status():
-    """API kiểm tra trạng thái hoạt động hệ thống."""
-    db_connected = bool(supabase)
-    return {
-        "status": "success" if db_connected else "degraded",
-        "database": "online" if db_connected else "offline",
-        "timekeeping": "online",
-        "warranty": "online",
-        "library": "online"
-    }
