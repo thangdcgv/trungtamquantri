@@ -67,6 +67,7 @@ def extract_user_from_session(request: Request) -> Optional[Dict[str, Any]]:
         "ho_ten": ho_ten,
         "name": ho_ten,
         "role": str(request.session.get("role") or "User").strip(),
+        "access_token": request.session.get("access_token"),
     }
 
 
@@ -120,7 +121,6 @@ async def login(
         )
 
     try:
-        # Chạy Supabase Auth I/O trong Thread Pool để tránh block event loop
         response = await run_in_threadpool(
             supabase.auth.sign_in_with_password,
             {"email": email_clean, "password": password}
@@ -136,7 +136,7 @@ async def login(
 
         auth_id = str(response.user.id)
 
-        # Lấy thông tin profile từ bảng quan_tri_vien (Thread Pool)
+        # Lấy thông tin profile từ bảng quan_tri_vien
         def _fetch_user_profile():
             return (
                 supabase.table("quan_tri_vien")
@@ -157,23 +157,21 @@ async def login(
             username = user_info.get("username") or username
             ho_ten = user_info.get("ho_ten") or user_info.get("name") or ho_ten
             role = str(user_info.get("role") or "User").strip()
-        else:
-            logger.warning(f"Không tìm thấy auth_id={auth_id} trong bảng quan_tri_vien")
 
-        # Khởi tạo lại Session an toàn
+        # Khởi tạo lại Session an toàn cho User này
         request.session.clear()
         request.session["user_id"] = auth_id
         request.session["user_email"] = response.user.email or email_clean
         request.session["username"] = username
         request.session["ho_ten"] = ho_ten
         request.session["role"] = role
+        
+        # Lưu token nếu cần dùng xác thực RLS
+        if response.session:
+            request.session["access_token"] = response.session.access_token
 
-        # Điều hướng theo Role
         role_clean = role.lower()
-        if role_clean in ["admin", "super admin", "system admin"]:
-            redirect_url = "/admin"
-        else:
-            redirect_url = "/"
+        redirect_url = "/admin" if role_clean in ["admin", "super admin", "system admin"] else "/"
 
         return RedirectResponse(url=redirect_url, status_code=status.HTTP_303_SEE_OTHER)
 
@@ -200,23 +198,18 @@ async def login(
 
 @router.get("/logout")
 async def logout(request: Request):
-    """Đăng xuất tài khoản và dọn dẹp Session."""
-    try:
-        await run_in_threadpool(supabase.auth.sign_out)
-    except Exception as e:
-        logger.error(f"LOGOUT ERROR: {e}")
-
+    """Đăng xuất tài khoản bằng cách xóa Cookie Session cục bộ."""
+    # CHỈ XÓA SESSION CỦA USER NÀY - KHÔNG GỌI supabase.auth.sign_out() TOÀN CỤC
     request.session.clear()
     return RedirectResponse(url="/auth/login", status_code=status.HTTP_303_SEE_OTHER)
 
 
 # =========================================================
-# 3. ĐỔI MẬT KHẨU (CHANGE PASSWORD)
+# 3. ĐỔI MẬT KHẨU / QUÊN MẬT KHẨU
 # =========================================================
 
 @router.get("/change-password", response_class=HTMLResponse)
 async def change_password_page(request: Request):
-    """Hiển thị giao diện đổi mật khẩu."""
     if not request.session.get("user_id"):
         return RedirectResponse(url="/auth/login", status_code=status.HTTP_303_SEE_OTHER)
 
@@ -229,7 +222,6 @@ async def change_password(
     current_password: str = Form(...),
     new_password: str = Form(...),
 ):
-    """Đổi mật khẩu cho người dùng hiện tại."""
     user_id = request.session.get("user_id")
     email = request.session.get("user_email")
 
@@ -263,7 +255,6 @@ async def change_password(
         )
 
     try:
-        # 1. Xác minh lại mật khẩu cũ qua Thread Pool
         test_login = await run_in_threadpool(
             supabase.auth.sign_in_with_password,
             {"email": email, "password": current_password}
@@ -276,7 +267,6 @@ async def change_password(
                 status_code=status.HTTP_401_UNAUTHORIZED,
             )
 
-        # 2. Cập nhật mật khẩu mới qua Thread Pool
         await run_in_threadpool(
             supabase.auth.update_user,
             {"password": new_password}
@@ -298,19 +288,13 @@ async def change_password(
         )
 
 
-# =========================================================
-# 4. QUÊN MẬT KHẨU (FORGOT PASSWORD)
-# =========================================================
-
 @router.get("/forgot-password", response_class=HTMLResponse)
 async def forgot_password_page(request: Request):
-    """Hiển thị trang quên mật khẩu."""
     return render_template(request, "forgot_password.html", {"message": None, "error": None})
 
 
 @router.post("/forgot-password")
 async def forgot_password(request: Request, email: str = Form(...)):
-    """Gửi email khôi phục mật khẩu qua Supabase Auth."""
     email_clean = email.strip().lower()
 
     if not email_clean:
@@ -341,13 +325,8 @@ async def forgot_password(request: Request, email: str = Form(...)):
     return render_template(request, "forgot_password.html", {"message": message, "error": None})
 
 
-# =========================================================
-# 5. ĐẶT LẠI MẬT KHẨU TỪ LINK EMAIL (UPDATE PASSWORD)
-# =========================================================
-
 @router.get("/update-password", response_class=HTMLResponse)
 async def update_password_page(request: Request):
-    """Trang nhập mật khẩu mới từ link reset email."""
     return render_template(request, "update_password.html", {"error": None, "success": None})
 
 
@@ -358,7 +337,6 @@ async def update_password(
     confirm_password: str = Form(...),
     access_token: Optional[str] = Form(None),
 ):
-    """Cập nhật mật khẩu mới sau khi truy cập link khôi phục."""
     if new_password != confirm_password:
         return render_template(
             request,
@@ -378,7 +356,6 @@ async def update_password(
 
     try:
         def _perform_update():
-            # Nếu thu thập được Access Token từ JS Client
             if access_token:
                 supabase.auth.set_session(access_token, "")
             return supabase.auth.update_user({"password": new_password})

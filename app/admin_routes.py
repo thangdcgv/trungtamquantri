@@ -68,9 +68,10 @@ async def get_current_admin(request: Request) -> Dict[str, Any]:
     role_clean = normalize_role(raw_role)
 
     if not user_id:
+        # Trả về HTTPException 401 để middleware hoặc route tự xử lý, hoặc kiểm tra trực tiếp
         raise HTTPException(
-            status_code=status.HTTP_303_SEE_OTHER,
-            headers={"Location": "/auth/login"}
+            status_code=status.HTTP_401_UNAUTHORIZED,
+            detail="Phiên làm việc hết hạn"
         )
 
     if role_clean not in ALLOWED_ADMIN_ROLES:
@@ -82,7 +83,7 @@ async def get_current_admin(request: Request) -> Dict[str, Any]:
     return {
         "auth_id": str(user_id),
         "name": request.session.get('ho_ten', 'Quản trị viên'),
-        "role": raw_role,  # Giữ nguyên định dạng gốc hiển thị UI
+        "role": raw_role,
         "role_clean": role_clean
     }
 
@@ -321,11 +322,11 @@ async def delete_user(
     user_id: int,
     admin: dict = Depends(get_current_admin)
 ):
-    """Xóa tài khoản khỏi cả Auth và DB (Xóa Auth trước để tránh mồ côi DB)."""
+    """Xóa tài khoản an toàn (Xóa DB trước, Auth sau)."""
     try:
         if supabase and supabase_admin:
             res = await run_in_threadpool(
-                lambda: supabase.table('quan_tri_vien').select('auth_id, email, role').eq("id", user_id).execute()
+                lambda: supabase.table('quan_tri_vien').select('auth_id, role').eq("id", user_id).execute()
             )
             if not res or not res.data:
                 raise Exception("Tài khoản không tồn tại.")
@@ -334,22 +335,20 @@ async def delete_user(
             target_auth_id = target_user.get('auth_id')
             target_role = target_user.get('role', 'User')
 
-            # Chặn tự xóa chính mình
             if str(target_auth_id) == str(admin["auth_id"]):
                 raise Exception("Bạn không thể tự xóa tài khoản quản trị đang đăng nhập!")
 
-            # Kiểm tra phân cấp quyền xóa
             if not can_manage_target_role(admin["role_clean"], target_role):
                 raise Exception(f"Bạn không có quyền xóa tài khoản cấp {target_role}.")
 
-            # Xóa Auth trước (via Thread Pool)
-            if target_auth_id:
-                await run_in_threadpool(supabase_admin.auth.admin.delete_user, target_auth_id)
-
-            # Xóa DB sau (via Thread Pool)
+            # 1. Xóa trong DB trước để kiểm tra ràng buộc khóa ngoại
             await run_in_threadpool(
                 lambda: supabase.table('quan_tri_vien').delete().eq("id", user_id).execute()
             )
+
+            # 2. DB xóa thành công mới tiến hành xóa Auth
+            if target_auth_id:
+                await run_in_threadpool(supabase_admin.auth.admin.delete_user, target_auth_id)
 
             request.session["success_message"] = "Đã xóa tài khoản thành công."
 
@@ -392,24 +391,27 @@ async def get_config_cham_cong(request: Request, admin: dict = Depends(get_curre
 
 @router.post("/config-cham-cong/save")
 async def save_config_cham_cong(request: Request, admin: dict = Depends(get_current_admin)):
-    """Lưu thông tin cấu hình chấm công theo dạng Key-Value Upsert."""
+    """Lưu cấu hình bằng 1 Query duy nhất (Batch Upsert)."""
     try:
         form_data = await request.form()
+        upsert_payload = []
         
-        def _save_all_configs():
-            for key, value in form_data.items():
-                if value is not None and str(value).strip() != "":
-                    try:
-                        val_num = float(str(value).strip())
-                        supabase.table("config_cham_cong").upsert(
-                            {"key_name": key, "value_num": val_num},
-                            on_conflict="key_name"
-                        ).execute()
-                    except ValueError:
-                        continue
+        for key, value in form_data.items():
+            if value is not None and str(value).strip() != "":
+                try:
+                    val_num = float(str(value).strip())
+                    upsert_payload.append({"key_name": key, "value_num": val_num})
+                except ValueError:
+                    continue
 
-        if supabase:
-            await run_in_threadpool(_save_all_configs)
+        if supabase and upsert_payload:
+            def _batch_upsert():
+                return supabase.table("config_cham_cong").upsert(
+                    upsert_payload,
+                    on_conflict="key_name"
+                ).execute()
+
+            await run_in_threadpool(_batch_upsert)
 
         request.session["success_message"] = "Cập nhật cấu hình chấm công thành công!"
     except Exception as e:
@@ -417,3 +419,86 @@ async def save_config_cham_cong(request: Request, admin: dict = Depends(get_curr
         request.session["error_message"] = f"Lưu cấu hình thất bại: {str(e)}"
 
     return RedirectResponse(url="/admin/config-cham-cong", status_code=status.HTTP_303_SEE_OTHER)
+# ==========================================
+# 4. QUẢN LÝ LOG LỖI HỆ THỐNG
+# ==========================================
+
+@router.get("/logs", response_class=HTMLResponse)
+async def list_system_logs(
+    request: Request,
+    level: Optional[str] = None,
+    status_filter: Optional[str] = None,
+    page: int = 1,
+    admin: dict = Depends(get_current_admin)
+):
+    """Trang danh sách log lỗi hệ thống."""
+    # Chỉ cho phép Super Admin hoặc System Admin truy cập
+    if admin["role_clean"] not in ["super admin", "system admin"]:
+        raise HTTPException(status_code=403, detail="Bạn không có quyền truy cập trang này.")
+
+    logs = []
+    limit = 20
+    offset = (page - 1) * limit
+    error_msg = request.session.pop("error_message", None)
+    success_msg = request.session.pop("success_message", None)
+
+    try:
+        if supabase:
+            def _fetch_logs():
+                query = supabase.table('system_logs').select('*')
+                if level:
+                    query = query.eq('level', level.upper())
+                if status_filter:
+                    query = query.eq('status', status_filter.upper())
+                
+                return query.order('id', desc=True).range(offset, offset + limit - 1).execute()
+
+            res = await run_in_threadpool(_fetch_logs)
+            logs = res.data if res and res.data else []
+    except Exception as e:
+        logger.error(f"Error fetching system logs: {e}")
+        error_msg = f"Không thể tải nhật ký lỗi: {str(e)}"
+
+    return templates.TemplateResponse(
+        request=request,
+        name="admin_logs.html",
+        context={
+            "logs": logs,
+            "current_user": admin,
+            "current_level": level or "",
+            "current_status": status_filter or "",
+            "page": page,
+            "error_msg": error_msg,
+            "success_msg": success_msg
+        }
+    )
+
+
+@router.post("/logs/resolve/{log_id}")
+async def resolve_log(log_id: int, request: Request, admin: dict = Depends(get_current_admin)):
+    """Đánh dấu log đã xử lý xong."""
+    try:
+        if supabase:
+            await run_in_threadpool(
+                lambda: supabase.table('system_logs').update({'status': 'RESOLVED'}).eq('id', log_id).execute()
+            )
+            request.session["success_message"] = f"Đã đánh dấu xử lý log #{log_id}."
+    except Exception as e:
+        request.session["error_message"] = f"Lỗi cập nhật: {str(e)}"
+
+    return RedirectResponse(url="/admin/logs", status_code=status.HTTP_303_SEE_OTHER)
+
+
+@router.post("/logs/clear")
+async def clear_old_logs(request: Request, admin: dict = Depends(get_current_admin)):
+    """Dọn dẹp các log đã RESOLVED hoặc IGNORED."""
+    try:
+        if supabase:
+            await run_in_threadpool(
+                lambda: supabase.table('system_logs').delete().in_('status', ['RESOLVED', 'IGNORED']).execute()
+            )
+            request.session["success_message"] = "Đã dọn dẹp các log cũ thành công!"
+    except Exception as e:
+        request.session["error_message"] = f"Dọn dẹp thất bại: {str(e)}"
+
+    return RedirectResponse(url="/admin/logs", status_code=status.HTTP_303_SEE_OTHER)

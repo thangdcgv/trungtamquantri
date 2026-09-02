@@ -1,11 +1,15 @@
 import os
+import traceback
 import uvicorn
-from fastapi import FastAPI
-from fastapi.responses import FileResponse
+from fastapi import FastAPI, Request, status
+from fastapi.responses import FileResponse, HTMLResponse, JSONResponse
 from fastapi.staticfiles import StaticFiles
 from starlette.middleware.sessions import SessionMiddleware
 from fastapi.exceptions import RequestValidationError
-from fastapi.responses import JSONResponse
+from starlette.concurrency import run_in_threadpool
+
+# Import cấu hình Supabase
+from config import supabase  # Nếu file config nằm trong app thì đổi thành: from app.config import supabase
 
 # Import các routers từ thư mục app
 from app.routes import router as main_router
@@ -17,8 +21,6 @@ from app.admin_key import router as kho_key_router, api_router as kho_key_api_ro
 from app.admin_quan_ly_key import router as quan_ly_key_router, api_router as quan_ly_key_api_router
 from app.report import router as report_router
 from app.warranty_report import router as warranty_report_router
-
-# 👈 IMPORT MODULE QUẢN LÝ KHO & SERI MÁY IN MỚI
 from app.inventory import router as inventory_router, api_router as inventory_api_router
 
 
@@ -32,6 +34,7 @@ app = FastAPI(
 os.makedirs("app/static", exist_ok=True)
 app.mount("/static", StaticFiles(directory="app/static"), name="static")
 
+
 @app.get('/favicon.png', include_in_schema=False)
 @app.get('/favicon.ico', include_in_schema=False)
 async def favicon():
@@ -39,8 +42,7 @@ async def favicon():
 
 
 @app.exception_handler(RequestValidationError)
-async def validation_exception_handler(request, exc):
-    # Lấy chi tiết lỗi từ Pydantic
+async def validation_exception_handler(request: Request, exc: RequestValidationError):
     errors = exc.errors()
     error_messages = []
     for error in errors:
@@ -57,26 +59,66 @@ async def validation_exception_handler(request, exc):
         }
     )
 
-# Khai báo Secret Key (Ưu tiên lấy từ biến môi trường .env)
+
+async def log_error_to_db(request: Request, exc: Exception, module: str = "System"):
+    """Hàm phụ trợ ghi log vào Supabase bất đồng bộ."""
+    if not supabase:
+        return
+    
+    try:
+        user_id = request.session.get('user_id') if hasattr(request, 'session') else None
+        log_payload = {
+            "level": "CRITICAL" if isinstance(exc, SystemError) else "ERROR",
+            "module": module,
+            "path": str(request.url.path),
+            "message": str(exc),
+            "stack_trace": traceback.format_exc(),
+            "user_id": str(user_id) if user_id else "Anonymous",
+            "status": "OPEN"
+        }
+        await run_in_threadpool(
+            lambda: supabase.table('system_logs').insert(log_payload).execute()
+        )
+    except Exception as db_err:
+        print(f"❌ Lỗi ghi system_logs: {db_err}")
+
+
+# Global Exception Handler cho FastAPI
+@app.exception_handler(Exception)
+async def global_exception_handler(request: Request, exc: Exception):
+    await log_error_to_db(request, exc)
+    
+    # Nếu là request API -> Trả Json
+    if request.url.path.startswith("/api/"):
+        return JSONResponse(
+            status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
+            content={"detail": "Đã xảy ra lỗi hệ thống. Ban quản trị đã ghi nhận sự cố."}
+        )
+    # Nếu là request Giao diện HTML -> Trả thông báo trên giao diện
+    return HTMLResponse(
+        content=f"<h2>⚠️ Sự cố hệ thống (500)</h2><p>Đã xảy ra lỗi: {str(exc)}</p><a href='/admin'>Quay lại Admin</a>",
+        status_code=status.HTTP_500_INTERNAL_SERVER_ERROR
+    )
+
+
+# Khai báo Secret Key
 SECRET_KEY = os.getenv("SECRET_KEY", "mayindaithanh-centerhub-secret-key-2026")
 app.add_middleware(SessionMiddleware, secret_key=SECRET_KEY)
 
 # Đăng ký các Router vào hệ thống
-app.include_router(main_router)       # Trang chủ & điều hướng chung
-app.include_router(auth_router)       # Đăng nhập, đăng xuất, đổi mật khẩu
-app.include_router(admin_router)      # Trang Quản trị (/admin, /admin/users, /admin/config-cham-cong)
-app.include_router(warranty_router)   # Phiếu bảo hành (/warranty/create, detail, ...)
-app.include_router(cham_cong_router)  # Chấm công lắp đặt (/cham-cong/form, api, ...)
+app.include_router(main_router)       
+app.include_router(auth_router)       
+app.include_router(admin_router)      
+app.include_router(warranty_router)   
+app.include_router(cham_cong_router)  
 app.include_router(kho_key_router)
 app.include_router(kho_key_api_router)
 app.include_router(quan_ly_key_router)
 app.include_router(quan_ly_key_api_router, prefix="/admin")
 app.include_router(report_router)  
 app.include_router(warranty_report_router)
-
-# 👈 ĐĂNG KÝ ROUTER QUẢN LÝ KHO & SERI MÁY IN
-app.include_router(inventory_router)      # Giao diện quét mã: /inventory/scan
-app.include_router(inventory_api_router)  # API lưu Seri: /api/inventory/scan-serial
+app.include_router(inventory_router)      
+app.include_router(inventory_api_router)  
 
 
 if __name__ == "__main__":

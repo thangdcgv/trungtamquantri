@@ -1,0 +1,170 @@
+<!DOCTYPE html>
+<html lang="vi">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Giám Sát Log Lỗi Hệ Thống</title>
+    <style>
+        body {
+            margin: 0;
+            padding: 0;
+            background-color: #0f172a;
+            color: #f1f5f9;
+        }
+
+        /* Scope toàn bộ style */
+        .logmon-wrapper {
+            max-width: 1400px;
+            margin: 0 auto;
+            padding: 24px 16px;
+            font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
+            box-sizing: border-box;
+        }
+        .logmon-wrapper * { box-sizing: border-box; }
+
+        /* Header Section */
+        .logmon-header { display: flex; justify-content: space-between; align-items: center; margin-bottom: 20px; gap: 16px; flex-wrap: wrap; }
+        .logmon-title-area h1 { font-size: 1.35rem; font-weight: 700; color: #ffffff; margin: 0 0 6px 0; display: flex; align-items: center; gap: 10px; }
+        .logmon-title-area p { margin: 0; font-size: 0.85rem; color: #94a3b8; }
+        .logmon-actions { display: flex; align-items: center; gap: 12px; }
+        .logmon-badge-live { display: inline-flex; align-items: center; gap: 6px; padding: 4px 10px; background: rgba(16, 185, 129, 0.15); border: 1px solid rgba(16, 185, 129, 0.3); border-radius: 20px; color: #10b981; font-size: 0.75rem; font-weight: 600; }
+        .logmon-dot { width: 6px; height: 6px; background: #10b981; border-radius: 50%; box-shadow: 0 0 8px #10b981; }
+
+        /* Filter Toolbar */
+        .logmon-toolbar { background: #1e293b; border: 1px solid #334155; border-radius: 8px; padding: 12px 16px; margin-bottom: 16px; display: flex; justify-content: space-between; align-items: center; gap: 12px; flex-wrap: wrap; }
+        .logmon-filter-form { display: flex; align-items: center; gap: 10px; flex-wrap: wrap; flex: 1; }
+        .logmon-search-box { position: relative; min-width: 240px; flex: 1; max-width: 360px; }
+        .logmon-search-box input { width: 100%; height: 36px; padding: 0 12px 0 34px; background: #0f172a; border: 1px solid #334155; border-radius: 6px; color: #f8fafc; font-size: 0.85rem; outline: none; }
+        .logmon-search-box input:focus { border-color: #3b82f6; }
+        .logmon-search-icon { position: absolute; left: 10px; top: 50%; transform: translateY(-50%); color: #64748b; pointer-events: none; }
+
+        .logmon-tabs { display: inline-flex; background: #0f172a; padding: 3px; border-radius: 6px; border: 1px solid #334155; height: 36px; align-items: center; }
+        .logmon-tab-btn { height: 100%; padding: 0 12px; background: transparent; border: none; color: #94a3b8; font-size: 0.8rem; font-weight: 500; border-radius: 4px; cursor: pointer; }
+        .logmon-tab-btn.active { background: #334155; color: #ffffff; font-weight: 600; }
+        .logmon-select { height: 36px; padding: 0 12px; background: #0f172a; border: 1px solid #334155; border-radius: 6px; color: #f8fafc; font-size: 0.85rem; outline: none; cursor: pointer; }
+
+        .logmon-btn { height: 36px; padding: 0 14px; border-radius: 6px; font-size: 0.825rem; font-weight: 500; display: inline-flex; align-items: center; justify-content: center; gap: 6px; border: 1px solid transparent; cursor: pointer; text-decoration: none; white-space: nowrap; }
+        .logmon-btn-secondary { background: #0f172a; border-color: #334155; color: #e2e8f0; }
+        .logmon-btn-danger { background: rgba(239, 68, 68, 0.15); border-color: rgba(239, 68, 68, 0.3); color: #fca5a5; }
+        .logmon-btn-reset { color: #ef4444; font-size: 0.8rem; text-decoration: none; padding: 0 8px; }
+
+        /* Table UI */
+        .logmon-card { background: #1e293b; border: 1px solid #334155; border-radius: 8px; overflow: hidden; }
+        .logmon-table-wrap { width: 100%; overflow-x: auto; }
+        .logmon-table { width: 100%; border-collapse: collapse; text-align: left; font-size: 0.85rem; }
+        .logmon-table th { background: #0f172a; color: #94a3b8; padding: 12px 16px; font-weight: 600; font-size: 0.75rem; text-transform: uppercase; border-bottom: 1px solid #334155; }
+        .logmon-table td { padding: 14px 16px; border-bottom: 1px solid #334155; vertical-align: top; color: #cbd5e1; }
+        .logmon-table tbody tr:hover { background: rgba(255, 255, 255, 0.02); }
+
+        /* Badges & Terminal */
+        .logmon-badge { display: inline-block; padding: 3px 8px; border-radius: 4px; font-size: 0.725rem; font-weight: 700; font-family: monospace; }
+        .badge-error { background: rgba(239, 68, 68, 0.2); color: #f87171; border: 1px solid rgba(239, 68, 68, 0.3); }
+        .badge-critical { background: rgba(220, 38, 38, 0.35); color: #fca5a5; border: 1px solid #ef4444; }
+        .badge-open { background: rgba(59, 130, 246, 0.2); color: #60a5fa; border: 1px solid rgba(59, 130, 246, 0.3); }
+        .badge-resolved { background: rgba(16, 185, 129, 0.2); color: #34d399; border: 1px solid rgba(16, 185, 129, 0.3); }
+        .logmon-font-mono { font-family: monospace; font-size: 0.8rem; }
+        .logmon-path-code { background: #0f172a; color: #38bdf8; padding: 2px 6px; border-radius: 4px; border: 1px solid #334155; display: inline-block; margin-top: 4px; word-break: break-all; }
+        .logmon-terminal { background: #030712; color: #e2e8f0; padding: 12px; border-radius: 6px; border: 1px solid #1f2937; max-height: 200px; overflow-y: auto; white-space: pre-wrap; line-height: 1.45; margin-top: 6px; }
+        .logmon-details summary { color: #60a5fa; cursor: pointer; font-size: 0.775rem; margin-top: 6px; }
+    </style>
+</head>
+<body>
+    <div class="logmon-wrapper">
+        <div class="logmon-header">
+            <div class="logmon-title-area">
+                <h1>
+                    <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="#ef4444" stroke-width="2">
+                        <polygon points="12 2 2 7 12 12 22 7 12 2"></polygon>
+                        <polyline points="2 17 12 22 22 17"></polyline>
+                        <polyline points="2 12 12 17 22 12"></polyline>
+                    </svg>
+                    Giám Sát Log Hệ Thống
+                </h1>
+                <p>Theo dõi exceptions và nhật ký hoạt động thời gian thực</p>
+            </div>
+            <div class="logmon-actions">
+                <a href="/admin" class="logmon-btn logmon-btn-secondary">← Quay lại Dashboard</a>
+            </div>
+        </div>
+
+        <div class="logmon-toolbar">
+            <form method="GET" action="/admin/logs" class="logmon-filter-form" id="logFilterForm">
+                <div class="logmon-search-box">
+                    <svg class="logmon-search-icon" width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                        <circle cx="11" cy="11" r="8"></circle><line x1="21" y1="21" x2="16.65" y2="16.65"></line>
+                    </svg>
+                    <input type="text" name="q" value="{{ q or '' }}" placeholder="Tìm theo lỗi, route, module...">
+                </div>
+                <input type="hidden" name="status_filter" id="statusFilterInput" value="{{ current_status or '' }}">
+                <div class="logmon-tabs">
+                    <button type="button" class="logmon-tab-btn {% if not current_status %}active{% endif %}" onclick="setStatusFilter('')">Tất cả</button>
+                    <button type="button" class="logmon-tab-btn {% if current_status == 'OPEN' %}active{% endif %}" onclick="setStatusFilter('OPEN')">Chưa xử lý</button>
+                    <button type="button" class="logmon-tab-btn {% if current_status == 'RESOLVED' %}active{% endif %}" onclick="setStatusFilter('RESOLVED')">Đã giải quyết</button>
+                </div>
+                <select name="level" onchange="this.form.submit()" class="logmon-select">
+                    <option value="">Tất cả Level</option>
+                    <option value="ERROR" {% if current_level == 'ERROR' %}selected{% endif %}>ERROR</option>
+                    <option value="CRITICAL" {% if current_level == 'CRITICAL' %}selected{% endif %}>CRITICAL</option>
+                </select>
+            </form>
+        </div>
+
+        <div class="logmon-card">
+            <div class="logmon-table-wrap">
+                <table class="logmon-table">
+                    <thead>
+                        <tr>
+                            <th>ID</th>
+                            <th>Thời gian</th>
+                            <th>Level</th>
+                            <th>Module / Route</th>
+                            <th>Nội dung sự cố & Trace</th>
+                            <th>Trạng thái</th>
+                            <th style="text-align: right;">Thao tác</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        {% for log in logs %}
+                        <tr>
+                            <td class="logmon-font-mono">#{{ log.id }}</td>
+                            <td class="logmon-font-mono">{{ log.created_at[:19].replace('T', ' ') }}</td>
+                            <td><span class="logmon-badge badge-{{ log.level.lower() }}">{{ log.level }}</span></td>
+                            <td>
+                                <div><strong>[{{ log.module }}]</strong></div>
+                                <div class="logmon-path-code logmon-font-mono">{{ log.path or 'N/A' }}</div>
+                            </td>
+                            <td>
+                                <div>{{ log.message }}</div>
+                                {% if log.stack_trace %}
+                                <details class="logmon-details">
+                                    <summary>▸ Xem Stack Trace</summary>
+                                    <div class="logmon-terminal logmon-font-mono">{{ log.stack_trace }}</div>
+                                </details>
+                                {% endif %}
+                            </td>
+                            <td><span class="logmon-badge badge-{{ log.status.lower() }}">{{ log.status }}</span></td>
+                            <td style="text-align: right;">
+                                {% if log.status == 'OPEN' %}
+                                <form method="POST" action="/admin/logs/resolve/{{ log.id }}" style="display:inline;">
+                                    <button type="submit" class="logmon-btn" style="background: rgba(16, 185, 129, 0.2); color: #34d399;">✓ Fix</button>
+                                </form>
+                                {% endif %}
+                            </td>
+                        </tr>
+                        {% else %}
+                        <tr><td colspan="7" style="text-align: center; padding: 40px;">Không có lỗi nào.</td></tr>
+                        {% endfor %}
+                    </tbody>
+                </table>
+            </div>
+        </div>
+    </div>
+
+    <script>
+        function setStatusFilter(statusValue) {
+            document.getElementById('statusFilterInput').value = statusValue;
+            document.getElementById('logFilterForm').submit();
+        }
+    </script>
+</body>
+</html>

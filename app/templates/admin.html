@@ -451,6 +451,68 @@
                 </div>
             </a>
 
+            <!-- Module 5: Giám Sát Log Lỗi System -->
+            {% if current_user and current_user.role in ['Super Admin', 'System Admin'] %}
+            <!-- Dành cho Super Admin / System Admin: Truy cập bình thường -->
+            <a href="/admin/logs" class="admin-card accent-logs">
+                <div>
+                    <div class="admin-card-header">
+                        <div class="icon-box" aria-hidden="true">
+                            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                                <path d="m21.73 18-8-14a2 2 0 0 0-3.48 0l-8 14A2 2 0 0 0 4 21h16a2 2 0 0 0 1.73-3Z"></path>
+                                <line x1="12" y1="9" x2="12" y2="13"></line>
+                                <line x1="12" y1="17" x2="12.01" y2="17"></line>
+                            </svg>
+                        </div>
+                        <div>
+                            <h2 class="card-title">Giám Sát Log Lỗi</h2>
+                            <p class="card-desc">
+                                Theo dõi lịch sử sự cố hệ thống, ngoại lệ ứng dụng (exceptions), truy vết lỗi API/Supabase và kiểm tra chi tiết stack trace.
+                            </p>
+                        </div>
+                    </div>
+                </div>
+                <div class="btn-action">
+                    <span>Xem nhật ký lỗi</span>
+                    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" aria-hidden="true">
+                        <line x1="5" y1="12" x2="19" y2="12"></line>
+                        <polyline points="12 5 19 12 12 19"></polyline>
+                    </svg>
+                </div>
+            </a>
+            {% else %}
+            <!-- Dành cho các cấp quyền khác: Bị mờ và nảy cảnh báo -->
+            <a href="javascript:void(0);" 
+            onclick="alert('⚠️ Truy cập bị từ chối: Chức năng giám sát Log Lỗi chỉ dành cho Quản trị viên cấp cao!')" 
+            class="admin-card accent-logs" 
+            style="opacity: 0.5; cursor: not-allowed; filter: grayscale(40%);">
+                <div>
+                    <div class="admin-card-header">
+                        <div class="icon-box" aria-hidden="true">
+                            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                                <path d="m21.73 18-8-14a2 2 0 0 0-3.48 0l-8 14A2 2 0 0 0 4 21h16a2 2 0 0 0 1.73-3Z"></path>
+                                <line x1="12" y1="9" x2="12" y2="13"></line>
+                                <line x1="12" y1="17" x2="12.01" y2="17"></line>
+                            </svg>
+                        </div>
+                        <div>
+                            <h2 class="card-title">Giám Sát Log Lỗi</h2>
+                            <p class="card-desc">
+                                Theo dõi lịch sử sự cố hệ thống, ngoại lệ ứng dụng (exceptions), truy vết lỗi API/Supabase và kiểm tra chi tiết stack trace.
+                            </p>
+                        </div>
+                    </div>
+                </div>
+                <div class="btn-action">
+                    <span>Bị giới hạn quyền</span>
+                    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" aria-hidden="true">
+                        <line x1="5" y1="12" x2="19" y2="12"></line>
+                        <polyline points="12 5 19 12 12 19"></polyline>
+                    </svg>
+                </div>
+            </a>
+            {% endif %}
+
         </div>
     </section>
 </main>
