@@ -512,7 +512,67 @@
                 </div>
             </a>
             {% endif %}
-
+            <!-- Module 6: Giám Sát Thay Đổi Hệ Thống (Audit Logs) -->
+            {% if current_user and current_user.role in ['Super Admin', 'System Admin'] %}
+            <!-- Dành cho Super Admin / System Admin: Truy cập bình thường -->
+            <a href="/admin/audit-logs" class="admin-card accent-audit">
+                <div>
+                    <div class="admin-card-header">
+                        <div class="icon-box" aria-hidden="true">
+                            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                                <path d="M3 12a9 9 0 1 0 9-9 9.75 9.75 0 0 0-6.74 2.74L3 8"></path>
+                                <path d="M3 3v5h5"></path>
+                                <path d="M12 7v5l4 2"></path>
+                            </svg>
+                        </div>
+                        <div>
+                            <h2 class="card-title">Giám Sát Thay Đổi</h2>
+                            <p class="card-desc">
+                                Theo dõi nhật ký thao tác (Audit Logs), truy vết lịch sử thêm/sửa/xóa dữ liệu, kiểm tra địa chỉ IP và tài khoản thực hiện trên hệ thống.
+                            </p>
+                        </div>
+                    </div>
+                </div>
+                <div class="btn-action">
+                    <span>Xem nhật ký thay đổi</span>
+                    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" aria-hidden="true">
+                        <line x1="5" y1="12" x2="19" y2="12"></line>
+                        <polyline points="12 5 19 12 12 19"></polyline>
+                    </svg>
+                </div>
+            </a>
+            {% else %}
+            <!-- Dành cho các cấp quyền khác: Bị mờ và nảy cảnh báo -->
+            <a href="javascript:void(0);" 
+            onclick="alert('⚠️ Truy cập bị từ chối: Chức năng Giám sát Thay đổi chỉ dành cho Quản trị viên cấp cao!')" 
+            class="admin-card accent-audit" 
+            style="opacity: 0.5; cursor: not-allowed; filter: grayscale(40%);">
+                <div>
+                    <div class="admin-card-header">
+                        <div class="icon-box" aria-hidden="true">
+                            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                                <path d="M3 12a9 9 0 1 0 9-9 9.75 9.75 0 0 0-6.74 2.74L3 8"></path>
+                                <path d="M3 3v5h5"></path>
+                                <path d="M12 7v5l4 2"></path>
+                            </svg>
+                        </div>
+                        <div>
+                            <h2 class="card-title">Giám Sát Thay Đổi</h2>
+                            <p class="card-desc">
+                                Theo dõi nhật ký thao tác (Audit Logs), truy vết lịch sử thêm/sửa/xóa dữ liệu, kiểm tra địa chỉ IP và tài khoản thực hiện trên hệ thống.
+                            </p>
+                        </div>
+                    </div>
+                </div>
+                <div class="btn-action">
+                    <span>Bị giới hạn quyền</span>
+                    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" aria-hidden="true">
+                        <line x1="5" y1="12" x2="19" y2="12"></line>
+                        <polyline points="12 5 19 12 12 19"></polyline>
+                    </svg>
+                </div>
+            </a>
+            {% endif %}
         </div>
     </section>
 </main>

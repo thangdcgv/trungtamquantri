@@ -158,7 +158,7 @@
                         {% set s_raw_user = (session_user if session_user is string else '') | string | lower | trim %}
 
                         {# 2. Phân cấp quyền #}
-                        {% set role_levels = {'Staff': 1, 'KTV': 1, 'Admin': 2, 'Super Admin': 3, 'System Admin': 4} %}
+                        {% set role_levels = {'Staff': 1, 'User': 1, 'Admin': 2, 'Super Admin': 3, 'System Admin': 4} %}
                         {% set current_user_level = role_levels.get(user_role, 1) %}
                         {% set can_delete = (user_role == 'System Admin') %}
 
@@ -179,7 +179,7 @@
                             ) %}
                             
                             {# Quyền SỬA: Là tác giả HOẶC thuộc nhóm Admin (Cấp bậc > 1) #}
-                            {% set can_edit = is_author or (current_user_level > 2) %}
+                            {% set can_edit = is_author or (current_user_level >= 1) %}
 
                         <tr class="hover:bg-slate-800/40 transition border-b border-slate-800/60" id="row-{{ item.id }}" data-item-id="{{ item.id }}">
 

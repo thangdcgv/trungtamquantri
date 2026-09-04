@@ -8,13 +8,12 @@ from starlette.middleware.sessions import SessionMiddleware
 from fastapi.exceptions import RequestValidationError
 from starlette.concurrency import run_in_threadpool
 
-# Import cấu hình Supabase
-from config import supabase  # Nếu file config nằm trong app thì đổi thành: from app.config import supabase
+from config import supabase
 
 # Import các routers từ thư mục app
 from app.routes import router as main_router
 from app.auth import router as auth_router
-from app.admin_routes import router as admin_router
+from app.admin_routes import router as admin_router  # Nếu audit nằm trong admin_routes thì admin_router đã bao gồm nó
 from app.warranty import router as warranty_router
 from app.cham_cong import router as cham_cong_router
 from app.admin_key import router as kho_key_router, api_router as kho_key_api_router
@@ -23,12 +22,19 @@ from app.report import router as report_router
 from app.warranty_report import router as warranty_report_router
 from app.inventory import router as inventory_router, api_router as inventory_api_router
 
+# Nếu bạn tách audit thành file router riêng (app/audit.py), hãy bỏ comment dòng dưới:
+# from app.audit import router as audit_router 
+
 
 app = FastAPI(
     title="Máy In Đại Thành Center Hub",
     description="Hệ thống quản lý chấm công, bảo hành và quản trị nội bộ",
     version="1.0.0"
 )
+
+# 2. CHUYỂN SessionMiddleware LÊN TRÊN CÙNG (Ngay sau khi khởi tạo app)
+SECRET_KEY = os.getenv("SECRET_KEY", "mayindaithanh-centerhub-secret-key-2026")
+app.add_middleware(SessionMiddleware, secret_key=SECRET_KEY)
 
 # Đảm bảo thư mục static tồn tại trước khi mount
 os.makedirs("app/static", exist_ok=True)
@@ -66,7 +72,8 @@ async def log_error_to_db(request: Request, exc: Exception, module: str = "Syste
         return
     
     try:
-        user_id = request.session.get('user_id') if hasattr(request, 'session') else None
+        # Lấy session an toàn sau khi Middleware đã được đăng ký ở trên
+        user_id = request.session.get('user_id') if "session" in request.scope else None
         log_payload = {
             "level": "CRITICAL" if isinstance(exc, SystemError) else "ERROR",
             "module": module,
@@ -88,22 +95,16 @@ async def log_error_to_db(request: Request, exc: Exception, module: str = "Syste
 async def global_exception_handler(request: Request, exc: Exception):
     await log_error_to_db(request, exc)
     
-    # Nếu là request API -> Trả Json
     if request.url.path.startswith("/api/"):
         return JSONResponse(
             status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
             content={"detail": "Đã xảy ra lỗi hệ thống. Ban quản trị đã ghi nhận sự cố."}
         )
-    # Nếu là request Giao diện HTML -> Trả thông báo trên giao diện
     return HTMLResponse(
         content=f"<h2>⚠️ Sự cố hệ thống (500)</h2><p>Đã xảy ra lỗi: {str(exc)}</p><a href='/admin'>Quay lại Admin</a>",
         status_code=status.HTTP_500_INTERNAL_SERVER_ERROR
     )
 
-
-# Khai báo Secret Key
-SECRET_KEY = os.getenv("SECRET_KEY", "mayindaithanh-centerhub-secret-key-2026")
-app.add_middleware(SessionMiddleware, secret_key=SECRET_KEY)
 
 # Đăng ký các Router vào hệ thống
 app.include_router(main_router)       
@@ -118,7 +119,10 @@ app.include_router(quan_ly_key_api_router, prefix="/admin")
 app.include_router(report_router)  
 app.include_router(warranty_report_router)
 app.include_router(inventory_router)      
-app.include_router(inventory_api_router)  
+app.include_router(inventory_api_router)
+
+# Nếu dùng file audit.py riêng thì kích hoạt dòng dưới:
+# app.include_router(audit_router)
 
 
 if __name__ == "__main__":

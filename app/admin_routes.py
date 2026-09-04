@@ -5,6 +5,7 @@ from typing import Dict, Any, Optional
 from fastapi import APIRouter, Request, Form, HTTPException, status, Depends
 from fastapi.responses import RedirectResponse, HTMLResponse
 from fastapi.templating import Jinja2Templates
+from app.auth import require_login
 from starlette.concurrency import run_in_threadpool
 
 from config import supabase, supabase_admin
@@ -502,3 +503,22 @@ async def clear_old_logs(request: Request, admin: dict = Depends(get_current_adm
         request.session["error_message"] = f"Dọn dẹp thất bại: {str(e)}"
 
     return RedirectResponse(url="/admin/logs", status_code=status.HTTP_303_SEE_OTHER)
+@router.get("/audit-logs", response_class=HTMLResponse)
+async def get_audit_logs(request: Request, current_user: dict = Depends(require_login)):
+    # 1. Kiểm tra phân quyền
+    if not current_user or current_user.get("role") not in ['Super Admin', 'System Admin']:
+        raise HTTPException(status_code=403, detail="Bị từ chối truy cập")
+    
+    # 2. Lấy 100 log mới nhất từ Supabase
+    response = supabase.table("audit_logs").select("*").order("created_at", desc=True).limit(100).execute()
+    audit_data = response.data if response.data else []
+    
+    # 3. Trả về file HTML giao diện xem log
+    return templates.TemplateResponse(
+            request=request,
+            name="audit_logs.html",
+            context={
+                "current_user": current_user,
+                "logs": audit_data
+            }
+        )

@@ -371,12 +371,7 @@ async def update_warranty_record(
 
         # 3. Phân quyền người dùng
         staff_display = get_staff_display_name(current_user)
-        is_admin = current_user.get("role") in ["Admin", "Super Admin", "System Admin"]
-        is_owner = str(old_data.get("staff_name", "")).strip().lower() == staff_display.strip().lower()
-
-        if not (is_admin or is_owner):
-            msg = "Bạn không có quyền chỉnh sửa phiếu của nhân viên khác!"
-            return JSONResponse(status_code=403, content={"success": False, "message": msg})
+        
 
         # 4. Trích xuất và Fallback dữ liệu (Ưu tiên dữ liệu mới -> Dữ liệu cũ)
         clean_sn = str(data.get("serial_number") or old_data.get("serial_number") or "").strip().upper()

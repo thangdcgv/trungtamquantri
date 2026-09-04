@@ -5,7 +5,7 @@
 {% block content %}
 <main class="admin-page px-4 sm:px-6 lg:px-8 max-w-7xl mx-auto space-y-6">
     
-    <!-- HEADER HUB + NÚT QUAY LẠI -->
+    <!-- HEADER HUB + NÚT QUAY LẠI & XUẤT EXCEL -->
     <header class="welcome-shell p-4 sm:p-5 rounded-xl bg-slate-900/80 border border-slate-800 backdrop-blur-md">
         <div class="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
             <div>
@@ -17,10 +17,17 @@
                     Theo dõi số lượng máy bán ra, phân loại máy, tình trạng bảo hành và khách hàng
                 </p>
             </div>
-            <div class="shrink-0">
+            <!-- CỤM NÚT HÀNH ĐỘNG -->
+            <div class="flex items-center gap-2 shrink-0">
+                <!-- 🟩 NÚT XUẤT EXCEL MỚI BỔ SUNG -->
+                <button type="button" onclick="exportToExcel()" class="inline-flex items-center gap-2 px-3.5 py-2 rounded-lg bg-emerald-600 hover:bg-emerald-500 text-white text-xs sm:text-sm font-medium transition-all shadow-sm shadow-emerald-900/30 group cursor-pointer">
+                    <i class="fa-solid fa-file-excel text-sm text-emerald-200 group-hover:scale-110 transition-transform"></i>
+                    <span>Xuất Excel</span>
+                </button>
+
                 <a href="/admin/bao-cao" class="inline-flex items-center gap-2 px-3.5 py-2 rounded-lg bg-slate-800 hover:bg-slate-700/80 border border-slate-700 text-slate-200 text-xs sm:text-sm font-medium transition-all group">
                     <i class="fa-solid fa-arrow-left text-xs transition-transform group-hover:-translate-x-1 text-slate-400 group-hover:text-cyan-400"></i>
-                    <span>Quay lại Trung tâm Báo cáo</span>
+                    <span>Quay lại</span>
                 </a>
             </div>
         </div>
@@ -195,10 +202,8 @@
                         {% for row in model_summary_list %}
                         <tr class="hover:bg-slate-800/40">
                             <td class="p-2.5 text-slate-500 font-mono">{{ loop.index }}</td>
-                            <!-- 🔴 SỬA LẠI: Dùng row.display_name thay vì row.model_name -->
                             <td class="p-2.5 font-semibold text-white">{{ row.display_name }}</td>
                             <td class="p-2.5">
-                                <!-- 🔴 SỬA LẠI: Kiểm tra theo row.loai_may (đã được định dạng sẵn từ Backend) -->
                                 {% if 'Máy mới' in row.loai_may %}
                                     <span class="text-blue-400">✨ Máy mới</span>
                                 {% else %}
@@ -302,7 +307,6 @@
     });
 
     // 2. Biểu đồ Cột Ngang Top Series Máy (Top Series Chart)
-    // 2. Biểu đồ Cột Ngang Top Series Máy (Top Series Chart)
     new Chart(document.getElementById('topSeriesChart'), {
         type: 'bar',
         data: {
@@ -325,13 +329,13 @@
             scales: {
                 y: {
                     ticks: {
-                        autoSkip: false, // ⚠️ BẮT BUỘC: Ép Chart.js hiện đủ 100% nhãn tên máy
+                        autoSkip: false,
                         font: { size: 11 }
                     },
                     grid: { display: false }
                 },
                 x: {
-                    ticks: { precision: 0 } // Chỉ hiển thị số nguyên
+                    ticks: { precision: 0 }
                 }
             }
         }
@@ -374,6 +378,8 @@
             cutout: '70%'
         }
     });
+
+    // Hàm đặt khoảng thời gian nhanh
     function setQuickRange(days) {
         const end = new Date();
         const start = new Date();
@@ -382,6 +388,19 @@
         document.getElementById('end_date').value = end.toISOString().split('T')[0];
         document.getElementById('start_date').value = start.toISOString().split('T')[0];
         document.getElementById('filterForm').submit();
+    }
+
+    // 🟩 HÀM XỬ LÝ XUẤT EXCEL
+    function exportToExcel() {
+        const form = document.getElementById('filterForm');
+        const formData = new FormData(form);
+        const params = new URLSearchParams(formData).toString();
+        
+        // Đường dẫn API Xuất Excel phía Backend (Thay đổi URL tùy theo Route Backend của bạn)
+        const exportUrl = `/admin/bao-cao/export-excel?${params}`;
+        
+        // Thực hiện tải file về
+        window.location.href = exportUrl;
     }
 </script>
 {% endblock %}
