@@ -4,6 +4,7 @@ import uvicorn
 from fastapi import FastAPI, Request, status
 from fastapi.responses import FileResponse, HTMLResponse, JSONResponse
 from fastapi.staticfiles import StaticFiles
+from fastapi.templating import Jinja2Templates  # <-- THÊM JINJA2TEMPLATES
 from starlette.middleware.sessions import SessionMiddleware
 from fastapi.exceptions import RequestValidationError
 from starlette.concurrency import run_in_threadpool
@@ -13,7 +14,7 @@ from config import supabase
 # Import các routers từ thư mục app
 from app.routes import router as main_router
 from app.auth import router as auth_router
-from app.admin_routes import router as admin_router  # Nếu audit nằm trong admin_routes thì admin_router đã bao gồm nó
+from app.admin_routes import router as admin_router
 from app.warranty import router as warranty_router
 from app.cham_cong import router as cham_cong_router
 from app.admin_key import router as kho_key_router, api_router as kho_key_api_router
@@ -22,9 +23,9 @@ from app.report import router as report_router
 from app.warranty_report import router as warranty_report_router
 from app.inventory import router as inventory_router, api_router as inventory_api_router
 
-# Nếu bạn tách audit thành file router riêng (app/audit.py), hãy bỏ comment dòng dưới:
-# from app.audit import router as audit_router 
-
+# CHÚ Ý: Nếu bạn đã khai báo `templates = Jinja2Templates(...)` ở một file chung (vd: app/dependencies.py),
+# hãy import nó vào đây thay vì khởi tạo lại. Ví dụ:
+# from app.dependencies import templates
 
 app = FastAPI(
     title="Máy In Đại Thành Center Hub",
@@ -32,7 +33,8 @@ app = FastAPI(
     version="1.0.0"
 )
 
-# 2. CHUYỂN SessionMiddleware LÊN TRÊN CÙNG (Ngay sau khi khởi tạo app)
+
+# 2. SessionMiddleware
 SECRET_KEY = os.getenv("SECRET_KEY", "mayindaithanh-centerhub-secret-key-2026")
 app.add_middleware(SessionMiddleware, secret_key=SECRET_KEY)
 
@@ -72,7 +74,6 @@ async def log_error_to_db(request: Request, exc: Exception, module: str = "Syste
         return
     
     try:
-        # Lấy session an toàn sau khi Middleware đã được đăng ký ở trên
         user_id = request.session.get('user_id') if "session" in request.scope else None
         log_payload = {
             "level": "CRITICAL" if isinstance(exc, SystemError) else "ERROR",
@@ -106,7 +107,10 @@ async def global_exception_handler(request: Request, exc: Exception):
     )
 
 
-# Đăng ký các Router vào hệ thống
+
+
+
+# --- DĂNG KÝ ROUTERS ---
 app.include_router(main_router)       
 app.include_router(auth_router)       
 app.include_router(admin_router)      
@@ -120,9 +124,6 @@ app.include_router(report_router)
 app.include_router(warranty_report_router)
 app.include_router(inventory_router)      
 app.include_router(inventory_api_router)
-
-# Nếu dùng file audit.py riêng thì kích hoạt dòng dưới:
-# app.include_router(audit_router)
 
 
 if __name__ == "__main__":

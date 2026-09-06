@@ -1,7 +1,8 @@
 import logging
+import zoneinfo # Thư viện chuẩn Python 3.9+
 from pathlib import Path
 from typing import Dict, Any, Optional
-
+from datetime import datetime
 from fastapi import APIRouter, Request, Form, HTTPException, status, Depends
 from fastapi.responses import RedirectResponse, HTMLResponse
 from fastapi.templating import Jinja2Templates
@@ -522,3 +523,29 @@ async def get_audit_logs(request: Request, current_user: dict = Depends(require_
                 "logs": audit_data
             }
         )
+# --- JINJA2 CUSTOM FILTERS ---
+def format_vn_time(value, fmt="%d/%m/%Y %H:%M:%S"):
+    """Chuyển đổi chuỗi ISO/datetime UTC sang múi giờ Việt Nam (Asia/Ho_Chi_Minh)."""
+    if not value:
+        return "N/A"
+    
+    try:
+        if isinstance(value, str):
+            value = value.replace("Z", "+00:00")
+            value = datetime.fromisoformat(value)
+            
+        if isinstance(value, datetime):
+            if value.tzinfo is None:
+                value = value.replace(tzinfo=zoneinfo.ZoneInfo("UTC"))
+            
+            vn_tz = zoneinfo.ZoneInfo("Asia/Ho_Chi_Minh")
+            vn_dt = value.astimezone(vn_tz)
+            return vn_dt.strftime(fmt)
+            
+    except Exception:
+        pass
+
+    return str(value)
+
+# Đăng ký filter với Jinja2 Templates
+templates.env.filters["vn_time"] = format_vn_time

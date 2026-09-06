@@ -108,6 +108,21 @@
             transform: scale(0.98);
         }
 
+        .btn-secondary {
+            background: #334155;
+            box-shadow: none;
+            color: #cbd5e1;
+        }
+
+        .btn-secondary:hover {
+            background: #475569;
+        }
+
+        .btn-danger {
+            background: linear-gradient(135deg, #dc2626 0%, #b91c1c 100%);
+            box-shadow: 0 4px 12px rgba(220, 38, 38, 0.3);
+        }
+
         .error-msg { 
             background: rgba(127, 29, 29, 0.4); 
             color: #fca5a5; 
@@ -122,7 +137,6 @@
             gap: 0.5rem;
         }
 
-        /* Thêm style cho phần Quên mật khẩu */
         .auth-actions {
             display: flex;
             justify-content: flex-end;
@@ -142,6 +156,49 @@
             margin-top: 1.5rem;
             font-size: 0.75rem;
             color: #64748b;
+        }
+
+        /* --- STYLES MODAL CẢNH BÁO XUNG ĐỘT --- */
+        .modal-overlay {
+            position: fixed;
+            top: 0; left: 0; right: 0; bottom: 0;
+            background: rgba(15, 23, 42, 0.8);
+            backdrop-filter: blur(8px);
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            z-index: 1000;
+            padding: 1rem;
+            animation: fadeIn 0.2s ease-out;
+        }
+
+        .modal-card {
+            background: #1e293b;
+            border: 1px solid #475569;
+            border-radius: 20px;
+            padding: 1.5rem;
+            width: 100%;
+            max-width: 420px;
+            box-shadow: 0 25px 50px -12px rgba(0, 0, 0, 0.6);
+            text-align: center;
+        }
+
+        .modal-icon {
+            width: 52px;
+            height: 52px;
+            background: rgba(217, 119, 6, 0.15);
+            color: #f59e0b;
+            border-radius: 50%;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            margin: 0 auto 1rem auto;
+            font-size: 1.5rem;
+        }
+
+        @keyframes fadeIn {
+            from { opacity: 0; transform: scale(0.95); }
+            to { opacity: 1; transform: scale(1); }
         }
     </style>
 </head>
@@ -181,7 +238,6 @@
                        required 
                        placeholder="••••••••"
                        autocomplete="current-password">
-                <!-- Nút yêu cầu xin cấp lại mật khẩu -->
                 <div class="auth-actions">
                     <a href="/auth/forgot-password">Quên mật khẩu / Xin cấp lại?</a>
                 </div>
@@ -193,6 +249,35 @@
             &copy; Máy In Đại Thành - All rights reserved
         </div>
     </div>
+
+    <!-- HỘP THOẠI XỬ LÝ PHÁT HIỆN ĐĂNG NHẬP Ở TRÌNH DUYỆT / THIẾT BỊ KHÁC -->
+    {% if show_conflict_modal %}
+    <div class="modal-overlay">
+        <div class="modal-card">
+            <div class="modal-icon">⚠️</div>
+            <h3 style="color: #f8fafc; font-size: 1.15rem; font-weight: 700; margin-bottom: 0.5rem;">
+                Phát hiện đăng nhập ở nơi khác!
+            </h3>
+            <p style="color: #94a3b8; font-size: 0.875rem; margin-bottom: 1.25rem; line-height: 1.5;">
+                Tài khoản này đang có <strong style="color: #f59e0b;">{{ active_count }} phiên làm việc</strong> đang hoạt động. Bạn muốn xử lý như thế nào?
+            </p>
+
+            <form action="/auth/login" method="POST" style="display: flex; flex-direction: column; gap: 0.75rem;">
+                <!-- Giữ lại thông tin email & password từ lần submit trước -->
+                <input type="hidden" name="email" value="{{ email }}">
+                <input type="hidden" name="password" value="{{ password }}">
+
+                <button type="submit" name="conflict_action" value="continue" class="btn-secondary">
+                    Tiếp tục đăng nhập trùng
+                </button>
+
+                <button type="submit" name="conflict_action" value="logout_all" class="btn-danger">
+                    Đăng xuất tất cả thiết bị khác
+                </button>
+            </form>
+        </div>
+    </div>
+    {% endif %}
 
     <script>
         document.addEventListener('DOMContentLoaded', function() {
