@@ -42,19 +42,25 @@ VN_TZ = ZoneInfo("Asia/Ho_Chi_Minh")
 # ==========================================
 
 DEFAULT_CONFIG = {
-    "phu_cap_tho_phu": 80000,
-    "phu_cap_di_tinh": 500000,
-    "phu_cap_ngay_an": 200000,
-    "phu_cap_dem_ks": 350000,
-    "moc_km_1": 30000,       # <= 20km
-    "moc_km_2": 50000,       # 21-30km
-    "moc_km_3": 70000,       # 31-40km
-    "moc_km_4": 80000,       # 41-50km
-    "phi_vuot_50km": 5000,   # mỗi km > 50km
-    "price_may_lon": 80000,
-    "price_may_nho": 30000,
-    "price_may_ep_near": 80000, # <= 20km
-    "price_may_ep_far": 50000   # > 20km
+    # 1. Định mức thiết bị
+    "price_may_lon": 80000,          # Công lắp 1 máy lớn (chưa gồm km)
+    "price_may_ep": 50000,           # Máy ép khí nén khổ > 40x60 (Cố định 50k, không chia theo km)
+
+    # 2. Định mức quãng đường
+    "moc_km_1": 30000,               # Mốc 1 (<= 20km)
+    "moc_km_2": 50000,               # Mốc 2 (21 - 30km)
+    "moc_km_3": 70000,               # Mốc 3 (31 - 40km)
+    "moc_km_4": 80000,               # Mốc 4 (41 - 50km)
+    "phi_vuot_50km": 5000,           # Cộng thêm mỗi km sau 50km
+
+    # 3. Phụ cấp công tác tỉnh (qua đêm)
+    "phu_cap_di_tinh": 500000,       # Phí KTV đi công tác xa qua đêm
+    "phu_cap_dem_ks": 350000,        # Phụ cấp lưu trú / ngày
+    "phu_cap_ngay_an": 200000,       # Phụ cấp tiền ăn / ngày
+
+    # 4. Phụ cấp khác
+    "phu_cap_tho_phu": 80000,        # Công thợ phụ (đi thêm khi lắp nội thành)
+    "phu_cap_ngoai_gio": 200000,     # Tiền công lắp đặt ngoài giờ (MỚI)
 }
 
 
@@ -199,21 +205,23 @@ def tinh_tien_lap_dat(
 ) -> dict:
     cfg = config or {}
 
+    # 1. Định mức phụ cấp
     phu_cap_tho_phu = cfg.get("phu_cap_tho_phu", 80000)
     phu_cap_di_tinh = cfg.get("phu_cap_di_tinh", 500000)
     phu_cap_ngay_an = cfg.get("phu_cap_ngay_an", 200000)
     phu_cap_dem_ks = cfg.get("phu_cap_dem_ks", 350000)
+    phu_cap_ngoai_gio = cfg.get("phu_cap_ngoai_gio", 200000)
 
+    # 2. Định mức quãng đường
     moc_1 = cfg.get("moc_km_1", 30000)
     moc_2 = cfg.get("moc_km_2", 50000)
     moc_3 = cfg.get("moc_km_3", 70000)
     moc_4 = cfg.get("moc_km_4", 80000)
     phi_vuot_50km = cfg.get("phi_vuot_50km", 5000)
 
+    # 3. Định mức thiết bị
     price_may_lon = cfg.get("price_may_lon", 80000)
-    price_may_nho = cfg.get("price_may_nho", 30000)
-    price_may_ep_near = cfg.get("price_may_ep_near", 80000)
-    price_may_ep_far = cfg.get("price_may_ep_far", 50000)
+    price_may_ep = cfg.get("price_may_ep", 50000)  # Máy ép cố định 50k
 
     device_cost = 0.0
     distance_cost = 0.0
@@ -221,56 +229,54 @@ def tinh_tien_lap_dat(
     di_tinh_cost = 0.0
 
     if is_di_tinh:
+        # Tính chi phí đi tỉnh
         base_di_tinh_self = phu_cap_di_tinh + (so_ngay_an * phu_cap_ngay_an) + (so_dem_ks * phu_cap_dem_ks)
         tien_nguoi_di_cung = so_nguoi_di_cung * base_di_tinh_self
         di_tinh_cost = float(base_di_tinh_self + tien_nguoi_di_cung)
         tong_tien_chinh = di_tinh_cost
     else:
+        # A. Đơn giá quãng đường theo cự ly
         if quang_duong <= 0:
-            tien_quang_duong = 0
+            don_gia_quang_duong = 0
         elif quang_duong <= 20:
-            tien_quang_duong = moc_1
+            don_gia_quang_duong = moc_1
         elif quang_duong <= 30:
-            tien_quang_duong = moc_2
+            don_gia_quang_duong = moc_2
         elif quang_duong <= 40:
-            tien_quang_duong = moc_3
+            don_gia_quang_duong = moc_3
         elif quang_duong <= 50:
-            tien_quang_duong = moc_4
+            don_gia_quang_duong = moc_4
         else:
-            tien_quang_duong = moc_4 + (quang_duong - 50) * phi_vuot_50km
+            don_gia_quang_duong = moc_4 + (quang_duong - 50) * phi_vuot_50km
 
-        distance_cost = float(tien_quang_duong)
+        # B. Tính phí quãng đường:
+        # Mọi đơn hàng có thiết bị đều tính tối thiểu 1 lần phí quãng đường.
+        # Nếu số máy nhỏ > 1 thì nhân theo số lượng máy nhỏ.
+        tong_so_may = so_may_lon + so_may_nho + so_may_ep
+        if tong_so_may > 0:
+            he_so_km = max(1, so_may_nho)
+        else:
+            he_so_km = 0
 
+        distance_cost = float(he_so_km * don_gia_quang_duong)
+
+        # C. Phí công thiết bị (Máy lớn, máy ép)
         tien_may_lon = so_may_lon * price_may_lon
-        co_may_chinh = (so_may_lon > 0) or (so_may_ep > 0)
-        if co_may_chinh:
-            tien_may_nho = so_may_nho * price_may_nho
-        else:
-            tien_may_nho = max(0, so_may_nho - 1) * price_may_nho
+        tien_may_ep = so_may_ep * price_may_ep
+        device_cost = float(tien_may_lon + tien_may_ep)
 
-        tien_may_ep = 0
-        if so_may_ep > 0:
-            don_gia_ep = price_may_ep_near if quang_duong <= 20 else price_may_ep_far
-            tien_may_ep = so_may_ep * don_gia_ep
+        # D. Phí thợ phụ
+        tho_phu_cost = float(so_nguoi_di_cung * phu_cap_tho_phu)
 
-        device_cost = float(tien_may_lon + tien_may_nho + tien_may_ep)
-
-        if so_nguoi_di_cung > 0:
-            if so_may_ep > 0:
-                gia_ep_tho = price_may_ep_near if quang_duong <= 20 else price_may_ep_far
-                phi_qd_tho = tien_quang_duong if quang_duong > 20 else 0
-                tien_nguoi_di_cung = so_nguoi_di_cung * (gia_ep_tho + phi_qd_tho)
-            else:
-                tien_nguoi_di_cung = so_nguoi_di_cung * phu_cap_tho_phu
-        else:
-            tien_nguoi_di_cung = 0.0
-
-        tho_phu_cost = float(tien_nguoi_di_cung)
         tong_tien_chinh = distance_cost + device_cost + tho_phu_cost
 
-    tien_ngoai_gio = float(gia_thuong_luong) if is_ngoai_gio else 0.0
-    phu_phi = float(phu_phi_phat_sinh)
+    # Phụ cấp ngoài giờ
+    if is_ngoai_gio:
+        tien_ngoai_gio = float(gia_thuong_luong) if gia_thuong_luong > 0 else float(phu_cap_ngoai_gio)
+    else:
+        tien_ngoai_gio = 0.0
 
+    phu_phi = float(phu_phi_phat_sinh)
     tong_tien = float(tong_tien_chinh + tien_ngoai_gio + phu_phi)
 
     return {
@@ -310,8 +316,9 @@ def build_noi_dung(
         details.append(di_tinh_str)
     if so_nguoi_di_cung > 0:
         details.append(f"+{so_nguoi_di_cung} người đi cùng")
-    if is_ngoai_gio and gia_thuong_luong > 0:
-        details.append(f"Ngoài giờ: {gia_thuong_luong:,.0f}đ")
+    if is_ngoai_gio:
+        val_ngoai_gio = gia_thuong_luong if gia_thuong_luong > 0 else 200000
+        details.append(f"Ngoài giờ: {val_ngoai_gio:,.0f}đ")
     if phu_phi_khac > 0:
         details.append(f"Phụ phí: {phu_phi_khac:,.0f}đ")
         
@@ -503,7 +510,7 @@ async def submit_cham_cong(
     file: Optional[UploadFile] = File(None)
 ):
     try:
-        # VALIDATION CÁC TRƯỜNG ĐẦU VÀO
+        # 1. VALIDATION CÁC TRƯỜNG ĐẦU VÀO
         clean_noi_dung = noi_dung.strip()
         if not clean_noi_dung or len(clean_noi_dung) < 8:
             return JSONResponse(
@@ -547,7 +554,7 @@ async def submit_cham_cong(
         session_fullname = current_user.get("ho_ten") or current_user.get("username", "system_user")
         user_role = str(current_user.get("role") or "User").strip()
 
-        # KIỂM TRA QUYỀN CHỈNH SỬA
+        # 2. KIỂM TRA QUYỀN CHỈNH SỬA
         if parsed_edit_id:
             existing_res = supabase.table("cham_cong").select("username, trang_thai").eq("id", parsed_edit_id).execute()
             if not existing_res.data:
@@ -571,6 +578,7 @@ async def submit_cham_cong(
                     content={"success": False, "message": "❌ Bạn không có quyền chỉnh sửa đơn của người khác!"}
                 )
 
+        # 3. XÁC ĐỊNH NGƯỜI ĐƯỢC CHẤM CÔNG
         if target_username and target_username.strip():
             if user_role in ("Admin", "Super Admin", "System Admin"):
                 target_user = target_username.strip()
@@ -586,6 +594,7 @@ async def submit_cham_cong(
             target_user = session_user
             ho_ten_target = session_fullname
         
+        # 4. KIỂM TRA TRÙNG SỐ HÓA ĐƠN
         hop_le, final_hd = check_duplicate_invoice(so_hoa_don, parsed_edit_id)
         if not hop_le:
             return JSONResponse(
@@ -593,6 +602,7 @@ async def submit_cham_cong(
                 content={"success": False, "message": f"❌ Số hóa đơn {final_hd} đã tồn tại!"}
             )
 
+        # 5. XỬ LÝ ẢNH CHỨNG TỪ
         final_image_url = existing_image_url
         if file and file.filename:
             if not file.content_type.startswith("image/"):
@@ -624,10 +634,12 @@ async def submit_cham_cong(
                 content={"success": False, "message": "❌ Yêu cầu ảnh đính kèm chứng từ!"}
             )
 
+        # 6. CHUẨN HÓA THÔNG TIN ĐẦU VÀO
         actual_so_nguoi_di_cung = so_nguoi_di_cung if is_hotro_khac else 0
         actual_so_ngay_an = so_ngay_an if is_di_tinh else 0
         actual_so_dem_ks = so_dem_ks if is_di_tinh else 0
 
+        # 7. TÍNH TIỀN LẮP ĐẶT THEO CHÍNH SÁCH MỚI
         cfg = get_config_cham_cong()
         res_tinh = tinh_tien_lap_dat(
             quang_duong=quang_duong,
@@ -644,6 +656,7 @@ async def submit_cham_cong(
             config=cfg
         )
 
+        # 8. XÂY DỰNG GHI CHÚ NỘI DUNG TỔNG HỢP
         noi_dung_final = build_noi_dung(
             noi_dung_goc=clean_noi_dung,
             is_di_tinh=is_di_tinh,
@@ -655,10 +668,10 @@ async def submit_cham_cong(
             gia_thuong_luong=gia_thuong_luong
         )
 
+        # 9. ĐÓNG GÓI PAYLOAD DỮ LIỆU
         data_payload = {
             "username": target_user,
             "ten": ho_ten_target,
-            "thoi_gian": datetime.now(timezone.utc).strftime("%Y-%m-%dT%H:%M:%SZ"),
             "so_hoa_don": final_hd,
             "noi_dung": noi_dung_final,
             "quang_duong": float(quang_duong),
@@ -675,6 +688,11 @@ async def submit_cham_cong(
             "ghi_chu_duyet": None
         }
 
+        # Chỉ gán thoi_gian khi TẠO MỚI (Tránh ghi đè ngày giờ gốc khi Edit đơn)
+        if not parsed_edit_id:
+            data_payload["thoi_gian"] = datetime.now(timezone.utc).strftime("%Y-%m-%dT%H:%M:%SZ")
+
+        # 10. LƯU VÀO DB SUPABASE
         if parsed_edit_id:
             supabase.table("cham_cong").update(data_payload).eq("id", parsed_edit_id).execute()
             msg = f"✏️ Đã cập nhật hóa đơn {final_hd}!"
@@ -690,7 +708,6 @@ async def submit_cham_cong(
             status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
             content={"success": False, "message": f"❌ Lỗi hệ thống: {str(e)}"}
         )
-
 
 @router.post("/api/duyet/{item_id}")
 async def duyet_phieu(

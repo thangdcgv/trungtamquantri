@@ -437,7 +437,7 @@
                                 <span>
                                     {% if item.created_at %}
                                         <!-- Rút gọn năm để tối ưu mobile: DD/MM HH:MM -->
-                                        {{ item.created_at[8:10] }}/{{ item.created_at[5:7] }} {{ item.created_at[11:16] }}
+                                        <td>{{ item.created_at | vn_time }}</td>
                                     {% else %}
                                         N/A
                                     {% endif %}
@@ -498,7 +498,7 @@
                                 <span>
                                     {% if item.thoi_gian %}
                                         {% if item.thoi_gian is string %}
-                                            {{ item.thoi_gian[8:10] }}/{{ item.thoi_gian[5:7] }} {{ item.thoi_gian[11:16] }}
+                                            <td>{{ item.thoi_gian | vn_time }}</td>
                                         {% else %}
                                             {{ item.thoi_gian.strftime('%d/%m %H:%M') }}
                                         {% endif %}

@@ -16,7 +16,22 @@ templates = Jinja2Templates(directory="app/templates")
 # Múi giờ Việt Nam (UTC+7)
 VIETNAM_TZ = timezone(timedelta(hours=7))
 
+def format_vn_time(value: Optional[str]) -> str:
+    """Chuyển đổi chuỗi ISO UTC sang giờ Việt Nam (DD/MM/YYYY HH:MM)."""
+    if not value:
+        return ""
+    try:
+        # Chuẩn hóa chuỗi UTC từ Supabase
+        clean_value = str(value).replace("Z", "+00:00")
+        dt = datetime.fromisoformat(clean_value)
+        # Chuyển sang múi giờ Việt Nam
+        dt_vn = dt.astimezone(VIETNAM_TZ)
+        return dt_vn.strftime("%d/%m/%Y %H:%M")
+    except Exception:
+        return str(value)
 
+# Đăng ký filter với Jinja2 templates
+templates.env.filters["vn_time"] = format_vn_time
 def get_current_user_from_session(request: Request) -> Optional[Dict[str, Any]]:
     """Dependency kiểm tra session người dùng."""
     user_id = request.session.get('user_id')

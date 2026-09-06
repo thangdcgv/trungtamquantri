@@ -32,7 +32,7 @@
         gap: 12px;
         margin-bottom: 16px;
         padding: 0 4px;
-        flex-wrap: wrap; /* Cho phép rớt dòng trên mobile */
+        flex-wrap: wrap;
     }
 
     .warranty-brand {
@@ -274,7 +274,7 @@
     /* TOAST */
     .toast-container {
         position: fixed !important;
-        top: 20px !important;
+        top: 80px !important;
         left: 50% !important;
         transform: translateX(-50%) translateY(-30px);
         z-index: 999999 !important;
@@ -306,15 +306,12 @@
     .toast-success { color: #10b981; border-color: rgba(16, 185, 129, 0.4); }
     .toast-error { color: #ef4444; border-color: rgba(239, 68, 68, 0.4); }
 
-    /* =================================================== */
-    /* TỐI ƯU DÀNH RIÊNG CHO MOBILE & TABLET (RESPONSIVE) */
-    /* =================================================== */
+    /* RESPONSIVE MOBILE & TABLET */
     @media (max-width: 640px) {
         .config-page-wrapper {
             padding: 0.75rem 0.75rem 2rem;
         }
 
-        /* Tối ưu Header trên điện thoại */
         .warranty-header {
             flex-direction: column;
             align-items: stretch;
@@ -324,16 +321,15 @@
         .header-actions {
             width: 100%;
             display: grid;
-            grid-template-columns: 1fr 2fr; /* Nút Hủy nhỏ hơn, nút Lưu to hơn */
+            grid-template-columns: 1fr 2fr;
             gap: 8px;
         }
 
         .btn-submit, .btn-cancel-action {
             width: 100%;
-            height: 40px; /* Tăng độ cao dễ bấm cảm ứng */
+            height: 40px;
         }
 
-        /* Chuyển row nhập liệu thành bố cục dọc hợp lý */
         .config-item-row {
             flex-direction: column;
             align-items: stretch;
@@ -342,17 +338,17 @@
         }
 
         .field-label {
-            white-space: normal; /* Cho phép xuống dòng nếu tên quá dài */
+            white-space: normal;
         }
 
         .input-group-custom {
             width: 100%;
             flex: 1 1 100%;
-            height: 40px; /* Ô nhập to hơn trên cảm ứng */
+            height: 40px;
         }
         
         .input-group-custom input {
-            font-size: 0.95rem; /* Chữ to rõ hơn */
+            font-size: 0.95rem;
         }
     }
 </style>
@@ -404,29 +400,18 @@
                             <div class="config-desc">Công lắp 1 máy lớn (chưa gồm km)</div>
                         </div>
                         <div class="input-group-custom">
-                            <input type="number" inputmode="numeric" name="don_gia_may_lon" value="{{ config.get('don_gia_may_lon', 80000) }}">
+                            <input type="number" inputmode="numeric" name="price_may_lon" value="{{ config.get('price_may_lon', 80000) }}">
                             <span class="unit-badge">VNĐ</span>
                         </div>
                     </div>
 
                     <div class="config-item-row">
                         <div class="item-info">
-                            <label class="field-label">Máy ép &le; 20km</label>
-                            <div class="config-desc">Công máy ép khi &le; 20km</div>
+                            <label class="field-label">Máy ép khí nén (Khổ > 40x60)</label>
+                            <div class="config-desc">Đơn giá cố định công lắp máy ép</div>
                         </div>
                         <div class="input-group-custom">
-                            <input type="number" inputmode="numeric" name="may_ep_duoi_20km" value="{{ config.get('may_ep_duoi_20km', 80000) }}">
-                            <span class="unit-badge">VNĐ</span>
-                        </div>
-                    </div>
-
-                    <div class="config-item-row">
-                        <div class="item-info">
-                            <label class="field-label">Máy ép &gt; 20km</label>
-                            <div class="config-desc">Công máy ép khi khoảng cách &gt; 20km</div>
-                        </div>
-                        <div class="input-group-custom">
-                            <input type="number" inputmode="numeric" name="may_ep_tren_20km" value="{{ config.get('may_ep_tren_20km', 50000) }}">
+                            <input type="number" inputmode="numeric" name="price_may_ep" value="{{ config.get('price_may_ep', 50000) }}">
                             <span class="unit-badge">VNĐ</span>
                         </div>
                     </div>
@@ -512,19 +497,19 @@
                             <div class="config-desc">KTV đi công tác xa qua đêm</div>
                         </div>
                         <div class="input-group-custom">
-                            <input type="number" inputmode="numeric" name="di_tinh_phi_cong_tac" value="{{ config.get('di_tinh_phi_cong_tac', 500000) }}">
+                            <input type="number" inputmode="numeric" name="phu_cap_di_tinh" value="{{ config.get('phu_cap_di_tinh', 500000) }}">
                             <span class="unit-badge">VNĐ</span>
                         </div>
                     </div>
 
                     <div class="config-item-row">
                         <div class="item-info">
-                            <label class="field-label">Khách sạn / ngày</label>
-                            <div class="config-desc">Phụ cấp lưu trú theo ngày</div>
+                            <label class="field-label">Khách sạn / đêm</label>
+                            <div class="config-desc">Phụ cấp lưu trú khách sạn theo đêm</div>
                         </div>
                         <div class="input-group-custom">
-                            <input type="number" inputmode="numeric" name="di_tinh_khach_san" value="{{ config.get('di_tinh_khach_san', 350000) }}">
-                            <span class="unit-badge">VNĐ/Ngày</span>
+                            <input type="number" inputmode="numeric" name="phu_cap_dem_ks" value="{{ config.get('phu_cap_dem_ks', 350000) }}">
+                            <span class="unit-badge">VNĐ/Đêm</span>
                         </div>
                     </div>
 
@@ -534,14 +519,14 @@
                             <div class="config-desc">Phụ cấp tiền ăn theo ngày</div>
                         </div>
                         <div class="input-group-custom">
-                            <input type="number" inputmode="numeric" name="di_tinh_tien_an" value="{{ config.get('di_tinh_tien_an', 200000) }}">
+                            <input type="number" inputmode="numeric" name="phu_cap_ngay_an" value="{{ config.get('phu_cap_ngay_an', 200000) }}">
                             <span class="unit-badge">VNĐ/Ngày</span>
                         </div>
                     </div>
                 </div>
             </div>
 
-            <!-- NHÓM 4: KHÁC -->
+            <!-- NHÓM 4: KHÁC & NGOẠI GIỜ -->
             <div class="step-card">
                 <div class="step-title title-emerald">
                     <span class="step-badge badge-emerald"><i class="fa-solid fa-user-group"></i></span> 
@@ -555,16 +540,25 @@
                             <div class="config-desc">Công người đi thêm khi lắp nội thành</div>
                         </div>
                         <div class="input-group-custom">
-                            <input type="number" inputmode="numeric" name="tho_phu_noi_thanh" value="{{ config.get('tho_phu_noi_thanh', 80000) }}">
+                            <input type="number" inputmode="numeric" name="phu_cap_tho_phu" value="{{ config.get('phu_cap_tho_phu', 80000) }}">
                             <span class="unit-badge">VNĐ/Người</span>
+                        </div>
+                    </div>
+
+                    <div class="config-item-row">
+                        <div class="item-info">
+                            <label class="field-label">Lắp đặt ngoài giờ</label>
+                            <div class="config-desc">Phụ cấp cố định(chưa bao gồm tiền thiết bị & quãng đường)</div>
+                        </div>
+                        <div class="input-group-custom">
+                            <input type="number" inputmode="numeric" name="phu_cap_ngoai_gio" value="{{ config.get('phu_cap_ngoai_gio', 200000) }}">
+                            <span class="unit-badge">VNĐ</span>
                         </div>
                     </div>
                 </div>
             </div>
 
         </div>
-
-        
     </form>
 </div>
 
