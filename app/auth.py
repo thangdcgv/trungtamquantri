@@ -276,7 +276,7 @@ async def login(
             request.session["access_token"] = response.session.access_token
 
         role_clean = role.lower()
-        redirect_url = "/admin" if role_clean in ["admin", "super admin", "system admin"] else "/"
+        redirect_url = "/admin" if role_clean in ["super admin", "system admin"] else "/"
 
         return RedirectResponse(url=redirect_url, status_code=status.HTTP_303_SEE_OTHER)
 

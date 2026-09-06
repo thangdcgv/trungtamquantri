@@ -422,7 +422,32 @@
                     </svg>
                 </div>
             </a>
-
+            <!-- Module Mới: Cấu Hình Bảo Hành -->
+            <a href="/admin/chinh-sach-bao-hanh" class="admin-card accent-policy">
+                <div>
+                    <div class="admin-card-header">
+                        <div class="icon-box" aria-hidden="true">
+                            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                                <path d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10z"></path>
+                                <path d="m9 12 2 2 4-4"></path>
+                            </svg>
+                        </div>
+                        <div>
+                            <h2 class="card-title">Cấu Hình Bảo Hành</h2>
+                            <p class="card-desc">
+                                Thiết lập thời hạn bảo hành thân máy, đầu phun, hộp mực và định mức giới hạn số trang in áp dụng cho từng dòng máy.
+                            </p>
+                        </div>
+                    </div>
+                </div>
+                <div class="btn-action">
+                    <span>Quản lý chính sách</span>
+                    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" aria-hidden="true">
+                        <line x1="5" y1="12" x2="19" y2="12"></line>
+                        <polyline points="12 5 19 12 12 19"></polyline>
+                    </svg>
+                </div>
+            </a>
             <!-- Module 4: Báo Cáo & Thống Kê -->
             <a href="/admin/bao-cao" class="admin-card accent-report">
                 <div>
@@ -474,37 +499,6 @@
                 </div>
                 <div class="btn-action">
                     <span>Xem nhật ký lỗi</span>
-                    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" aria-hidden="true">
-                        <line x1="5" y1="12" x2="19" y2="12"></line>
-                        <polyline points="12 5 19 12 12 19"></polyline>
-                    </svg>
-                </div>
-            </a>
-            {% else %}
-            <!-- Dành cho các cấp quyền khác: Bị mờ và nảy cảnh báo -->
-            <a href="javascript:void(0);" 
-            onclick="alert('⚠️ Truy cập bị từ chối: Chức năng giám sát Log Lỗi chỉ dành cho Quản trị viên cấp cao!')" 
-            class="admin-card accent-logs" 
-            style="opacity: 0.5; cursor: not-allowed; filter: grayscale(40%);">
-                <div>
-                    <div class="admin-card-header">
-                        <div class="icon-box" aria-hidden="true">
-                            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
-                                <path d="m21.73 18-8-14a2 2 0 0 0-3.48 0l-8 14A2 2 0 0 0 4 21h16a2 2 0 0 0 1.73-3Z"></path>
-                                <line x1="12" y1="9" x2="12" y2="13"></line>
-                                <line x1="12" y1="17" x2="12.01" y2="17"></line>
-                            </svg>
-                        </div>
-                        <div>
-                            <h2 class="card-title">Giám Sát Log Lỗi</h2>
-                            <p class="card-desc">
-                                Theo dõi lịch sử sự cố hệ thống, ngoại lệ ứng dụng (exceptions), truy vết lỗi API/Supabase và kiểm tra chi tiết stack trace.
-                            </p>
-                        </div>
-                    </div>
-                </div>
-                <div class="btn-action">
-                    <span>Bị giới hạn quyền</span>
                     <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" aria-hidden="true">
                         <line x1="5" y1="12" x2="19" y2="12"></line>
                         <polyline points="12 5 19 12 12 19"></polyline>

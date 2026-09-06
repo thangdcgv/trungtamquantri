@@ -21,6 +21,7 @@ from app.admin_key import router as kho_key_router, api_router as kho_key_api_ro
 from app.admin_quan_ly_key import router as quan_ly_key_router, api_router as quan_ly_key_api_router
 from app.report import router as report_router
 from app.warranty_report import router as warranty_report_router
+from app.warranty_policy_routes import router as warranty_policy_router
 from app.inventory import router as inventory_router, api_router as inventory_api_router
 
 # CHÚ Ý: Nếu bạn đã khai báo `templates = Jinja2Templates(...)` ở một file chung (vd: app/dependencies.py),
@@ -122,6 +123,7 @@ app.include_router(quan_ly_key_router)
 app.include_router(quan_ly_key_api_router, prefix="/admin")
 app.include_router(report_router)  
 app.include_router(warranty_report_router)
+app.include_router(warranty_policy_router)
 app.include_router(inventory_router)      
 app.include_router(inventory_api_router)
 
