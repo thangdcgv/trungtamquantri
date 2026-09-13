@@ -527,7 +527,7 @@
 
             <!-- Action Row -->
             <div class="action-row">
-                <button type="button" class="btn-cancel-action" onclick="resetFormToOriginal()">
+                <button type="button" class="btn-cancel-action" onclick="window.history.back()">
                     <i class="fa-solid fa-xmark"></i> Hủy bỏ
                 </button>
                 <button type="submit" class="btn-submit">
@@ -630,16 +630,6 @@
         if (!field || field.disabled || field.readOnly) return;
         let val = parseInt(field.value) || 0;
         field.value = Math.max(0, val + delta);
-    }
-
-    // 4. Hàm Reset khôi phục Form về ban đầu khi ấn Hủy
-    function resetFormToOriginal() {
-        const form = document.getElementById('updateWarrantyForm');
-        if (form) {
-            form.reset();
-            const originalPolicy = document.getElementById('applied_policy_name').value;
-            applyPolicyPreset(originalPolicy);
-        }
     }
 </script>
 {% endblock %}

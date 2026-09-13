@@ -481,10 +481,12 @@
         <!-- Nhóm Chào mừng & Nút Đăng xuất -->
         <div class="header-user-actions">
             <div class="header-user-greeting">
-                <span class="greeting-text">Chào, <strong>{% if current_user and current_user.get('is_authenticated') %}{{ current_user.get('name', 'Quản trị viên') }}{% else %}Quản trị viên{% endif %}</strong>!</span>
+                <span class="greeting-text">
+                    Chào, <strong>{% if current_user %}{{ current_user.name or 'Quản trị viên' }}{% else %}Quản trị viên{% endif %}</strong>!
+                </span>
                 <span class="greeting-hand">👋</span>
             </div>
-
+            
             <a href="/auth/logout" class="logout-btn" title="Đăng xuất">
                 <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
                     <path d="M9 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h4"></path>
@@ -552,7 +554,8 @@
     <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
     {% block scripts %}{% endblock %}
    
-
+<!-- Nhúng Floating Chat Widget -->
+    {% include "components/chat_widget.html" %}
 <script>
 document.addEventListener("DOMContentLoaded", function () {
     // 1. Tìm tất cả ảnh có class "zoomable" hoặc ảnh nằm trong vùng xem chấm công

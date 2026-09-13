@@ -647,19 +647,30 @@
                                         <i class="fa-regular fa-user me-1 text-info"></i>{{ item.ten or item.username }}
                                     </span>
                                 </div>
-                                {% if item.trang_thai == 'Chờ duyệt' %}
-                                    <span class="badge-status status-pending">
-                                        <i class="fa-solid fa-hourglass-half"></i> Chờ duyệt
-                                    </span>
-                                {% elif item.trang_thai == 'Đã duyệt' %}
-                                    <span class="badge-status status-approved">
-                                        <i class="fa-solid fa-circle-check"></i> Đã duyệt
-                                    </span>
-                                {% else %}
-                                    <span class="badge-status status-rejected">
-                                        <i class="fa-solid fa-circle-xmark"></i> Từ chối
-                                    </span>
-                                {% endif %}
+
+                                <div class="d-flex align-items-center gap-2">
+                                    {% if item.trang_thai == 'Chờ duyệt' %}
+                                        <span class="badge-status status-pending">
+                                            <i class="fa-solid fa-hourglass-half"></i> Chờ duyệt
+                                        </span>
+                                    {% elif item.trang_thai == 'Đã duyệt' %}
+                                        <span class="badge-status status-approved">
+                                            <i class="fa-solid fa-circle-check"></i> Đã duyệt
+                                        </span>
+                                    {% else %}
+                                        <span class="badge-status status-rejected">
+                                            <i class="fa-solid fa-circle-xmark"></i> Từ chối
+                                        </span>
+                                    {% endif %}
+
+                                    <!-- BUTTON NÚT CON MẮT XEM CHI TIẾT -->
+                                    <a href="/cham-cong/detail/{{ item.id }}" 
+                                    class="btn btn-sm btn-outline-info rounded-circle d-inline-flex align-items-center justify-content-center" 
+                                    style="width: 32px; height: 32px; padding: 0;" 
+                                    title="Xem chi tiết">
+                                        <i class="fa-solid fa-eye"></i>
+                                    </a>
+                                </div>
                             </div>
 
                             <!-- Body Card: Ảnh + Chi tiết đơn -->

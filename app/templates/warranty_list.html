@@ -178,8 +178,8 @@
                                 db_staff == s_raw_user
                             ) %}
                             
-                            {# Quyền SỬA: Là tác giả HOẶC thuộc nhóm Admin (Cấp bậc > 1) #}
-                            {% set can_edit = is_author or (current_user_level >= 1) %}
+                            {# Quyền SỬA: Là tác giả HOẶC thuộc nhóm Admin (Cấp bậc > 3) #}
+                            {% set can_edit = is_author or (current_user_level >= 3) %}
 
                         <tr class="hover:bg-slate-800/40 transition border-b border-slate-800/60" id="row-{{ item.id }}" data-item-id="{{ item.id }}">
 
@@ -293,6 +293,12 @@
                             <!-- 7. Thao Tác Inline Edit -->
                             <td class="py-2.5 px-3 align-middle text-center min-w-[90px]">
                                 <div class="action-view-mode flex justify-center items-center gap-1">
+                                    <!-- Button Xem chi tiết (Thêm mới) -->
+                                    <a href="/warranty/{{ item.id }}" 
+                                    class="p-1.5 text-slate-400 hover:text-sky-400 transition rounded-lg hover:bg-slate-800 flex items-center justify-center" 
+                                    title="Xem chi tiết">
+                                        <i class="fa-solid fa-eye text-xs"></i>
+                                    </a>
                                     {% if can_edit %}
                                     <button type="button" onclick="enableEditRow(this)" class="p-1.5 text-slate-400 hover:text-indigo-300 transition rounded-lg hover:bg-slate-800" title="Sửa nhanh hàng này">
                                         <i class="fa-solid fa-pen-to-square text-xs"></i>

@@ -1,0 +1,788 @@
+<!-- =========================================================
+     FLOATING CHAT WIDGET (LIGHT THEME & REALTIME CHAT)
+     Giao diện sáng nổi bật - Tự động xóa thông báo đỏ khi đã đọc
+     ========================================================= -->
+
+<!-- Nhúng Supabase JS SDK từ CDN -->
+<script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+
+<style>
+    /* 1. Nút Floating Chat Toggle (Góc dưới bên phải) */
+    #chat-widget-wrapper {
+        position: fixed !important;
+        bottom: calc(var(--bottom-nav-height, 0px) + env(safe-area-inset-bottom, 0px) + 14px) !important;
+        right: 16px !important;
+        z-index: 110 !important;
+    }
+
+    .chat-toggle-btn {
+        width: 50px;
+        height: 50px;
+        border-radius: 50%;
+        background: linear-gradient(135deg, #0284c7 0%, #0369a1 100%);
+        color: #ffffff;
+        border: 2px solid #ffffff;
+        box-shadow: 0 6px 20px rgba(2, 132, 199, 0.45);
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        cursor: pointer;
+        position: relative;
+        transition: transform 0.2s cubic-bezier(0.4, 0, 0.2, 1), box-shadow 0.2s ease;
+    }
+
+    .chat-toggle-btn:hover {
+        transform: scale(1.06);
+        box-shadow: 0 8px 24px rgba(2, 132, 199, 0.6);
+    }
+
+    .chat-toggle-btn:active {
+        transform: scale(0.95);
+    }
+
+    /* Badge tin nhắn chưa đọc */
+    .chat-unread-badge {
+        position: absolute;
+        top: -4px;
+        right: -4px;
+        background-color: #ef4444;
+        color: #ffffff;
+        font-size: 0.7rem;
+        font-weight: 800;
+        padding: 2px 7px;
+        border-radius: 10px;
+        border: 2px solid #ffffff;
+        box-shadow: 0 2px 6px rgba(239, 68, 68, 0.4);
+    }
+
+    /* 2. Cửa sổ Chat Popup (Light Theme Tương Phản Cao) */
+    #chat-box {
+        position: fixed !important;
+        bottom: calc(var(--bottom-nav-height, 0px) + env(safe-area-inset-bottom, 0px) + 72px) !important;
+        right: 16px !important;
+        width: 360px;
+        height: 500px;
+        max-height: calc(100vh - var(--top-header-height, 0px) - var(--bottom-nav-height, 0px) - 40px);
+        background: #ffffff;
+        border: 1px solid #cbd5e1;
+        border-radius: 16px;
+        box-shadow: 0 20px 45px rgba(0, 0, 0, 0.4);
+        z-index: 110 !important;
+        display: flex;
+        flex-direction: column;
+        overflow: hidden;
+        transition: opacity 0.2s ease, transform 0.2s ease;
+    }
+
+    #chat-box.d-none {
+        display: none !important;
+    }
+
+    /* Header Khung Chat */
+    .chat-header {
+        padding: 0.75rem 1rem;
+        background: linear-gradient(135deg, #0284c7 0%, #0369a1 100%);
+        color: #ffffff;
+        display: flex;
+        align-items: center;
+        justify-content: space-between;
+    }
+
+    .chat-header-brand {
+        display: flex;
+        align-items: center;
+        gap: 0.65rem;
+    }
+
+    .chat-header-icon {
+        width: 32px;
+        height: 32px;
+        border-radius: 8px;
+        background: rgba(255, 255, 255, 0.2);
+        color: #ffffff;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        font-size: 0.95rem;
+    }
+
+    .chat-header-title {
+        font-size: 0.85rem;
+        font-weight: 700;
+        color: #ffffff;
+        line-height: 1.2;
+    }
+
+    .chat-header-status {
+        font-size: 0.68rem;
+        color: #a7f3d0;
+        display: flex;
+        align-items: center;
+        gap: 4px;
+        margin-top: 1px;
+        font-weight: 500;
+    }
+
+    .chat-header-status::before {
+        content: '';
+        width: 6px;
+        height: 6px;
+        background: #34d399;
+        border-radius: 50%;
+        box-shadow: 0 0 6px #34d399;
+    }
+
+    .chat-close-btn {
+        background: transparent;
+        border: none;
+        color: #e0f2fe;
+        cursor: pointer;
+        font-size: 1.1rem;
+        padding: 4px;
+        border-radius: 6px;
+        transition: color 0.2s, background 0.2s;
+    }
+
+    .chat-close-btn:hover {
+        color: #ffffff;
+        background: rgba(255, 255, 255, 0.15);
+    }
+
+    /* Thanh chọn người nhận */
+    .chat-target-bar {
+        padding: 0.55rem 0.75rem;
+        background: #f1f5f9;
+        border-bottom: 1px solid #e2e8f0;
+    }
+
+    .chat-select-wrapper {
+        position: relative;
+        display: flex;
+        align-items: center;
+    }
+
+    .chat-select-icon {
+        position: absolute;
+        left: 0.65rem;
+        color: #64748b;
+        font-size: 0.75rem;
+        pointer-events: none;
+    }
+
+    .chat-select-input {
+        width: 100%;
+        padding-left: 1.85rem !important;
+        font-size: 0.8rem !important;
+        height: 34px !important;
+        min-height: 34px !important;
+        background: #ffffff !important;
+        color: #0f172a !important;
+        border: 1px solid #cbd5e1 !important;
+        border-radius: 8px !important;
+        font-weight: 600;
+        outline: none;
+    }
+
+    .chat-select-input optgroup, 
+    .chat-select-input option {
+        background-color: #ffffff;
+        color: #0f172a;
+    }
+
+    /* Thân chứa danh sách tin nhắn */
+    #chat-messages-body {
+        flex: 1;
+        padding: 0.75rem;
+        background: #f8fafc;
+        overflow-y: auto;
+        display: flex;
+        flex-direction: column;
+        gap: 0.65rem;
+    }
+
+    #chat-messages-body::-webkit-scrollbar { width: 5px; }
+    #chat-messages-body::-webkit-scrollbar-thumb { 
+        background: #cbd5e1; 
+        border-radius: 4px; 
+    }
+
+    /* Chat Footer (Khung Nhập) */
+    .chat-footer {
+        padding: 0.6rem 0.75rem;
+        background: #ffffff;
+        border-top: 1px solid #e2e8f0;
+    }
+
+    .chat-input-box {
+        width: 100%;
+        background: #f1f5f9 !important;
+        color: #0f172a !important;
+        border: 1px solid #cbd5e1 !important;
+        border-radius: 8px !important;
+        font-size: 0.83rem !important;
+        min-height: 38px !important;
+        height: 38px !important;
+        padding: 0.4rem 0.75rem !important;
+        outline: none;
+    }
+
+    .chat-input-box:focus {
+        background: #ffffff !important;
+        border-color: #0284c7 !important;
+        box-shadow: 0 0 0 3px rgba(2, 132, 199, 0.15) !important;
+    }
+
+    .chat-send-btn {
+        background: linear-gradient(135deg, #0284c7 0%, #0369a1 100%);
+        color: #ffffff;
+        border: none;
+        border-radius: 8px;
+        padding: 0 1rem;
+        min-height: 38px;
+        height: 38px;
+        font-size: 0.85rem;
+        font-weight: 600;
+        cursor: pointer;
+        transition: opacity 0.2s;
+    }
+
+    .chat-send-btn:hover {
+        opacity: 0.9;
+    }
+
+    .msg-delete-btn {
+        background: none;
+        border: none;
+        color: #ef4444;
+        opacity: 0.6;
+        transition: opacity 0.2s;
+        cursor: pointer;
+        padding: 2px 4px;
+    }
+
+    .msg-delete-btn:hover {
+        opacity: 1;
+    }
+
+    /* Mobile Responsive Customization */
+    @media (max-width: 575.98px) {
+        #chat-widget-wrapper {
+            bottom: calc(var(--bottom-nav-height, 0px) + env(safe-area-inset-bottom, 0px) + 10px) !important;
+            right: 12px !important;
+        }
+
+        #chat-box {
+            width: calc(100vw - 24px) !important;
+            left: 12px !important;
+            right: 12px !important;
+            bottom: calc(var(--bottom-nav-height, 0px) + env(safe-area-inset-bottom, 0px) + 64px) !important;
+            height: 62vh !important;
+            max-height: 480px !important;
+            border-radius: 14px !important;
+        }
+    }
+</style>
+
+<!-- 1. Floating Toggle Button -->
+<div id="chat-widget-wrapper">
+    <button id="chat-toggle-btn" class="chat-toggle-btn" title="Mở trò chuyện">
+        <i class="fa-solid fa-comments fs-5"></i>
+        <span id="chat-unread-badge" class="chat-unread-badge d-none">0</span>
+    </button>
+</div>
+
+<!-- 2. Chat Window Container -->
+<div id="chat-box" class="d-none">
+    
+    <!-- Chat Header -->
+    <div class="chat-header">
+        <div class="chat-header-brand">
+            <div class="chat-header-icon">
+                <i class="fa-solid fa-headset"></i>
+            </div>
+            <div>
+                <div class="chat-header-title">Trao đổi nội bộ</div>
+                <div class="chat-header-status" id="chat-status-text">Đang kết nối...</div>
+            </div>
+        </div>
+        <button id="chat-close-btn" type="button" class="chat-close-btn" aria-label="Đóng">
+            <i class="fa-solid fa-xmark"></i>
+        </button>
+    </div>
+
+    <!-- Select Receiver Target -->
+    <div class="chat-target-bar">
+        <div class="chat-select-wrapper">
+            <i class="fa-solid fa-paper-plane chat-select-icon"></i>
+            <select class="chat-select-input" id="chat-target-select">
+                <optgroup label="Cá nhân" id="chat-users-group">
+                    <!-- Nạp động danh sách người dùng -->
+                </optgroup>
+            </select>
+        </div>
+    </div>
+
+    <!-- Message Body Container -->
+    <div id="chat-messages-body">
+        <div class="text-center my-auto small" id="chat-empty-state" style="color: #64748b;">
+            <i class="fa-regular fa-comments fa-2x d-block mb-2 opacity-40"></i>
+            Chưa có tin nhắn nào. Hãy bắt đầu cuộc trò chuyện!
+        </div>
+    </div>
+
+    <!-- Input Footer -->
+    <div class="chat-footer">
+        <form id="chat-form" style="display: flex; gap: 8px;">
+            <input type="text" id="chat-input" class="chat-input-box" placeholder="Nhập tin nhắn..." autocomplete="off" required>
+            <button type="submit" id="chat-submit-btn" class="chat-send-btn">
+                <i class="fa-solid fa-paper-plane"></i>
+            </button>
+        </form>
+    </div>
+</div>
+
+<script>
+document.addEventListener("DOMContentLoaded", async function () {
+    const SUPABASE_URL = "{{ SUPABASE_URL or '' }}";
+    const SUPABASE_ANON_KEY = "{{ SUPABASE_ANON_KEY or '' }}";
+
+    let supabaseClient = null;
+    if (window.supabase && SUPABASE_URL.startsWith("http")) {
+        supabaseClient = window.supabase.createClient(SUPABASE_URL, SUPABASE_ANON_KEY);
+    }
+
+    const toggleBtn = document.getElementById("chat-toggle-btn");
+    const closeBtn = document.getElementById("chat-close-btn");
+    const chatBox = document.getElementById("chat-box");
+    const chatInput = document.getElementById("chat-input");
+    const chatForm = document.getElementById("chat-form");
+    const chatSubmitBtn = document.getElementById("chat-submit-btn");
+    const messagesBody = document.getElementById("chat-messages-body");
+    const targetSelect = document.getElementById("chat-target-select");
+    const usersGroup = document.getElementById("chat-users-group");
+    const unreadBadge = document.getElementById("chat-unread-badge");
+    const statusText = document.getElementById("chat-status-text");
+
+    let currentUserId = null;
+    let currentUserRole = "{{ request.session.get('role', 'user') if request is defined and request.session else 'user' }}".toLowerCase();
+    
+    let allMessages = []; 
+    let usersList = []; 
+    let unreadPerSender = {}; 
+    let renderedMsgIds = new Set();
+    let pollingTimer = null;
+
+    function strEqual(a, b) {
+        return String(a || '').trim() === String(b || '').trim();
+    }
+
+    /* Hiển thị Popup Toast Thông Báo Tin Nhắn Mới */
+    function showToastNotification(senderName, content) {
+        let toastContainer = document.getElementById("chat-toast-container");
+        if (!toastContainer) {
+            toastContainer = document.createElement("div");
+            toastContainer.id = "chat-toast-container";
+            toastContainer.style.position = "fixed";
+            toastContainer.style.bottom = "calc(var(--bottom-nav-height, 0px) + env(safe-area-inset-bottom, 0px) + 16px)";
+            toastContainer.style.right = "16px";
+            toastContainer.style.zIndex = "120";
+            document.body.appendChild(toastContainer);
+        }
+
+        const toastEl = document.createElement("div");
+        toastEl.style.cssText = `
+            background: #ffffff;
+            border: 1px solid #cbd5e1;
+            color: #0f172a;
+            padding: 0.65rem 0.9rem;
+            border-radius: 10px;
+            box-shadow: 0 10px 25px rgba(0,0,0,0.25);
+            display: flex;
+            align-items: center;
+            gap: 0.65rem;
+            margin-bottom: 0.5rem;
+            min-width: 230px;
+            font-size: 0.82rem;
+        `;
+        toastEl.innerHTML = `
+            <i class="fa-solid fa-bell text-amber-500 text-base"></i>
+            <div style="flex: 1; min-width: 0;">
+                <strong style="color: #0284c7; display: block; font-weight: 700;">${senderName}</strong>
+                <div style="white-space: nowrap; overflow: hidden; text-overflow: ellipsis; max-width: 180px; color: #475569;">${content}</div>
+            </div>
+        `;
+        toastContainer.appendChild(toastEl);
+        setTimeout(() => toastEl.remove(), 4000);
+    }
+
+    /* Tính toán số tin chưa đọc từ mảng allMessages */
+    function calculateUnreadFromHistory() {
+        unreadPerSender = {};
+        const isChatBoxOpen = !chatBox.classList.contains("d-none");
+        const selectedTarget = targetSelect.value;
+
+        allMessages.forEach(msg => {
+            const isToMe = strEqual(msg.receiver_id, currentUserId) || 
+                           (msg.target_role && msg.target_role.toLowerCase() === currentUserRole);
+            const isNotMe = !strEqual(msg.sender_id, currentUserId);
+            
+            if (isToMe && isNotMe) {
+                const senderId = msg.sender_id;
+
+                // Nếu đang mở khung chat VÀ đang đúng người nhắn -> tự đánh dấu đã đọc
+                if (isChatBoxOpen && selectedTarget === `user:${senderId}`) {
+                    msg.is_read = true;
+                    return;
+                }
+
+                // Ngược lại nếu chưa đọc thì cộng đếm
+                if (msg.is_read !== true) {
+                    unreadPerSender[senderId] = (unreadPerSender[senderId] || 0) + 1;
+                }
+            }
+        });
+        updateUserDropdownLabels();
+    }
+
+    /* Cập nhật nhãn Select người dùng và Badge đỏ */
+    function updateUserDropdownLabels() {
+        if (!usersGroup) return;
+        const options = usersGroup.querySelectorAll("option");
+        
+        options.forEach(opt => {
+            const userId = opt.value.replace("user:", "");
+            const userObj = usersList.find(u => strEqual(u.auth_id, userId));
+            if (!userObj) return;
+
+            const count = unreadPerSender[userId] || 0;
+            const name = userObj.ho_ten || userObj.username;
+            const role = userObj.role || 'User';
+
+            if (count > 0) {
+                opt.innerText = `[${count} TIN MỚI] 👤 ${name} (${role})`;
+                opt.style.fontWeight = "bold";
+            } else {
+                opt.innerText = `👤 ${name} (${role})`;
+                opt.style.fontWeight = "normal";
+            }
+        });
+
+        const totalUnread = Object.values(unreadPerSender).reduce((a, b) => a + b, 0);
+        if (totalUnread > 0) {
+            unreadBadge.innerText = totalUnread > 99 ? "99+" : totalUnread;
+            unreadBadge.classList.remove("d-none");
+        } else {
+            unreadBadge.classList.add("d-none");
+        }
+    }
+
+    /* Xóa hoàn toàn số tin chưa đọc của người gửi đang chọn */
+    async function clearUnreadForCurrentTarget() {
+        const isChatBoxOpen = !chatBox.classList.contains("d-none");
+        if (!isChatBoxOpen) return;
+
+        const selectedTarget = targetSelect.value;
+        if (selectedTarget && selectedTarget.startsWith("user:")) {
+            const userId = selectedTarget.replace("user:", "");
+            
+            // 1. Cập nhật mảng địa phương: Đánh dấu tất cả tin từ userId này là đã đọc
+            allMessages.forEach(msg => {
+                if (strEqual(msg.sender_id, userId) && 
+                   (strEqual(msg.receiver_id, currentUserId) || (msg.target_role && msg.target_role.toLowerCase() === currentUserRole))) {
+                    msg.is_read = true;
+                }
+            });
+
+            // 2. Xóa đếm khỏi object
+            delete unreadPerSender[userId];
+            updateUserDropdownLabels();
+
+            // 3. Gọi Server cập nhật Database
+            try {
+                await fetch(`/chat/read/${userId}`, { method: "POST" });
+            } catch(e) {}
+        }
+    }
+
+    toggleBtn.addEventListener("click", () => {
+        chatBox.classList.remove("d-none");
+        toggleBtn.classList.add("d-none");
+        chatInput.focus();
+        clearUnreadForCurrentTarget();
+        scrollToBottom();
+    });
+
+    closeBtn.addEventListener("click", () => {
+        chatBox.classList.add("d-none");
+        toggleBtn.classList.remove("d-none");
+    });
+
+    function scrollToBottom() {
+        messagesBody.scrollTop = messagesBody.scrollHeight;
+    }
+
+    function renderFilteredMessages() {
+        messagesBody.innerHTML = "";
+        renderedMsgIds.clear();
+
+        const selectedTarget = targetSelect.value;
+        if (!selectedTarget) return;
+
+        let filtered = [];
+        if (selectedTarget.startsWith("role:")) {
+            const role = selectedTarget.replace("role:", "").toLowerCase();
+            filtered = allMessages.filter(m => m.target_role && m.target_role.toLowerCase() === role);
+        } else if (selectedTarget.startsWith("user:")) {
+            const otherId = selectedTarget.replace("user:", "");
+            filtered = allMessages.filter(m => 
+                (strEqual(m.sender_id, currentUserId) && strEqual(m.receiver_id, otherId)) ||
+                (strEqual(m.sender_id, otherId) && strEqual(m.receiver_id, currentUserId))
+            );
+        }
+
+        if (filtered.length > 0) {
+            filtered.forEach(msg => renderMessage(msg));
+        } else {
+            messagesBody.innerHTML = `
+                <div class="text-center my-auto small" id="chat-empty-state" style="color: #64748b;">
+                    <i class="fa-regular fa-comments fa-2x d-block mb-2 opacity-40"></i>
+                    Chưa có tin nhắn nào với đối tượng này.
+                </div>`;
+        }
+    }
+
+    targetSelect.addEventListener("change", () => {
+        clearUnreadForCurrentTarget();
+        renderFilteredMessages();
+    });
+
+    function renderMessage(msg) {
+        if (!msg || !msg.id || renderedMsgIds.has(msg.id)) return;
+        renderedMsgIds.add(msg.id);
+
+        const emptyState = document.getElementById("chat-empty-state");
+        if (emptyState) emptyState.remove();
+
+        const isMe = strEqual(msg.sender_id, currentUserId);
+        const msgWrapper = document.createElement("div");
+        msgWrapper.id = `chat-msg-${msg.id}`;
+        msgWrapper.style.cssText = `
+            display: flex;
+            flex-direction: column;
+            max-width: 85%;
+            align-self: ${isMe ? 'flex-end' : 'flex-start'};
+            align-items: ${isMe ? 'flex-end' : 'flex-start'};
+        `;
+
+        const createdDate = msg.created_at ? new Date(msg.created_at) : new Date();
+        const timeStr = createdDate.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' });
+
+        const label = document.createElement("span");
+        label.style.cssText = "font-size: 0.65rem; color: #64748b; margin-bottom: 2px; font-weight: 500;";
+        label.innerText = isMe ? timeStr : `${msg.sender_name || 'Người dùng'} • ${timeStr}`;
+
+        const msgContentBox = document.createElement("div");
+        msgContentBox.style.cssText = `
+            display: flex;
+            align-items: center;
+            gap: 4px;
+            flex-direction: ${isMe ? 'row-reverse' : 'row'};
+        `;
+
+        const bubble = document.createElement("div");
+        bubble.style.cssText = `
+            padding: 0.55rem 0.8rem;
+            font-size: 0.83rem;
+            line-height: 1.45;
+            word-break: break-word;
+            ${isMe 
+                ? 'background: linear-gradient(135deg, #0284c7 0%, #0369a1 100%); color: #ffffff; border-radius: 12px 12px 2px 12px; box-shadow: 0 2px 8px rgba(2, 132, 199, 0.25);' 
+                : 'background: #e2e8f0; border: 1px solid #cbd5e1; color: #0f172a; border-radius: 12px 12px 12px 2px;'
+            }
+        `;
+        bubble.innerText = msg.content;
+
+        msgContentBox.appendChild(bubble);
+
+        if (isMe) {
+            const deleteBtn = document.createElement("button");
+            deleteBtn.type = "button";
+            deleteBtn.className = "msg-delete-btn";
+            deleteBtn.title = "Thu hồi tin nhắn";
+            deleteBtn.innerHTML = '<i class="fa-solid fa-trash-can" style="font-size: 0.75rem;"></i>';
+            deleteBtn.onclick = () => handleDeleteMsg(msg.id);
+            msgContentBox.appendChild(deleteBtn);
+        }
+
+        msgWrapper.appendChild(label);
+        msgWrapper.appendChild(msgContentBox);
+        messagesBody.appendChild(msgWrapper);
+        scrollToBottom();
+    }
+
+    async function handleDeleteMsg(msgId) {
+        if (!confirm("Bạn có chắc chắn muốn thu hồi tin nhắn này không?")) return;
+        try {
+            const res = await fetch(`/chat/delete/${msgId}`, { method: "DELETE" });
+            const data = await res.json();
+            if (data.success) {
+                allMessages = allMessages.filter(m => m.id !== msgId);
+                renderFilteredMessages();
+            }
+        } catch (err) {
+            console.error("Lỗi thu hồi:", err);
+        }
+    }
+
+    async function loadUsers() {
+        try {
+            const res = await fetch("/chat/users");
+            const data = await res.json();
+            if (data.success && data.data) {
+                usersList = data.data;
+                usersGroup.innerHTML = "";
+                usersList.forEach(user => {
+                    const opt = document.createElement("option");
+                    opt.value = `user:${user.auth_id}`;
+                    opt.innerText = `👤 ${user.ho_ten || user.username} (${user.role || 'User'})`;
+                    usersGroup.appendChild(opt);
+                });
+            }
+        } catch (err) {
+            console.error("Lỗi nạp user:", err);
+        }
+    }
+
+    async function loadHistory(isInitial = false) {
+        try {
+            const res = await fetch("/chat/history");
+            const data = await res.json();
+            if (data.success) {
+                currentUserId = data.current_user_id;
+                allMessages = data.data || [];
+
+                if (isInitial && allMessages.length > 0) {
+                    const lastMsg = allMessages[allMessages.length - 1];
+                    let defaultTarget = "";
+
+                    if (strEqual(lastMsg.sender_id, currentUserId)) {
+                        if (lastMsg.receiver_id) defaultTarget = `user:${lastMsg.receiver_id}`;
+                        else if (lastMsg.target_role) defaultTarget = `role:${lastMsg.target_role.toLowerCase()}`;
+                    } else {
+                        if (lastMsg.target_role) defaultTarget = `role:${lastMsg.target_role.toLowerCase()}`;
+                        else defaultTarget = `user:${lastMsg.sender_id}`;
+                    }
+
+                    if (defaultTarget) {
+                        const optExists = Array.from(targetSelect.options).some(o => o.value === defaultTarget);
+                        if (optExists) targetSelect.value = defaultTarget;
+                    }
+                }
+
+                calculateUnreadFromHistory();
+                renderFilteredMessages();
+            }
+        } catch (err) {
+            console.error("Lỗi nạp lịch sử:", err);
+        }
+    }
+
+    chatForm.addEventListener("submit", async function (e) {
+        e.preventDefault();
+        const content = chatInput.value.trim();
+        const target = targetSelect.value;
+        if (!content) return;
+
+        chatInput.value = "";
+        chatSubmitBtn.disabled = true;
+
+        try {
+            const res = await fetch("/chat/send", {
+                method: "POST",
+                headers: { "Content-Type": "application/json" },
+                body: JSON.stringify({ target: target, content: content })
+            });
+            const result = await res.json();
+            if (result.success && result.data) {
+                allMessages.push(result.data);
+                renderFilteredMessages();
+            }
+        } catch (err) {
+            console.error("Lỗi gửi tin nhắn:", err);
+        } finally {
+            chatSubmitBtn.disabled = false;
+            chatInput.focus();
+        }
+    });
+
+    function handleIncomingMessage(newMsg) {
+        const isSender = strEqual(newMsg.sender_id, currentUserId);
+        const isReceiver = strEqual(newMsg.receiver_id, currentUserId);
+        const isRoleTarget = newMsg.target_role && newMsg.target_role.toLowerCase() === currentUserRole;
+
+        if (isSender || isReceiver || isRoleTarget) {
+            const isChatBoxOpen = !chatBox.classList.contains("d-none");
+            const selectedTarget = targetSelect.value;
+            const isCurrentlyChatting = isChatBoxOpen && (!isSender && selectedTarget === `user:${newMsg.sender_id}`);
+
+            // Nếu đang mở khung chat và nói chuyện với đúng người đó -> Đánh dấu đã đọc ngay lập tức
+            if (isCurrentlyChatting) {
+                newMsg.is_read = true;
+                fetch(`/chat/read/${newMsg.sender_id}`, { method: "POST" }).catch(() => {});
+            }
+
+            allMessages.push(newMsg);
+
+            if (!isSender && !isCurrentlyChatting && newMsg.sender_id) {
+                unreadPerSender[newMsg.sender_id] = (unreadPerSender[newMsg.sender_id] || 0) + 1;
+                updateUserDropdownLabels();
+                showToastNotification(newMsg.sender_name || 'Tin nhắn mới', newMsg.content);
+            }
+
+            renderFilteredMessages();
+        }
+    }
+
+    function initRealtimeSubscription() {
+        if (!supabaseClient) {
+            statusText.innerText = "Trực tuyến (Polling 5s)";
+            startPolling();
+            return;
+        }
+
+        const channel = supabaseClient
+            .channel('realtime_internal_messages')
+            .on(
+                'postgres_changes',
+                { event: 'INSERT', schema: 'public', table: 'internal_messages' },
+                (payload) => handleIncomingMessage(payload.new)
+            )
+            .subscribe((status) => {
+                if (status === 'SUBSCRIBED') {
+                    statusText.innerText = "Trực tuyến • Realtime";
+                    stopPolling();
+                } else {
+                    statusText.innerText = "Trực tuyến (Polling 5s)";
+                    startPolling();
+                }
+            });
+    }
+
+    function startPolling() {
+        if (!pollingTimer) {
+            pollingTimer = setInterval(() => loadHistory(false), 5000);
+        }
+    }
+
+    function stopPolling() {
+        if (pollingTimer) {
+            clearInterval(pollingTimer);
+            pollingTimer = null;
+        }
+    }
+
+    await loadUsers();
+    await loadHistory(true);
+    initRealtimeSubscription();
+});
+</script>

@@ -4,15 +4,16 @@ import uvicorn
 from fastapi import FastAPI, Request, status
 from fastapi.responses import FileResponse, HTMLResponse, JSONResponse
 from fastapi.staticfiles import StaticFiles
-from fastapi.templating import Jinja2Templates  # <-- THÊM JINJA2TEMPLATES
+from fastapi.templating import Jinja2Templates
 from starlette.middleware.sessions import SessionMiddleware
 from fastapi.exceptions import RequestValidationError
 from starlette.concurrency import run_in_threadpool
 
-from config import supabase
+from config import supabase, settings
 
 # Import các routers từ thư mục app
 from app.routes import router as main_router
+from app.chat import router as chat_router  # ✅ ĐÃ SỬA: import 'router' thay vì 'chat'
 from app.auth import router as auth_router
 from app.admin_routes import router as admin_router
 from app.warranty import router as warranty_router
@@ -24,9 +25,6 @@ from app.warranty_report import router as warranty_report_router
 from app.warranty_policy_routes import router as warranty_policy_router
 from app.inventory import router as inventory_router, api_router as inventory_api_router
 
-# CHÚ Ý: Nếu bạn đã khai báo `templates = Jinja2Templates(...)` ở một file chung (vd: app/dependencies.py),
-# hãy import nó vào đây thay vì khởi tạo lại. Ví dụ:
-# from app.dependencies import templates
 
 app = FastAPI(
     title="Máy In Đại Thành Center Hub",
@@ -34,22 +32,28 @@ app = FastAPI(
     version="1.0.0"
 )
 
+# 1. Khai báo biến templates & Nạp cấu hình Supabase Client toàn cục cho Jinja2
+templates = Jinja2Templates(directory="app/templates")
+templates.env.globals["SUPABASE_URL"] = settings.SUPABASE_URL
+templates.env.globals["SUPABASE_ANON_KEY"] = settings.SUPABASE_KEY
 
 # 2. SessionMiddleware
 SECRET_KEY = os.getenv("SECRET_KEY", "mayindaithanh-centerhub-secret-key-2026")
 app.add_middleware(SessionMiddleware, secret_key=SECRET_KEY)
 
-# Đảm bảo thư mục static tồn tại trước khi mount
+# 3. Mount Thư mục Static
 os.makedirs("app/static", exist_ok=True)
 app.mount("/static", StaticFiles(directory="app/static"), name="static")
 
 
+# 4. Favicon Routes
 @app.get('/favicon.png', include_in_schema=False)
 @app.get('/favicon.ico', include_in_schema=False)
 async def favicon():
     return FileResponse('app/static/favicon.png')
 
 
+# 5. Custom Validation Error Handler (422)
 @app.exception_handler(RequestValidationError)
 async def validation_exception_handler(request: Request, exc: RequestValidationError):
     errors = exc.errors()
@@ -69,6 +73,7 @@ async def validation_exception_handler(request: Request, exc: RequestValidationE
     )
 
 
+# Helper ghi log sự cố vào Database
 async def log_error_to_db(request: Request, exc: Exception, module: str = "System"):
     """Hàm phụ trợ ghi log vào Supabase bất đồng bộ."""
     if not supabase:
@@ -92,7 +97,7 @@ async def log_error_to_db(request: Request, exc: Exception, module: str = "Syste
         print(f"❌ Lỗi ghi system_logs: {db_err}")
 
 
-# Global Exception Handler cho FastAPI
+# 6. Global Exception Handler (500)
 @app.exception_handler(Exception)
 async def global_exception_handler(request: Request, exc: Exception):
     await log_error_to_db(request, exc)
@@ -108,10 +113,7 @@ async def global_exception_handler(request: Request, exc: Exception):
     )
 
 
-
-
-
-# --- DĂNG KÝ ROUTERS ---
+# 7. ĐĂNG KHÁI BÁO ROUTERS HỆ THỐNG
 app.include_router(main_router)       
 app.include_router(auth_router)       
 app.include_router(admin_router)      
@@ -126,6 +128,7 @@ app.include_router(warranty_report_router)
 app.include_router(warranty_policy_router)
 app.include_router(inventory_router)      
 app.include_router(inventory_api_router)
+app.include_router(chat_router)
 
 
 if __name__ == "__main__":

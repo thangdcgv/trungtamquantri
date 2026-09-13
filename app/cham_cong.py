@@ -400,6 +400,17 @@ async def detail_cham_cong(
         return RedirectResponse(url=REDIRECT_URL, status_code=status.HTTP_303_SEE_OTHER)
 
 
+from typing import Optional
+import logging
+from fastapi import APIRouter, Request, Depends
+from fastapi.responses import HTMLResponse
+
+logger = logging.getLogger(__name__)
+
+# ✅ Khai báo tập hợp role Admin chuẩn chữ thường để tái sử dụng
+ADMIN_ROLES = {"admin", "super admin", "system admin"}
+
+
 @router.get("/form", response_class=HTMLResponse)
 async def get_form_cham_cong(
     request: Request,
@@ -412,14 +423,33 @@ async def get_form_cham_cong(
         edit_data = None
         employees_list = []
 
-        user_role = str(current_user.get("role") or "User").strip()
+        # ✅ 1. CHUẨN HÓA ROLE: Chuyển toàn bộ về chữ thường + loại bỏ khoảng trắng thừa
+        user_role = str(current_user.get("role") or "user").strip().lower()
         current_username = current_user.get("username")
+        
+        # ✅ 2. Cờ kiểm tra Admin gọn gàng, không bị lỗi hoa/thường
+        is_admin = user_role in ADMIN_ROLES
 
-        if user_role in ("Admin", "Super Admin", "System Admin"):
+        # ✅ CHỈ LẤY NHỮNG NGƯỜI ĐÃ TỪNG CHẤM CÔNG DÀNH CHO ADMIN
+        if is_admin:
             try:
-                emp_res = supabase.table("quan_tri_vien").select("username, ho_ten").execute()
-                if emp_res.data:
-                    employees_list = emp_res.data
+                cham_cong_res = supabase.table("cham_cong").select("username").execute()
+                
+                if cham_cong_res.data:
+                    attended_usernames = list({
+                        item["username"] for item in cham_cong_res.data if item.get("username")
+                    })
+                    
+                    if attended_usernames:
+                        emp_res = (
+                            supabase.table("quan_tri_vien")
+                            .select("username, ho_ten")
+                            .in_("username", attended_usernames)
+                            .order("ho_ten")
+                            .execute()
+                        )
+                        if emp_res.data:
+                            employees_list = emp_res.data
             except Exception as e:
                 logger.error(f"Lỗi tải danh sách nhân viên cho Admin: {e}")
 
@@ -429,7 +459,8 @@ async def get_form_cham_cong(
                 record = res.data[0]
                 
                 is_approved = record.get("trang_thai") == "Đã duyệt"
-                is_owner = (record.get("username") == current_username) or (user_role in ("Admin", "Super Admin", "System Admin"))
+                # ✅ Sử dụng biến is_admin đã chuẩn hóa
+                is_owner = (record.get("username") == current_username) or is_admin
 
                 if is_approved:
                     return HTMLResponse(content="<h3>Đơn này đã được duyệt, không thể chỉnh sửa!</h3>", status_code=403)
@@ -866,7 +897,7 @@ async def update_config_cham_cong(
         )
 
 
-# Chấp nhận cả đường dẫn gốc /cham-cong, /cham-cong/ và /cham-cong/list để tránh 404
+
 @router.get("", response_class=HTMLResponse)
 @router.get("/", response_class=HTMLResponse)
 @router.get("/list", response_class=HTMLResponse)
@@ -882,8 +913,17 @@ async def view_danh_sach_cham_cong(
 ):
     """Giao diện danh sách đơn phân quyền theo User / Admin chuẩn 100% Schema DB"""
     try:
-        user_role = str(current_user.get("role") or "User").strip()
-        current_username = current_user.get("username") or ""
+        # 1. ĐỌC DỮ LIỆU USER AN TOÀN (HỖ TRỢ CẢ DICT LẪN OBJECT)
+        if isinstance(current_user, dict):
+            raw_role = current_user.get("role") or "User"
+            current_username = current_user.get("username") or ""
+        else:
+            raw_role = getattr(current_user, "role", "User")
+            current_username = getattr(current_user, "username", "")
+
+        # user_role_clean dùng để kiểm tra logic Python
+        user_role_clean = str(raw_role).strip().lower()
+        is_admin = user_role_clean in ADMIN_ROLES
 
         now = datetime.now()
         current_year = now.year
@@ -892,22 +932,22 @@ async def view_danh_sach_cham_cong(
         selected_month = current_month if thang is None else thang
         selected_year = current_year if nam is None else nam
 
-        # 1. Query dữ liệu từ Supabase
+        # 2. Query dữ liệu từ Supabase
         query = supabase.table("cham_cong").select("*")
 
-        # 2. PHÂN QUYỀN: User thường chỉ xem đơn của chính mình
-        if user_role not in ("Admin", "Super Admin", "System Admin"):
+        # 3. PHÂN QUYỀN
+        if not is_admin:
             query = query.eq("username", current_username)
 
-        # 3. LỌC THEO TRẠNG THÁI
+        # 4. LỌC THEO TRẠNG THÁI
         if status_filter and status_filter in ["Chờ duyệt", "Đã duyệt", "Từ chối"]:
             query = query.eq("trang_thai", status_filter)
 
-        # 4. LỌC THEO KỸ THUẬT VIÊN (Chỉ dành cho Admin)
-        if ktv and ktv != "Tất cả" and user_role in ("Admin", "Super Admin", "System Admin"):
+        # 5. LỌC THEO KĨ THUẬT VIÊN
+        if ktv and ktv != "Tất cả" and is_admin:
             query = query.eq("username", ktv)
 
-        # 5. LỌC THEO THÁNG & NĂM (Dựa vào cột thoi_gian)
+        # 6. LỌC THEO THÁNG & NĂM
         if selected_year > 0:
             if selected_month > 0:
                 start_date = f"{selected_year}-{selected_month:02d}-01T00:00:00"
@@ -919,7 +959,7 @@ async def view_danh_sach_cham_cong(
             else:
                 query = query.gte("thoi_gian", f"{selected_year}-01-01T00:00:00").lt("thoi_gian", f"{selected_year + 1}-01-01T00:00:00")
 
-        # 6. TÌM KIẾM TỪ KHÓA
+        # 7. TÌM KIẾM TỪ KHÓA
         if search and search.strip():
             clean_search = search.strip()
             query = query.or_(
@@ -929,40 +969,57 @@ async def view_danh_sach_cham_cong(
                 f"so_hoa_don.ilike.%{clean_search}%"
             )
 
-        # 7. TRUY VẤN VÀ SẮP XẾP GẦN NHẤT
+        # 8. TRUY VẤN VÀ SẮP XẾP GẦN NHẤT
         res = query.order("id", desc=True).limit(limit).execute()
         danh_sach = res.data or []
         
-        logger.info(f"SỐ LƯỢNG ĐƠN LẤY ĐƯỢC: {len(danh_sach)}")
-
-        # Parse ISO format thoi_gian -> gán lại vào danh_sach
         for idx, item in enumerate(danh_sach):
             try:
                 danh_sach[idx] = parse_datetime_field(item)
             except Exception as parse_err:
                 logger.warning(f"Lỗi parse datetime cho ID {item.get('id')}: {parse_err}")
 
-        # 8. LẤY DANH SÁCH KTV CHO DROPDOWN BỘ LỌC
+        # ✅ 9. LẤY DANH SÁCH KTV CHO BỘ LỌC (DẠNG TUPLE 2 PHẦN TỬ CHUẨN JINJA2)
         danh_sach_ktv = []
-        if user_role in ("Admin", "Super Admin", "System Admin"):
+        if is_admin:
             try:
-                emp_res = supabase.table("quan_tri_vien").select("username, ho_ten").execute()
-                if emp_res.data:
-                    danh_sach_ktv = [(u.get("username"), u.get("ho_ten") or u.get("username")) for u in emp_res.data if u.get("username")]
-                else:
-                    seen = set()
-                    for k in danh_sach:
-                        u = k.get("username")
-                        if u and u not in seen:
-                            seen.add(u)
-                            danh_sach_ktv.append((u, k.get("ten") or u))
+                cc_res = supabase.table("cham_cong").select("username").execute()
+                if cc_res.data:
+                    # Trích xuất username an toàn bất kể Dict hay Object
+                    raw_usernames = []
+                    for item in cc_res.data:
+                        u = item.get("username") if isinstance(item, dict) else getattr(item, "username", None)
+                        if u:
+                            raw_usernames.append(u)
+
+                    attended_usernames = sorted(list(set(raw_usernames)))
+                    
+                    if attended_usernames:
+                        emp_res = (
+                            supabase.table("quan_tri_vien")
+                            .select("username, ho_ten")
+                            .in_("username", attended_usernames)
+                            .execute()
+                        )
+                        
+                        name_map = {}
+                        if emp_res.data:
+                            for emp in emp_res.data:
+                                u_val = emp.get("username") if isinstance(emp, dict) else getattr(emp, "username", None)
+                                h_val = emp.get("ho_ten") if isinstance(emp, dict) else getattr(emp, "ho_ten", None)
+                                if u_val:
+                                    name_map[u_val] = h_val or u_val
+
+                        # ✅ Trả về Tuple 2 phần tử: (username, display_name)
+                        for u in attended_usernames:
+                            display_name = name_map.get(u, u)
+                            danh_sach_ktv.append((u, display_name))
             except Exception as ktv_err:
                 logger.error(f"Lỗi tải danh sách KTV: {ktv_err}")
 
-        # 9. LẤY THÔNG BÁO LỖI TỪ SESSION (NẾU CÓ REDIRECT)
         error_message = request.session.pop("error_message", None)
 
-        # 10. RENDER TEMPLATE
+        # ✅ 10. RENDER TEMPLATE (TRUYỀN RAW_ROLE GỐC ĐỂ KHÔNG LỖI IF/ELSE Ở JINJA2)
         return templates.TemplateResponse(
             request=request,
             name="danh_sach_cham_cong.html",
@@ -971,7 +1028,8 @@ async def view_danh_sach_cham_cong(
                 "danh_sach": danh_sach,
                 "danh_sach_don": danh_sach,
                 "current_user": current_user,
-                "user_role": user_role,
+                "user_role": raw_role,     # ✅ Giữ nguyên chữ hoa (Admin) cho Jinja2 Template
+                "is_admin": is_admin,       # ✅ Truyền thêm cờ boolean tiện lợi
                 "current_username": current_username,
                 "danh_sach_ktv": danh_sach_ktv,
                 "selected_month": selected_month,

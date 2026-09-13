@@ -133,6 +133,21 @@ async def get_current_user_or_redirect(request: Request) -> Optional[Dict[str, A
 
 
 # =========================================================
+# 1. ĐĂNG NHẬP (LÃ̃ XỬ LÝ LỖI BẢO MẬT & BẤT ĐỒNG NHẤT ROLE)
+# =========================================================
+
+SUPER_ADMIN_ROLES = {"super admin", "system admin"}
+
+def get_redirect_url_by_role(role: str) -> str:
+    """Xác định đường dẫn chuyển hướng theo từng cấp Role"""
+    role_clean = str(role or "user").strip().lower()
+    
+    if role_clean == "admin":
+        return "/cham-cong"  # Hoặc /cham-cong/list tùy theo route của bạn
+    elif role_clean in SUPER_ADMIN_ROLES:
+        return "/admin"
+    return "/"
+# =========================================================
 # 1. ĐĂNG NHẬP (LOGIN WITH CONCURRENT SESSION CHECK)
 # =========================================================
 
@@ -140,10 +155,9 @@ async def get_current_user_or_redirect(request: Request) -> Optional[Dict[str, A
 async def login_page(request: Request):
     """Hiển thị trang đăng nhập."""
     if request.session.get("user_id"):
-        user_role = str(request.session.get("role") or "User").strip().lower()
-        if user_role in ["admin", "super admin", "system admin"]:
-            return RedirectResponse(url="/admin", status_code=status.HTTP_303_SEE_OTHER)
-        return RedirectResponse(url="/", status_code=status.HTTP_303_SEE_OTHER)
+        user_role = request.session.get("role")
+        redirect_url = get_redirect_url_by_role(user_role)
+        return RedirectResponse(url=redirect_url, status_code=status.HTTP_303_SEE_OTHER)
 
     return render_template(request, "login.html", {"error": None, "show_conflict_modal": False})
 
@@ -153,7 +167,7 @@ async def login(
     request: Request,
     email: str = Form(...),
     password: str = Form(...),
-    conflict_action: Optional[str] = Form(None),  # 'continue' hoặc 'logout_all'
+    conflict_action: Optional[str] = Form(None),
 ):
     """Xác thực người dùng, kiểm tra đăng nhập trùng lặp và ghi nhận session vào DB."""
     email_clean = email.strip().lower()
@@ -183,7 +197,7 @@ async def login(
 
         auth_id = str(response.user.id)
 
-        # 2. Đọc danh sách phiên active thuộc riêng App CENTER bằng supabase_admin (Tránh lỗi RLS)
+        # 2. Đọc danh sách phiên active thuộc riêng App CENTER
         def _get_active_sessions():
             return (
                 supabase_admin.table("user_sessions")
@@ -196,7 +210,7 @@ async def login(
         existing_sessions = await run_in_threadpool(_get_active_sessions)
         active_count = len(existing_sessions.data) if existing_sessions and existing_sessions.data else 0
 
-        # 3. Hiện Modal nếu đã có nơi khác đăng nhập trong App CENTER và chưa bấm chọn hành động
+        # 3. Hiện Modal cảnh báo (Bảo mật: Không truyền password ra HTML)
         if active_count > 0 and not conflict_action:
             return render_template(
                 request,
@@ -212,7 +226,7 @@ async def login(
                 status_code=status.HTTP_200_OK,
             )
 
-        # 4. Xóa toàn bộ các phiên cũ của riêng App CENTER nếu người dùng chọn 'logout_all'
+        # 4. Xóa toàn bộ các phiên cũ nếu người dùng chọn 'logout_all'
         if conflict_action == "logout_all":
             def _clear_old_sessions():
                 return (
@@ -225,10 +239,15 @@ async def login(
 
             await run_in_threadpool(_clear_old_sessions)
 
-        # 5. Ghi nhận phiên làm việc mới vào user_sessions kèm app_code = 'CENTER'
-        new_session_token = str(uuid.uuid4())
-        client_ip = request.client.host if request.client else "Unknown"
+        # 5. Lấy Real Client IP chính xác (Hỗ trợ Reverse Proxy)
+        x_forwarded_for = request.headers.get("x-forwarded-for")
+        if x_forwarded_for:
+            client_ip = x_forwarded_for.split(",")[0].strip()
+        else:
+            client_ip = request.client.host if request.client else "Unknown"
+
         user_agent = request.headers.get("user-agent", "Unknown")[:255]
+        new_session_token = str(uuid.uuid4())
 
         def _insert_new_session():
             return supabase_admin.table("user_sessions").insert({
@@ -241,7 +260,7 @@ async def login(
 
         await run_in_threadpool(_insert_new_session)
 
-        # 6. Lấy profile quản trị viên từ DB bằng supabase_admin
+        # 6. Lấy profile quản trị viên từ DB
         def _fetch_user_profile():
             return (
                 supabase_admin.table("quan_tri_vien")
@@ -263,7 +282,7 @@ async def login(
             ho_ten = user_info.get("ho_ten") or user_info.get("name") or ho_ten
             role = str(user_info.get("role") or "User").strip()
 
-        # Cập nhật thông tin vào Cookie Session
+        # Cập nhật Session Cookie
         request.session.clear()
         request.session["user_id"] = auth_id
         request.session["session_token"] = new_session_token
@@ -275,8 +294,8 @@ async def login(
         if response.session:
             request.session["access_token"] = response.session.access_token
 
-        role_clean = role.lower()
-        redirect_url = "/admin" if role_clean in ["super admin", "system admin"] else "/"
+        # ✅ ĐIỀU HƯỚNG THEO ROLE ĐÃ PHÂN LUỒNG MỚI
+        redirect_url = get_redirect_url_by_role(role)
 
         return RedirectResponse(url=redirect_url, status_code=status.HTTP_303_SEE_OTHER)
 
@@ -295,7 +314,6 @@ async def login(
             {"error": friendly_error, "show_conflict_modal": False},
             status_code=status.HTTP_401_UNAUTHORIZED,
         )
-
 
 # =========================================================
 # 2. ĐĂNG XUẤT (LOGOUT)
