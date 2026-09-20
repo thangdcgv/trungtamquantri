@@ -8,6 +8,7 @@ from fastapi.templating import Jinja2Templates
 from starlette.middleware.sessions import SessionMiddleware
 from fastapi.exceptions import RequestValidationError
 from starlette.concurrency import run_in_threadpool
+from fastapi.middleware.cors import CORSMiddleware
 
 from config import supabase, settings
 
@@ -24,12 +25,21 @@ from app.report import router as report_router
 from app.warranty_report import router as warranty_report_router
 from app.warranty_policy_routes import router as warranty_policy_router
 from app.inventory import router as inventory_router, api_router as inventory_api_router
+from app.tickets import router as tickets_router
 
 
 app = FastAPI(
     title="Máy In Đại Thành Center Hub",
     description="Hệ thống quản lý chấm công, bảo hành và quản trị nội bộ",
     version="1.0.0"
+)
+
+app.add_middleware(
+    CORSMiddleware,
+    allow_origins=["*"],  # Cho phép tất cả nguồn kết nối trong quá trình Dev
+    allow_credentials=True,
+    allow_methods=["*"],
+    allow_headers=["*"],
 )
 
 # 1. Khai báo biến templates & Nạp cấu hình Supabase Client toàn cục cho Jinja2
@@ -129,7 +139,7 @@ app.include_router(warranty_policy_router)
 app.include_router(inventory_router)      
 app.include_router(inventory_api_router)
 app.include_router(chat_router)
-
+app.include_router(tickets_router)
 
 if __name__ == "__main__":
     uvicorn.run("main:app", host="127.0.0.1", port=8000, reload=True)
