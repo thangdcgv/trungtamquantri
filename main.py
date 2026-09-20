@@ -62,7 +62,9 @@ app.mount("/static", StaticFiles(directory="app/static"), name="static")
 @app.get('/favicon.ico', include_in_schema=False)
 async def favicon():
     return FileResponse('app/static/favicon.png')
-
+@app.get("/zalo_verifierUVha58Jd0XW3pSYnhf_2JQexHNQtZPBC380.html", response_class=HTMLResponse)
+async def zalo_verify_file():
+    return "There Is No Limit To What You Can Accomplish Using Zalo!"
 # 5. Custom Validation Error Handler (422)
 @app.exception_handler(RequestValidationError)
 async def validation_exception_handler(request: Request, exc: RequestValidationError):
