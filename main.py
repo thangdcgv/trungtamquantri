@@ -63,22 +63,6 @@ app.mount("/static", StaticFiles(directory="app/static"), name="static")
 async def favicon():
     return FileResponse('app/static/favicon.png')
 
-@app.get("/", response_class=HTMLResponse)
-async def root():
-    return """
-    <!DOCTYPE html>
-    <html>
-        <head>
-            <meta charset="utf-8">
-            <meta name="zalo-platform-site-verification" content="UVha58Jd0XW3pSYnhf_2JQexHNQtZPBC380" />
-            <title>Daithanh API Server</title>
-        </head>
-        <body>
-            <h1>System is running successfully!</h1>
-        </body>
-    </html>
-    """
-
 # 5. Custom Validation Error Handler (422)
 @app.exception_handler(RequestValidationError)
 async def validation_exception_handler(request: Request, exc: RequestValidationError):
