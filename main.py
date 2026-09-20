@@ -64,7 +64,18 @@ async def favicon():
     return FileResponse('app/static/favicon.png')
 @app.get("/zalo_verifierUVha58Jd0XW3pSYnhf_2JQexHNQtZPBC380.html", response_class=HTMLResponse)
 async def zalo_verify_file():
-    return "There Is No Limit To What You Can Accomplish Using Zalo!"
+    return """
+    <!DOCTYPE html>
+    <html>
+    <head>
+        <meta charset="utf-8">
+        <title>Zalo Verification</title>
+    </head>
+    <body>
+        There Is No Limit To What You Can Accomplish Using Zalo!
+    </body>
+    </html>
+    """
 # 5. Custom Validation Error Handler (422)
 @app.exception_handler(RequestValidationError)
 async def validation_exception_handler(request: Request, exc: RequestValidationError):
