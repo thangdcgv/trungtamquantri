@@ -1,6 +1,6 @@
 from datetime import datetime, timezone
 from typing import Optional, Literal
-from fastapi import APIRouter, HTTPException, Query
+from fastapi import APIRouter, HTTPException, Query, Request
 from pydantic import BaseModel, Field
 
 # --- KẾT NỐI SUPABASE ---
@@ -66,7 +66,13 @@ def generate_ticket_code(department: str) -> str:
     count = (res.count or 0) + 1
     return f"{prefix}-{count:03d}"  # Kết quả dạng: SC-001, LD-002...
 
-
+# Thêm route này vào file tickets.py
+@router.post("/webhook")
+@router.get("/webhook")
+async def zalo_webhook(request: Request):
+    # Zalo gửi yêu cầu kiểm tra hoặc sự kiện xóa dữ liệu người dùng
+    # Trả về status ok để Zalo xác nhận webhook hoạt động
+    return {"status": "ok", "message": "Webhook received successfully"}
 # --- API ENDPOINTS ---
 
 @router.post("/tickets/create")
