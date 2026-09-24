@@ -143,7 +143,7 @@ async def create_ticket(data: CreateTicketRequest):
 
 @router.get("/tickets/my-ticket")
 async def get_my_ticket(phone: Optional[str] = None, zalo_id: Optional[str] = None):
-    """API Tra cứu vé hiện tại của Khách hàng"""
+    """API Tra cứu vé hiện tại ĐANG CHỜ/ĐANG XỬ LÝ của Khách hàng"""
     phone_clean = phone.strip() if phone else None
     zalo_clean = zalo_id.strip() if zalo_id else None
 
@@ -151,7 +151,12 @@ async def get_my_ticket(phone: Optional[str] = None, zalo_id: Optional[str] = No
         raise HTTPException(status_code=400, detail="Cần cung cấp Số điện thoại hoặc Zalo ID")
 
     today_start = get_today_utc_start()
-    query = supabase.table("tickets").select("*").gte("created_at", today_start)
+    
+    # 🔥 BỔ SUNG: Chỉ truy vấn các phiếu đang ở trạng thái 'waiting' hoặc 'processing'
+    query = supabase.table("tickets") \
+        .select("*") \
+        .gte("created_at", today_start) \
+        .in_("status", ["waiting", "processing"])
 
     if phone_clean and zalo_clean:
         query = query.or_(f"phone.eq.{phone_clean},zalo_id.eq.{zalo_clean}")
