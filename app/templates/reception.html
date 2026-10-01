@@ -1,0 +1,498 @@
+{% extends "base.html" %}
+
+{% block title %}Lễ Tân Nhận - Trả Hàng | Center Hub{% endblock %}
+
+{% block head %}
+{{ super() }}
+<!-- React & Babel CDN cho trang Lễ tân -->
+<script crossorigin src="https://unpkg.com/react@18/umd/react.production.min.js"></script>
+<script crossorigin src="https://unpkg.com/react-dom@18/umd/react-dom.production.min.js"></script>
+<script src="https://unpkg.com/@babel/standalone/babel.min.js"></script>
+{% endblock %}
+
+{% block content %}
+<!-- Root render ứng dụng React -->
+<div id="root" class="w-full"></div>
+{% endblock %}
+
+{% block scripts %}
+{{ super() }}
+{% raw %}
+<script type="text/babel">
+    const { useState, useEffect, useRef, useCallback } = React;
+    const API_BASE = "/api/reception";
+    const protocol = window.location.protocol === 'https:' ? 'wss:' : 'ws:';
+    const WS_URL = `${protocol}//${window.location.host}/ws/tickets`;
+
+    // Regex kiểm tra SĐT Việt Nam (10 số, bắt đầu bằng số 0)
+    const PHONE_REGEX = /^(0[3|5|7|8|9])+([0-9]{8})$/;
+
+    function ReceptionApp() {
+        const [activeTab, setActiveTab] = useState('receive'); // 'receive' | 'search'
+        const [loading, setLoading] = useState(false);
+        const [toast, setToast] = useState(null);
+
+        // Form Tiếp nhận & Inline Errors
+        const [receiveForm, setReceiveForm] = useState({
+            customer_name: '',
+            phone: '',
+            received_note: ''
+        });
+        const [formErrors, setFormErrors] = useState({});
+
+        // Tra cứu & Hoàn trả (Live Search)
+        const [searchQuery, setSearchQuery] = useState('');
+        const [records, setRecords] = useState([]);
+        const [selectedRecord, setSelectedRecord] = useState(null);
+        const [returnNote, setReturnNote] = useState('');
+        const [returnError, setReturnError] = useState('');
+        const [isReturning, setIsReturning] = useState(false);
+
+        // Notification Toast Helper
+        const showToast = (message, type = 'success') => {
+            setToast({ message, type });
+            setTimeout(() => setToast(null), 3000);
+        };
+
+        // Hàm Tra cứu phiếu
+        const handleSearch = useCallback(async (queryStr) => {
+            const q = queryStr !== undefined ? queryStr : searchQuery;
+            try {
+                setLoading(true);
+                const res = await fetch(`${API_BASE}/search?query_str=${encodeURIComponent(q || '')}`);
+                const data = await res.json();
+                if (data.success) {
+                    setRecords(data.data || []);
+                }
+            } catch (err) {
+                showToast("Lỗi khi kết nối máy chủ!", "error");
+            } finally {
+                setLoading(false);
+            }
+        }, [searchQuery]);
+
+        // LIVE SEARCH: Debounce 350ms tự động gọi API tìm kiếm khi gõ
+        useEffect(() => {
+            if (activeTab !== 'search') return;
+            const timer = setTimeout(() => {
+                handleSearch(searchQuery);
+            }, 350);
+
+            return () => clearTimeout(timer);
+        }, [searchQuery, activeTab, handleSearch]);
+
+        // WebSocket Realtime Đồng bộ
+        useEffect(() => {
+            let ws = null;
+            try {
+                ws = new WebSocket(WS_URL);
+                ws.onmessage = (event) => {
+                    try {
+                        const msg = JSON.parse(event.data);
+                        if (msg.type === 'reception_new' || msg.type === 'reception_returned') {
+                            if (activeTab === 'search') handleSearch(searchQuery);
+                        }
+                    } catch (e) {}
+                };
+            } catch (err) {
+                console.warn("WebSocket status:", err);
+            }
+            return () => { if (ws) ws.close(); };
+        }, [activeTab, handleSearch, searchQuery]);
+
+        // Validation Form Tiếp Nhận
+        const validateReceiveForm = () => {
+            const errors = {};
+            const cleanPhone = receiveForm.phone.trim();
+            const cleanName = receiveForm.customer_name.trim();
+
+            if (!cleanPhone) {
+                errors.phone = "Vui lòng nhập số điện thoại!";
+            } else if (!PHONE_REGEX.test(cleanPhone)) {
+                errors.phone = "SĐT không hợp lệ (phải đủ 10 số, ví dụ: 0912345678)";
+            }
+
+            if (!cleanName) {
+                errors.customer_name = "Vui lòng nhập họ và tên khách hàng!";
+            } else if (cleanName.length < 2) {
+                errors.customer_name = "Tên khách hàng phải có ít nhất 2 ký tự!";
+            }
+
+            setFormErrors(errors);
+            return Object.keys(errors).length === 0;
+        };
+
+        // Xử lý gửi Form Tiếp Nhận
+        const handleReceiveSubmit = async (e) => {
+            e.preventDefault();
+            if (!validateReceiveForm()) return;
+
+            setLoading(true);
+            try {
+                const payload = {
+                    customer_name: receiveForm.customer_name.trim(),
+                    phone: receiveForm.phone.trim(),
+                    received_note: receiveForm.received_note.trim()
+                };
+
+                const res = await fetch(`${API_BASE}/receive`, {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify(payload)
+                });
+                const data = await res.json();
+
+                if (res.ok && data.success) {
+                    showToast(`Đã tạo phiếu thành công! Mã: ${data.data.code}`);
+                    setReceiveForm({ customer_name: '', phone: '', received_note: '' });
+                    setFormErrors({});
+                } else {
+                    showToast(data.detail || "Không thể tạo phiếu tiếp nhận!", "error");
+                }
+            } catch (err) {
+                showToast("Lỗi hệ thống khi gửi phiếu!", "error");
+            } finally {
+                setLoading(false);
+            }
+        };
+
+        // Xử lý Hoàn Trả Máy
+        const handleReturnSubmit = async (e) => {
+            e.preventDefault();
+            if (!selectedRecord) return;
+
+            setIsReturning(true);
+            try {
+                const res = await fetch(`${API_BASE}/return/${selectedRecord.id}`, {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({ returned_note: returnNote.trim() })
+                });
+                const data = await res.json();
+                if (res.ok && data.success) {
+                    showToast(`Đã hoàn trả máy cho khách ${selectedRecord.customer_name}!`);
+                    setSelectedRecord(null);
+                    setReturnNote('');
+                    setReturnError('');
+                    handleSearch(searchQuery);
+                } else {
+                    showToast(data.detail || "Lỗi khi cập nhật trạng thái trả máy!", "error");
+                }
+            } catch (err) {
+                showToast("Lỗi hệ thống khi hoàn trả!", "error");
+            } finally {
+                setIsReturning(false);
+            }
+        };
+
+        return (
+            <div className="w-full space-y-4 max-w-5xl mx-auto">
+                {/* TOAST NOTIFICATION */}
+                {toast && (
+                    <div className={`fixed top-16 right-4 z-50 px-4 py-3 rounded-xl shadow-2xl font-medium text-white transition-all backdrop-blur-md flex items-center gap-3 border ${
+                        toast.type === 'error' 
+                            ? 'bg-rose-900/90 border-rose-500/30 text-rose-200' 
+                            : 'bg-emerald-900/90 border-emerald-500/30 text-emerald-200'
+                    }`}>
+                        <i className={`fa-solid ${toast.type === 'error' ? 'fa-circle-exclamation text-rose-400' : 'fa-circle-check text-emerald-400'}`}></i>
+                        <span className="text-sm">{toast.message}</span>
+                    </div>
+                )}
+
+                {/* HEADER CARD BALANCED */}
+                <div className="card flex flex-col md:flex-row justify-between items-stretch md:items-center gap-4 p-4 sm:p-5">
+                    <div className="flex items-center gap-3.5">
+                        <div className="w-12 h-12 rounded-xl bg-sky-500/10 border border-sky-500/20 text-[var(--primary-light)] flex items-center justify-center text-xl font-bold shadow-inner flex-shrink-0">
+                            <i className="fa-solid fa-boxes-packing"></i>
+                        </div>
+                        <div>
+                            <div className="flex items-center gap-2">
+                                <h1 className="text-base sm:text-lg font-black tracking-wide text-[var(--text-main)] uppercase">LỄ TÂN NHẬN - TRẢ HÀNG</h1>
+                                <span className="hidden sm:inline-block px-2 py-0.5 text-[10px] font-bold bg-emerald-500/10 border border-emerald-500/20 text-emerald-400 rounded-full">Active</span>
+                            </div>
+                            <p className="text-xs text-[var(--text-muted)] mt-0.5">Tiếp nhận máy, quản lý giao nhận & bàn giao thiết bị</p>
+                        </div>
+                    </div>
+
+                    {/* SEGMENTED CONTROL TABS */}
+                    <div className="flex bg-[#0a0f1d]/80 p-1.5 rounded-xl border border-[var(--border-color)] md:w-auto w-full">
+                        <button
+                            onClick={() => setActiveTab('receive')}
+                            className={`flex-1 md:flex-none px-5 py-2 rounded-lg text-xs font-bold transition-all flex items-center justify-center gap-2 ${
+                                activeTab === 'receive' 
+                                    ? 'bg-[var(--primary)] text-white shadow-[var(--shadow-glow)]' 
+                                    : 'text-[var(--text-muted)] hover:text-[var(--text-main)]'
+                            }`}
+                        >
+                            <i className="fa-solid fa-file-circle-plus"></i> Tiếp Nhận Máy
+                        </button>
+                        <button
+                            onClick={() => setActiveTab('search')}
+                            className={`flex-1 md:flex-none px-5 py-2 rounded-lg text-xs font-bold transition-all flex items-center justify-center gap-2 ${
+                                activeTab === 'search' 
+                                    ? 'bg-[var(--primary)] text-white shadow-[var(--shadow-glow)]' 
+                                    : 'text-[var(--text-muted)] hover:text-[var(--text-main)]'
+                            }`}
+                        >
+                            <i className="fa-solid fa-magnifying-glass"></i> Tra Cứu & Trả Máy
+                        </button>
+                    </div>
+                </div>
+
+                {/* TAB 1: FORM TIẾP NHẬN MÁY (BALANCED GRID LAYOUT) */}
+                {activeTab === 'receive' && (
+                    <div className="card p-5 sm:p-6">
+                        <div className="flex items-center justify-between pb-3.5 mb-5 border-b border-[var(--border-color)]">
+                            <h2 className="text-sm sm:text-base font-bold text-[var(--primary-light)] flex items-center gap-2">
+                                <i className="fa-solid fa-file-signature"></i> Phiếu Tiếp Nhận Thiết Bị Mới
+                            </h2>
+                            <span className="text-[11px] text-[var(--text-muted)]">* Thông tin bắt buộc</span>
+                        </div>
+
+                        <form onSubmit={handleReceiveSubmit} className="space-y-4">
+                            {/* Grid 2 cột cân đối cho SĐT và Tên */}
+                            <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+                                {/* SĐT Khách hàng */}
+                                <div>
+                                    <label className="block text-xs font-bold text-[var(--text-sub)] uppercase mb-1.5">
+                                        Số điện thoại <span className="text-rose-400">*</span>
+                                    </label>
+                                    <div className="relative">
+                                        <i className="fa-solid fa-phone absolute left-3.5 top-3 text-[var(--text-muted)] text-xs"></i>
+                                        <input
+                                            type="tel"
+                                            placeholder="VD: 0912345678"
+                                            value={receiveForm.phone}
+                                            onChange={(e) => {
+                                                setReceiveForm({...receiveForm, phone: e.target.value});
+                                                if (formErrors.phone) setFormErrors({...formErrors, phone: ''});
+                                            }}
+                                            className={`w-full pl-9 pr-3 py-2 bg-[#0a0f1d]/70 border rounded-[var(--radius-btn)] text-[var(--text-main)] placeholder-[var(--text-muted)] text-sm outline-none transition-all ${
+                                                formErrors.phone 
+                                                    ? 'border-rose-500/80 focus:ring-2 focus:ring-rose-500/20' 
+                                                    : 'border-[var(--border-color)] focus:border-[var(--primary-light)] focus:ring-2 focus:ring-[var(--primary-glow)]'
+                                            }`}
+                                        />
+                                    </div>
+                                    {formErrors.phone && (
+                                        <p className="text-[11px] text-rose-400 mt-1 flex items-center gap-1 font-medium">
+                                            <i className="fa-solid fa-circle-exclamation text-[10px]"></i> {formErrors.phone}
+                                        </p>
+                                    )}
+                                </div>
+
+                                {/* Họ & Tên Khách hàng */}
+                                <div>
+                                    <label className="block text-xs font-bold text-[var(--text-sub)] uppercase mb-1.5">
+                                        Họ & Tên khách hàng <span className="text-rose-400">*</span>
+                                    </label>
+                                    <div className="relative">
+                                        <i className="fa-solid fa-user absolute left-3.5 top-3 text-[var(--text-muted)] text-xs"></i>
+                                        <input
+                                            type="text"
+                                            placeholder="VD: Nguyễn Văn A"
+                                            value={receiveForm.customer_name}
+                                            onChange={(e) => {
+                                                setReceiveForm({...receiveForm, customer_name: e.target.value});
+                                                if (formErrors.customer_name) setFormErrors({...formErrors, customer_name: ''});
+                                            }}
+                                            className={`w-full pl-9 pr-3 py-2 bg-[#0a0f1d]/70 border rounded-[var(--radius-btn)] text-[var(--text-main)] placeholder-[var(--text-muted)] text-sm outline-none transition-all ${
+                                                formErrors.customer_name 
+                                                    ? 'border-rose-500/80 focus:ring-2 focus:ring-rose-500/20' 
+                                                    : 'border-[var(--border-color)] focus:border-[var(--primary-light)] focus:ring-2 focus:ring-[var(--primary-glow)]'
+                                            }`}
+                                        />
+                                    </div>
+                                    {formErrors.customer_name && (
+                                        <p className="text-[11px] text-rose-400 mt-1 flex items-center gap-1 font-medium">
+                                            <i className="fa-solid fa-circle-exclamation text-[10px]"></i> {formErrors.customer_name}
+                                        </p>
+                                    )}
+                                </div>
+                            </div>
+
+                            {/* Ghi chú nhận máy */}
+                            <div>
+                                <label className="block text-xs font-bold text-[var(--text-sub)] uppercase mb-1.5">
+                                    Tình trạng máy / phụ kiện đi kèm
+                                </label>
+                                <textarea
+                                    rows="3"
+                                    placeholder="VD: Nhận máy Canon G1010 nghẹt mực, mất nắp mực, kèm nguồn và cáp USB..."
+                                    value={receiveForm.received_note}
+                                    onChange={(e) => setReceiveForm({...receiveForm, received_note: e.target.value})}
+                                    className="w-full p-3 bg-[#0a0f1d]/70 border border-[var(--border-color)] rounded-[var(--radius-btn)] text-[var(--text-main)] placeholder-[var(--text-muted)] text-sm focus:border-[var(--primary-light)] focus:ring-2 focus:ring-[var(--primary-glow)] outline-none transition-all resize-none"
+                                ></textarea>
+                            </div>
+
+                            <div className="pt-2 flex justify-end">
+                                <button
+                                    type="submit"
+                                    disabled={loading}
+                                    className="btn-default w-full sm:w-auto px-8 py-2.5 transition-all flex items-center justify-center gap-2 text-sm"
+                                >
+                                    {loading ? <i className="fa-solid fa-spinner animate-spin"></i> : <i className="fa-solid fa-paper-plane"></i>}
+                                    Tiếp Nhận & Gửi tin nhắn Zalo cho khách
+                                </button>
+                            </div>
+                        </form>
+                    </div>
+                )}
+
+                {/* TAB 2: TRA CỨU & HOÀN TRẢ (LIVE SEARCH & FAST ACTION) */}
+                {activeTab === 'search' && (
+                    <div className="space-y-3">
+                        {/* Thanh Tìm Kiếm Live Search */}
+                        <div className="card p-3.5 flex items-center gap-3">
+                            <div className="relative flex-1">
+                                <i className={`fa-solid ${loading ? 'fa-spinner animate-spin text-[var(--primary-light)]' : 'fa-magnifying-glass text-[var(--text-muted)]'} absolute left-3.5 top-3 text-xs`}></i>
+                                <input
+                                    type="text"
+                                    placeholder="Gõ SĐT, tên khách hàng để tìm nhanh..."
+                                    value={searchQuery}
+                                    onChange={(e) => setSearchQuery(e.target.value)}
+                                    className="w-full pl-9 pr-9 py-2 bg-[#0a0f1d]/70 border border-[var(--border-color)] rounded-[var(--radius-btn)] text-[var(--text-main)] placeholder-[var(--text-muted)] text-sm focus:border-[var(--primary-light)] focus:ring-2 focus:ring-[var(--primary-glow)] outline-none transition-all"
+                                />
+                                {searchQuery && (
+                                    <button 
+                                        onClick={() => setSearchQuery('')}
+                                        className="absolute right-3 top-2.5 text-[var(--text-muted)] hover:text-white text-xs transition-colors"
+                                        title="Xóa tìm kiếm"
+                                    >
+                                        <i className="fa-solid fa-xmark"></i>
+                                    </button>
+                                )}
+                            </div>
+
+                            <div className="hidden sm:flex items-center text-xs text-[var(--text-muted)] font-medium px-2">
+                                Linh động tìm kiếm
+                            </div>
+                        </div>
+
+                        {/* Danh sách kết quả */}
+                        {loading && records.length === 0 ? (
+                            <div className="text-center py-12 text-[var(--text-muted)]">
+                                <i className="fa-solid fa-spinner animate-spin text-2xl mb-2 text-[var(--primary-light)]"></i>
+                                <div className="text-xs">Đang tìm kiếm phiếu tiếp nhận...</div>
+                            </div>
+                        ) : records.length === 0 ? (
+                            <div className="card p-12 text-center text-[var(--text-muted)]">
+                                <i className="fa-solid fa-box-open text-4xl mb-3 opacity-30"></i>
+                                <p className="text-xs">Không tìm thấy dữ liệu phiếu phù hợp.</p>
+                            </div>
+                        ) : (
+                            <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
+                                {records.map(r => (
+                                    <div key={r.id} className="card flex flex-col justify-between hover:border-sky-500/30 transition-all p-4">
+                                        <div>
+                                            <div className="flex justify-between items-start mb-3">
+                                                <div>
+                                                    <span className="text-[0.65rem] font-black text-[var(--primary-light)] bg-sky-500/10 border border-sky-500/20 px-2.5 py-0.5 rounded-md tracking-wider uppercase">
+                                                        {r.code}
+                                                    </span>
+                                                    <h3 className="font-bold text-[var(--text-main)] text-sm mt-2">{r.customer_name}</h3>
+                                                    <p className="text-xs text-[var(--text-muted)] mt-0.5">
+                                                        <i className="fa-solid fa-phone text-[10px] mr-1"></i>{r.phone}
+                                                    </p>
+                                                </div>
+                                                <span className={`text-[0.68rem] font-bold px-2.5 py-1 rounded-full border ${
+                                                    r.status === 'returned' 
+                                                        ? 'bg-emerald-500/10 border-emerald-500/20 text-emerald-400' 
+                                                        : 'bg-amber-500/10 border-amber-500/20 text-amber-400'
+                                                }`}>
+                                                    {r.status === 'returned' ? '✓ Đã Trả Máy' : '● Đang Chờ Trả'}
+                                                </span>
+                                            </div>
+
+                                            <div className="space-y-1.5 text-xs text-[var(--text-sub)] bg-[#0a0f1d]/50 border border-[var(--border-color)] p-2.5 rounded-xl mb-3">
+                                                <div><strong className="text-[var(--text-muted)]">Ngày nhận:</strong> {new Date(r.received_date).toLocaleString('vi-VN')}</div>
+                                                {r.received_note && <div><strong className="text-[var(--text-muted)]">Nội dung nhận:</strong> {r.received_note}</div>}
+                                                {r.returned_date && <div><strong className="text-[var(--text-muted)]">Ngày trả:</strong> {new Date(r.returned_date).toLocaleString('vi-VN')}</div>}
+                                                {r.returned_note && <div><strong className="text-[var(--text-muted)]">Ghi chú trả:</strong> {r.returned_note}</div>}
+                                            </div>
+                                        </div>
+
+                                        {r.status === 'received' && (
+                                            <button
+                                                onClick={() => {
+                                                    setSelectedRecord(r);
+                                                    setReturnNote('');
+                                                    setReturnError('');
+                                                }}
+                                                className="w-full py-2 bg-emerald-600/80 hover:bg-emerald-600 text-white font-bold text-xs rounded-[var(--radius-btn)] transition-all flex items-center justify-center gap-1.5 shadow-sm border border-emerald-500/30"
+                                            >
+                                                <i className="fa-solid fa-hand-holding-hand"></i> Bàn Giao & Trả Máy
+                                            </button>
+                                        )}
+                                    </div>
+                                ))}
+                            </div>
+                        )}
+                    </div>
+                )}
+
+                {/* MODAL BÀN GIAO MÁY */}
+                {selectedRecord && (
+                    <div className="fixed inset-0 bg-black/75 backdrop-blur-md flex items-center justify-center p-4 z-50">
+                        <div className="card max-w-md w-full p-5 border border-[var(--border-color)] shadow-2xl bg-[#0e1424]">
+                            <div className="flex justify-between items-center mb-3">
+                                <h3 className="text-base font-bold text-[var(--text-main)]">Xác Nhận Bàn Giao Máy</h3>
+                                <button 
+                                    onClick={() => setSelectedRecord(null)}
+                                    className="text-[var(--text-muted)] hover:text-white text-sm"
+                                >
+                                    <i className="fa-solid fa-xmark"></i>
+                                </button>
+                            </div>
+                            
+                            <p className="text-xs text-[var(--text-muted)] mb-4">
+                                Mã phiếu: <strong className="text-[var(--primary-light)]">{selectedRecord.code}</strong> - Khách: <strong className="text-[var(--text-sub)]">{selectedRecord.customer_name}</strong>
+                            </p>
+
+                            <form onSubmit={handleReturnSubmit} className="space-y-4">
+                                <div>
+                                    <label className="block text-xs font-bold text-[var(--text-sub)] uppercase mb-1.5">
+                                        Ghi chú bàn giao / Tình trạng máy khi trả
+                                    </label>
+                                    <textarea
+                                        rows="3"
+                                        placeholder="VD: Đã sửa xong linh kiện, đếm bản in ok, đã thu đủ phí..."
+                                        value={returnNote}
+                                        onChange={(e) => setReturnNote(e.target.value)}
+                                        className="w-full p-3 bg-[#0a0f1d]/70 border border-[var(--border-color)] rounded-[var(--radius-btn)] text-[var(--text-main)] placeholder-[var(--text-muted)] text-sm focus:border-[var(--primary-light)] focus:ring-2 focus:ring-[var(--primary-glow)] outline-none transition-all resize-none"
+                                    ></textarea>
+                                </div>
+
+                                <div className="flex gap-2.5 pt-1">
+                                    <button
+                                        type="button"
+                                        onClick={() => setSelectedRecord(null)}
+                                        className="flex-1 py-2 bg-slate-800 hover:bg-slate-700 text-[var(--text-sub)] font-bold text-xs rounded-[var(--radius-btn)] border border-[var(--border-color)] transition-all"
+                                    >
+                                        Hủy
+                                    </button>
+                                    <button
+                                        type="submit"
+                                        disabled={isReturning}
+                                        className="flex-1 py-2 bg-emerald-600 hover:bg-emerald-500 text-white font-bold text-xs rounded-[var(--radius-btn)] border border-emerald-500/30 transition-all flex items-center justify-center gap-1.5"
+                                    >
+                                        {isReturning ? <i className="fa-solid fa-spinner animate-spin"></i> : <i className="fa-solid fa-check"></i>}
+                                        Xác Nhận Trả Máy
+                                    </button>
+                                </div>
+                            </form>
+                        </div>
+                    </div>
+                )}
+            </div>
+        );
+    }
+
+    const container = document.getElementById('root');
+    if (container) {
+        const root = ReactDOM.createRoot(container);
+        root.render(<ReceptionApp />);
+    }
+</script>
+{% endraw %}
+{% endblock %}

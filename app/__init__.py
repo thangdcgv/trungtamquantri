@@ -12,6 +12,6 @@ def create_app() -> FastAPI:
     # Đăng ký các Router
     app.include_router(
         auth_router, prefix="/auth", tags=["Auth"]
-    )  # Đường dẫn sẽ bắt đầu bằng /auth
+    )  # Đường dẫn sẽ bắt đầu bằng /authP
 
     return app

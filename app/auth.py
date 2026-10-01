@@ -78,7 +78,7 @@ def extract_user_from_session(request: Request) -> Optional[Dict[str, Any]]:
 
 
 async def verify_active_session(user_id: str, session_token: str) -> bool:
-    """Kiểm tra session_token của App CENTER trong user_sessions bằng supabase_admin (bỏ qua RLS)."""
+    """Kiểm tra session_token của App CENTER trong user_sessions bằng supabase_admin."""
     def _check():
         res = (
             supabase_admin.table("user_sessions")
@@ -112,7 +112,7 @@ async def require_login(request: Request) -> Dict[str, Any]:
         request.session.clear()
         raise HTTPException(
             status_code=status.HTTP_401_UNAUTHORIZED,
-            detail="Tài khoản của bạn đã được đăng xuất từ một thiết bị khác.",
+            detail="Tài khoản của bạn đã được đăng nhập từ một thiết bị khác trên ứng dụng này.",
         )
 
     return user
@@ -133,7 +133,7 @@ async def get_current_user_or_redirect(request: Request) -> Optional[Dict[str, A
 
 
 # =========================================================
-# 1. ĐĂNG NHẬP (LÃ̃ XỬ LÝ LỖI BẢO MẬT & BẤT ĐỒNG NHẤT ROLE)
+# 1. ĐĂNG NHẬP (SINGLE SESSION PER APP_CODE ENFORCEMENT)
 # =========================================================
 
 SUPER_ADMIN_ROLES = {"super admin", "system admin"}
@@ -143,13 +143,11 @@ def get_redirect_url_by_role(role: str) -> str:
     role_clean = str(role or "user").strip().lower()
     
     if role_clean == "admin":
-        return "/cham-cong"  # Hoặc /cham-cong/list tùy theo route của bạn
+        return "/cham-cong"
     elif role_clean in SUPER_ADMIN_ROLES:
         return "/admin"
     return "/"
-# =========================================================
-# 1. ĐĂNG NHẬP (LOGIN WITH CONCURRENT SESSION CHECK)
-# =========================================================
+
 
 @router.get("/login", response_class=HTMLResponse)
 async def login_page(request: Request):
@@ -159,7 +157,7 @@ async def login_page(request: Request):
         redirect_url = get_redirect_url_by_role(user_role)
         return RedirectResponse(url=redirect_url, status_code=status.HTTP_303_SEE_OTHER)
 
-    return render_template(request, "login.html", {"error": None, "show_conflict_modal": False})
+    return render_template(request, "login.html", {"error": None})
 
 
 @router.post("/login")
@@ -167,16 +165,15 @@ async def login(
     request: Request,
     email: str = Form(...),
     password: str = Form(...),
-    conflict_action: Optional[str] = Form(None),
 ):
-    """Xác thực người dùng, kiểm tra đăng nhập trùng lặp và ghi nhận session vào DB."""
+    """Xác thực người dùng và bắt buộc chỉ cho phép 1 phiên làm việc duy nhất theo app_code."""
     email_clean = email.strip().lower()
 
     if not email_clean or not password:
         return render_template(
             request,
             "login.html",
-            {"error": "Vui lòng nhập đầy đủ email và mật khẩu.", "show_conflict_modal": False},
+            {"error": "Vui lòng nhập đầy đủ email và mật khẩu."},
             status_code=status.HTTP_400_BAD_REQUEST,
         )
 
@@ -191,55 +188,26 @@ async def login(
             return render_template(
                 request,
                 "login.html",
-                {"error": "Email hoặc mật khẩu không chính xác.", "show_conflict_modal": False},
+                {"error": "Email hoặc mật khẩu không chính xác."},
                 status_code=status.HTTP_401_UNAUTHORIZED,
             )
 
         auth_id = str(response.user.id)
 
-        # 2. Đọc danh sách phiên active thuộc riêng App CENTER
-        def _get_active_sessions():
+        # 2. XÓA TẤT CẢ PHIÊN CŨ CỦA CÙNG (user_id, app_code)
+        # Chỉ xóa phiên thuộc ứng dụng hiện tại (APP_CODE), giữ nguyên các app_code khác
+        def _clear_same_app_sessions():
             return (
                 supabase_admin.table("user_sessions")
-                .select("*")
+                .delete()
                 .eq("user_id", auth_id)
                 .eq("app_code", APP_CODE)
                 .execute()
             )
 
-        existing_sessions = await run_in_threadpool(_get_active_sessions)
-        active_count = len(existing_sessions.data) if existing_sessions and existing_sessions.data else 0
+        await run_in_threadpool(_clear_same_app_sessions)
 
-        # 3. Hiện Modal cảnh báo (Bảo mật: Không truyền password ra HTML)
-        if active_count > 0 and not conflict_action:
-            return render_template(
-                request,
-                "login.html",
-                {
-                    "error": None,
-                    "show_conflict_modal": True,
-                    "email": email_clean,
-                    "password": password,
-                    "active_count": active_count,
-                    "sessions": existing_sessions.data,
-                },
-                status_code=status.HTTP_200_OK,
-            )
-
-        # 4. Xóa toàn bộ các phiên cũ nếu người dùng chọn 'logout_all'
-        if conflict_action == "logout_all":
-            def _clear_old_sessions():
-                return (
-                    supabase_admin.table("user_sessions")
-                    .delete()
-                    .eq("user_id", auth_id)
-                    .eq("app_code", APP_CODE)
-                    .execute()
-                )
-
-            await run_in_threadpool(_clear_old_sessions)
-
-        # 5. Lấy Real Client IP chính xác (Hỗ trợ Reverse Proxy)
+        # 3. Lấy IP và User Agent để tạo phiên mới
         x_forwarded_for = request.headers.get("x-forwarded-for")
         if x_forwarded_for:
             client_ip = x_forwarded_for.split(",")[0].strip()
@@ -249,6 +217,7 @@ async def login(
         user_agent = request.headers.get("user-agent", "Unknown")[:255]
         new_session_token = str(uuid.uuid4())
 
+        # 4. Ghi nhận phiên làm việc mới cho APP_CODE này
         def _insert_new_session():
             return supabase_admin.table("user_sessions").insert({
                 "user_id": auth_id,
@@ -260,7 +229,7 @@ async def login(
 
         await run_in_threadpool(_insert_new_session)
 
-        # 6. Lấy profile quản trị viên từ DB
+        # 5. Lấy profile quản trị viên từ DB
         def _fetch_user_profile():
             return (
                 supabase_admin.table("quan_tri_vien")
@@ -282,7 +251,7 @@ async def login(
             ho_ten = user_info.get("ho_ten") or user_info.get("name") or ho_ten
             role = str(user_info.get("role") or "User").strip()
 
-        # Cập nhật Session Cookie
+        # 6. Cập nhật Session Cookie
         request.session.clear()
         request.session["user_id"] = auth_id
         request.session["session_token"] = new_session_token
@@ -294,9 +263,8 @@ async def login(
         if response.session:
             request.session["access_token"] = response.session.access_token
 
-        # ✅ ĐIỀU HƯỚNG THEO ROLE ĐÃ PHÂN LUỒNG MỚI
+        # Chuyển hướng theo role
         redirect_url = get_redirect_url_by_role(role)
-
         return RedirectResponse(url=redirect_url, status_code=status.HTTP_303_SEE_OTHER)
 
     except Exception as e:
@@ -311,9 +279,10 @@ async def login(
         return render_template(
             request,
             "login.html",
-            {"error": friendly_error, "show_conflict_modal": False},
+            {"error": friendly_error},
             status_code=status.HTTP_401_UNAUTHORIZED,
         )
+
 
 # =========================================================
 # 2. ĐĂNG XUẤT (LOGOUT)

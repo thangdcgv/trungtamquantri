@@ -367,15 +367,15 @@
                 <span>Duyệt Chấm Công</span>
             </a>
 
-            <!-- 👈 NÚT BỔ SUNG: QUÉT MÃ KIỂM KÊ KHO -->
-            <a href="/inventory/scan" class="quick-btn btn-blue">
-                <i class="fa-solid fa-qrcode"></i>
-                <span>Quét Mã Kiểm Kê</span>
+            <!-- 👈 KHU VỰC ĐIỀU HƯỚNG: HÀNG CHỜ & LỄ TÂN NHẬN TRẢ HÀNG -->
+            <a href="/api/admin-queue" class="quick-btn btn-blue">
+                <i class="fa-solid fa-ticket"></i>
+                <span>Quản Lý Hàng Chờ</span>
             </a>
 
-            <a href="https://printer-guide.onrender.com" target="_blank" rel="noopener noreferrer" class="quick-btn btn-amber">
-                <i class="fa-solid fa-book-open"></i>
-                <span>Thư Viện Máy In</span>
+            <a href="/api/reception/delivery" class="quick-btn btn-amber">
+                <i class="fa-solid fa-boxes-packing"></i>
+                <span>Lễ Tân Nhận - Trả Hàng</span>
             </a>
 
             {% if current_user and current_user.role in ['Admin', 'Super Admin', 'System Admin'] %}

@@ -1,0 +1,612 @@
+{% extends "base.html" %}
+
+{% block title %}Bốc Số Thứ Tự Điện Tử | Máy In Đại Thành{% endblock %}
+
+{% block head %}
+{{ super() }}
+<!-- React & Babel CDN -->
+<script crossorigin src="https://unpkg.com/react@18/umd/react.production.min.js"></script>
+<script crossorigin src="https://unpkg.com/react-dom@18/umd/react-dom.production.min.js"></script>
+<script src="https://unpkg.com/@babel/standalone/babel.min.js"></script>
+{% endblock %}
+
+{% block content %}
+<!-- Root render ứng dụng bốc số -->
+<div id="root" class="w-full"></div>
+{% endblock %}
+
+{% block scripts %}
+{{ super() }}
+
+{% raw %}
+<script type="text/babel">
+    const { useState, useEffect, useCallback } = React;
+
+    const API_BASE = "/api"; 
+    const HOTLINE_NUMBER = "0938580406";
+    const LOGO_URL = "/static/icons/favicon.png";
+
+    // Regex SĐT Việt Nam chuẩn
+    const PHONE_REGEX = /^0[35789]\d{8}$/;
+
+    // Danh mục phòng ban
+    const DEPARTMENTS = [
+        {
+            id: "KTSC",
+            icon: "fa-solid fa-screwdriver-wrench",
+            title: "Kỹ thuật sửa chữa",
+            shortTitle: "Sửa chữa máy in",
+            desc: "Máy kẹt giấy, báo lỗi, nghẹt màu, không in được...",
+            placeholder: "VD: Máy L8050 kẹt giấy, Canon G1010 nghẹt màu..."
+        },
+        {
+            id: "KTLD",
+            icon: "fa-solid fa-truck-ramp-box",
+            title: "Kỹ thuật lắp đặt",
+            shortTitle: "Lắp đặt & Cài đặt",
+            desc: "Lắp máy mới, cài driver, chia sẻ máy in mạng LAN...",
+            placeholder: "VD: Cần hỗ trợ cài driver máy in qua UltraViewer..."
+        },
+        {
+            id: "KD",
+            icon: "fa-solid fa-comments-dollar",
+            title: "Kinh doanh & Báo giá",
+            shortTitle: "Báo giá thiết bị",
+            desc: "Tư vấn chọn mua máy in, mực in, linh kiện in ấn...",
+            placeholder: "VD: Cần tư vấn báo giá máy in dịch vụ..."
+        },
+        {
+            id: "CSKH",
+            icon: "fa-solid fa-headset",
+            title: "Chăm sóc khách hàng",
+            shortTitle: "CSKH & Hỗ trợ",
+            desc: "Gửi phản ánh dịch vụ, bảo hành hoặc gặp tư vấn viên...",
+            placeholder: "Nội dung phản ánh hoặc yêu cầu hỗ trợ..."
+        }
+    ];
+
+    // Cấu hình trạng thái vé
+    const STATUS_CONFIG = {
+        waiting: {
+            label: "Đang chờ đến lượt",
+            desc: "Yêu cầu của bạn đang trong hàng chờ, kỹ thuật viên sẽ liên hệ sớm nhất.",
+            badgeClass: "bg-amber-500/10 text-amber-400 border-amber-500/20",
+            step: 1
+        },
+        processing: {
+            label: "Kỹ thuật viên đang xử lý",
+            desc: "Kỹ thuật viên đã tiếp nhận và sẽ liên hệ trong một vài phút tới.",
+            badgeClass: "bg-sky-500/10 text-sky-400 border-sky-500/20",
+            step: 2
+        },
+        completed: {
+            label: "Hỗ trợ hoàn tất",
+            desc: "Yêu cầu của bạn đã được xử lý xong. Cảm ơn bạn đã tin tưởng Đại Thành!",
+            badgeClass: "bg-emerald-500/10 text-emerald-400 border-emerald-500/20",
+            step: 3
+        }
+    };
+
+    function PublicTicketApp() {
+        const [step, setStep] = useState("SELECT"); // 'SELECT' | 'FORM' | 'CSKH_CHOICE'
+        const [loading, setLoading] = useState(true);
+        const [submitting, setSubmitting] = useState(false);
+        const [toast, setToast] = useState(null);
+
+        const [activeTicket, setActiveTicket] = useState(null);
+        const [selectedDept, setSelectedDept] = useState(null);
+
+        // Form Bốc số
+        const [formData, setFormData] = useState({
+            customer_name: localStorage.getItem("saved_customer_name") || "",
+            phone: localStorage.getItem("saved_customer_phone") || "",
+            device_info: ""
+        });
+        const [formErrors, setFormErrors] = useState({});
+
+        // Notification Toast Helper
+        const showToast = (message, type = 'success') => {
+            setToast({ message, type });
+            setTimeout(() => setToast(null), 3000);
+        };
+
+        // Kiểm tra xem người dùng đã bốc phiếu trước đó chưa
+        const checkMyTicket = useCallback(async (isSilent = false) => {
+            const savedTicketId = localStorage.getItem("active_ticket_id");
+            const savedPhone = localStorage.getItem("saved_customer_phone");
+
+            if (!savedTicketId && !savedPhone) {
+                if (!isSilent) setLoading(false);
+                return;
+            }
+
+            try {
+                const query = new URLSearchParams();
+                if (savedTicketId) query.set("ticket_id", savedTicketId);
+                if (savedPhone) query.set("phone", savedPhone);
+
+                const res = await fetch(`${API_BASE}/tickets/my-ticket?${query.toString()}`);
+                if (!res.ok) return;
+                const data = await res.json();
+
+                if (data.has_ticket && data.ticket && ["waiting", "processing", "completed"].includes(data.ticket.status)) {
+                    if (isSilent && activeTicket && activeTicket.status !== data.ticket.status) {
+                        if (data.ticket.status === "processing") {
+                            showToast("Kỹ thuật viên đang tiếp nhận xử lý phiếu của bạn!", "info");
+                        } else if (data.ticket.status === "completed") {
+                            showToast("Phiếu hỗ trợ của bạn đã hoàn thành!", "success");
+                        }
+                    }
+                    setActiveTicket(data.ticket);
+                    localStorage.setItem("active_ticket_id", data.ticket.id);
+                } else if (!data.has_ticket) {
+                    setActiveTicket(null);
+                    localStorage.removeItem("active_ticket_id");
+                }
+            } catch (err) {
+                console.error("Lỗi kiểm tra phiếu:", err);
+            } finally {
+                if (!isSilent) setLoading(false);
+            }
+        }, [activeTicket]);
+
+        // Polling kiểm tra trạng thái vé mỗi 5 giây
+        useEffect(() => {
+            checkMyTicket(false);
+            const interval = setInterval(() => {
+                if (!activeTicket || activeTicket.status !== "completed") {
+                    checkMyTicket(true);
+                }
+            }, 5000);
+            return () => clearInterval(interval);
+        }, [activeTicket?.status]);
+
+        // Chọn bộ phận
+        const handleSelectDept = (dept) => {
+            setSelectedDept(dept);
+            setFormErrors({});
+            if (dept.id === "CSKH") {
+                setStep("CSKH_CHOICE");
+            } else {
+                setStep("FORM");
+            }
+        };
+
+        // Validation Form
+        const validateForm = () => {
+            const errors = {};
+            const cleanName = formData.customer_name.trim();
+            const cleanPhone = formData.phone.trim();
+
+            if (!cleanName) {
+                errors.customer_name = "Vui lòng nhập họ và tên!";
+            } else if (cleanName.length < 2) {
+                errors.customer_name = "Tên phải có ít nhất 2 ký tự!";
+            }
+
+            if (!cleanPhone) {
+                errors.phone = "Vui lòng nhập số điện thoại!";
+            } else if (!PHONE_REGEX.test(cleanPhone)) {
+                errors.phone = "SĐT không hợp lệ (ví dụ: 0912345678)";
+            }
+
+            setFormErrors(errors);
+            return Object.keys(errors).length === 0;
+        };
+
+        // Gửi API bốc số
+        const handleSubmitTicket = async (e) => {
+            e.preventDefault();
+            if (!validateForm()) return;
+
+            setSubmitting(true);
+            try {
+                const payload = {
+                    department: selectedDept?.id || "KTSC",
+                    customer_name: formData.customer_name.trim(),
+                    phone: formData.phone.trim(),
+                    device_info: formData.device_info.trim()
+                };
+
+                const res = await fetch(`${API_BASE}/tickets/create`, {
+                    method: "POST",
+                    headers: { "Content-Type": "application/json" },
+                    body: JSON.stringify(payload)
+                });
+                const data = await res.json();
+
+                if (res.ok && data.success) {
+                    localStorage.setItem("saved_customer_name", payload.customer_name);
+                    localStorage.setItem("saved_customer_phone", payload.phone);
+                    if (data.ticket?.id) {
+                        localStorage.setItem("active_ticket_id", data.ticket.id);
+                    }
+                    setActiveTicket(data.ticket);
+                    setStep("SELECT");
+                    showToast("Lấy số thứ tự thành công!", "success");
+                } else if (data.ticket) {
+                    setActiveTicket(data.ticket);
+                    localStorage.setItem("active_ticket_id", data.ticket.id);
+                    showToast("Bạn đã có vé đang chờ xử lý!", "info");
+                } else {
+                    showToast(data.detail || data.message || "Không thể bốc số lúc này!", "error");
+                }
+            } catch (err) {
+                showToast("Lỗi kết nối máy chủ!", "error");
+            } finally {
+                setSubmitting(false);
+            }
+        };
+
+        const handleCallHotline = () => {
+            window.location.href = `tel:${HOTLINE_NUMBER}`;
+        };
+
+        if (loading) {
+            return (
+                <div className="text-center py-20 text-[var(--text-muted)]">
+                    <i className="fa-solid fa-spinner animate-spin text-3xl text-[var(--primary-light)] mb-3"></i>
+                    <div className="text-xs">Đang nạp dữ liệu bốc số...</div>
+                </div>
+            );
+        }
+
+        return (
+            <div className="w-full max-w-xl mx-auto space-y-4">
+                {/* TOAST NOTIFICATION */}
+                {toast && (
+                    <div className={`fixed top-16 right-4 z-50 px-4 py-3 rounded-xl shadow-2xl font-medium text-white transition-all backdrop-blur-md flex items-center gap-3 border ${
+                        toast.type === 'error' 
+                            ? 'bg-rose-900/90 border-rose-500/30 text-rose-200' 
+                            : 'bg-emerald-900/90 border-emerald-500/30 text-emerald-200'
+                    }`}>
+                        <i className={`fa-solid ${toast.type === 'error' ? 'fa-circle-exclamation text-rose-400' : 'fa-circle-check text-emerald-400'}`}></i>
+                        <span className="text-sm">{toast.message}</span>
+                    </div>
+                )}
+
+                {/* TRẠNG THÁI 1: KHÁCH HÀNG ĐÃ BỐC SỐ */}
+                {activeTicket ? (
+                    <div className="space-y-4">
+                        <div className="card flex items-center justify-between p-4 border border-[var(--border-color)]">
+                            <div className="flex items-center gap-3">
+                                <div className="w-10 h-10 rounded-xl bg-sky-500/10 border border-sky-500/20 text-[var(--primary-light)] flex items-center justify-center text-lg font-bold">
+                                    <i className="fa-solid fa-ticket"></i>
+                                </div>
+                                <div>
+                                    <h1 className="text-sm sm:text-base font-black text-[var(--text-main)] uppercase">MÁY IN ĐẠI THÀNH</h1>
+                                    <p className="text-[11px] text-[var(--text-muted)]">Số thứ tự điện tử hỗ trợ kỹ thuật</p>
+                                </div>
+                            </div>
+                            <span className="text-[10px] font-bold px-2.5 py-1 rounded-full bg-emerald-500/10 border border-emerald-500/20 text-emerald-400">
+                                ● Online
+                            </span>
+                        </div>
+
+                        {(() => {
+                            const conf = STATUS_CONFIG[activeTicket.status] || STATUS_CONFIG.waiting;
+                            return (
+                                <div className={`card p-4 border ${conf.badgeClass}`}>
+                                    <div className="flex items-center gap-2 mb-1">
+                                        <i className="fa-solid fa-circle-dot text-xs"></i>
+                                        <h2 className="text-sm font-bold">{conf.label}</h2>
+                                    </div>
+                                    <p className="text-xs opacity-80 leading-relaxed">{conf.desc}</p>
+                                </div>
+                            );
+                        })()}
+
+                        <div className="card p-4 border border-[var(--border-color)]">
+                            <div className="text-[10px] font-bold text-[var(--text-muted)] uppercase tracking-wider mb-3">
+                                Tiến độ xử lý
+                            </div>
+                            <div className="flex items-center justify-between relative">
+                                <div className="absolute top-3.5 left-8 right-8 h-0.5 bg-[var(--border-color)] z-0"></div>
+                                {[
+                                    { num: 1, title: "Đã bốc số" },
+                                    { num: 2, title: "Đang xử lý" },
+                                    { num: 3, title: "Hoàn thành" }
+                                ].map((s) => {
+                                    const currentStep = STATUS_CONFIG[activeTicket.status]?.step || 1;
+                                    const isPassed = currentStep >= s.num;
+                                    const isCurrent = currentStep === s.num;
+
+                                    return (
+                                        <div key={s.num} className="flex flex-col items-center z-10">
+                                            <div className={`w-7 h-7 rounded-full flex items-center justify-center text-xs font-bold transition-all ${
+                                                isPassed 
+                                                    ? 'bg-[var(--primary)] text-white shadow-[var(--shadow-glow)]' 
+                                                    : 'bg-slate-800 text-[var(--text-muted)] border border-[var(--border-color)]'
+                                            } ${isCurrent ? 'ring-2 ring-sky-400' : ''}`}>
+                                                {isPassed && s.num < currentStep ? "✓" : s.num}
+                                            </div>
+                                            <span className={`text-[11px] mt-1.5 font-medium ${isCurrent ? 'text-[var(--primary-light)] font-bold' : 'text-[var(--text-muted)]'}`}>
+                                                {s.title}
+                                            </span>
+                                        </div>
+                                    );
+                                })}
+                            </div>
+                        </div>
+
+                        <div className="card p-6 text-center border border-[var(--border-color)] bg-[#0e1424]">
+                            <div className="text-[11px] font-bold text-[var(--text-muted)] uppercase tracking-wider">
+                                Mã số thứ tự của bạn
+                            </div>
+                            <div className="text-5xl font-black text-[var(--primary-light)] my-2 tracking-tight">
+                                {activeTicket.ticket_code}
+                            </div>
+                            <div className="text-xs font-bold text-[var(--text-sub)]">
+                                {DEPARTMENTS.find(d => d.id === activeTicket.department)?.title || "Bộ phận kỹ thuật"}
+                            </div>
+
+                            <div className="my-4 p-3.5 bg-[#0a0f1d]/70 border border-[var(--border-color)] rounded-xl flex items-center justify-between">
+                                <div className="text-left">
+                                    <div className="text-[11px] text-[var(--text-muted)]">Đang phục vụ số</div>
+                                    <div className="text-xl font-black text-[var(--text-main)]">
+                                        {activeTicket.current_number || activeTicket.ticket_code}
+                                    </div>
+                                </div>
+                                <div className="w-9 h-9 rounded-lg bg-sky-500/10 text-[var(--primary-light)] flex items-center justify-center text-base">
+                                    <i className="fa-solid fa-clock-rotate-left"></i>
+                                </div>
+                            </div>
+
+                            <div className="text-left text-xs space-y-2 pt-3 border-t border-[var(--border-color)]">
+                                <div className="flex justify-between">
+                                    <span className="text-[var(--text-muted)]">Khách hàng:</span>
+                                    <strong className="text-[var(--text-main)]">{activeTicket.customer_name}</strong>
+                                </div>
+                                <div className="flex justify-between">
+                                    <span className="text-[var(--text-muted)]">Số điện thoại:</span>
+                                    <strong className="text-[var(--text-main)]">{activeTicket.phone}</strong>
+                                </div>
+                                {activeTicket.technician_name && (
+                                    <div className="flex justify-between pt-2 border-t border-dashed border-[var(--border-color)]">
+                                        <span className="text-[var(--text-muted)]">KTV phụ trách:</span>
+                                        <strong className="text-amber-400">{activeTicket.technician_name}</strong>
+                                    </div>
+                                )}
+                            </div>
+                        </div>
+
+                        {activeTicket.status === "processing" && (
+                            <button
+                                onClick={handleCallHotline}
+                                className="btn-default w-full py-3 text-sm font-bold flex items-center justify-center gap-2"
+                            >
+                                <i className="fa-solid fa-phone"></i> Gọi Kỹ Thuật Viên / Hotline ({HOTLINE_NUMBER})
+                            </button>
+                        )}
+
+                        {activeTicket.status === "completed" && (
+                            <button
+                                onClick={() => {
+                                    setActiveTicket(null);
+                                    localStorage.removeItem("active_ticket_id");
+                                }}
+                                className="w-full py-3 bg-emerald-600 hover:bg-emerald-500 text-white font-bold text-sm rounded-[var(--radius-btn)] transition-all"
+                            >
+                                ✓ Đã Hoàn Thành — Bốc Số Mới
+                            </button>
+                        )}
+                    </div>
+                ) : (
+                    <>
+                        {/* HEADER BANNER */}
+                        <div className="card p-4 sm:p-5 flex items-center justify-between border border-[var(--border-color)]">
+                            <div className="flex items-center gap-3.5">
+                                <img src={LOGO_URL} alt="Logo" className="w-10 h-10 object-contain flex-shrink-0" />
+                                <div>
+                                    <span className="text-[10px] font-extrabold text-[var(--primary-light)] bg-sky-500/10 border border-sky-500/20 px-2 py-0.5 rounded-full uppercase">
+                                        Hệ Thống Bốc Số Tự Động
+                                    </span>
+                                    <h1 className="text-base sm:text-lg font-black text-[var(--text-main)] tracking-wide mt-1">
+                                        MÁY IN ĐẠI THÀNH
+                                    </h1>
+                                </div>
+                            </div>
+                        </div>
+
+                        {/* CHỌN BỘ PHẬN */}
+                        {step === "SELECT" && (
+                            <div className="space-y-3">
+                                <div className="text-xs font-bold text-[var(--text-sub)] uppercase tracking-wider px-1">
+                                    Vui lòng chọn bộ phận cần hỗ trợ:
+                                </div>
+
+                                <div className="grid grid-cols-1 gap-3">
+                                    {DEPARTMENTS.map((dept) => (
+                                        <div
+                                            key={dept.id}
+                                            onClick={() => handleSelectDept(dept)}
+                                            className="card p-4 flex items-center gap-4 cursor-pointer hover:border-sky-500/40 transition-all border border-[var(--border-color)] group"
+                                        >
+                                            <div className="w-11 h-11 rounded-xl bg-sky-500/10 border border-sky-500/20 text-[var(--primary-light)] flex items-center justify-center text-lg flex-shrink-0 group-hover:scale-110 transition-transform">
+                                                <i className={dept.icon}></i>
+                                            </div>
+                                            <div className="flex-1 min-w-0">
+                                                <h3 className="text-sm font-bold text-[var(--text-main)] group-hover:text-[var(--primary-light)] transition-colors">
+                                                    {dept.title}
+                                                </h3>
+                                                <p className="text-xs text-[var(--text-muted)] mt-0.5 truncate">
+                                                    {dept.desc}
+                                                </p>
+                                            </div>
+                                            <i className="fa-solid fa-chevron-right text-xs text-[var(--text-muted)] group-hover:translate-x-1 transition-transform"></i>
+                                        </div>
+                                    ))}
+                                </div>
+
+                                <div className="card p-3.5 flex items-center gap-3 border border-[var(--border-color)] bg-[#0a0f1d]/50">
+                                    <i className="fa-solid fa-clock text-[var(--primary-light)] text-base"></i>
+                                    <div className="text-xs text-[var(--text-sub)]">
+                                        <strong>Giờ làm việc:</strong> Thứ 2 – Thứ 7 · 08:00–12:00 & 13:30–17:30
+                                    </div>
+                                </div>
+                            </div>
+                        )}
+
+                        {/* MÀN HÌNH LỰA CHỌN CSKH */}
+                        {step === "CSKH_CHOICE" && (
+                            <div className="card p-5 border border-[var(--border-color)] space-y-4">
+                                <div className="flex items-center justify-between pb-3 border-b border-[var(--border-color)]">
+                                    <button
+                                        type="button"
+                                        onClick={() => setStep("SELECT")}
+                                        className="text-xs font-bold text-[var(--text-muted)] hover:text-white flex items-center gap-1.5"
+                                    >
+                                        <i className="fa-solid fa-arrow-left"></i> Quay lại
+                                    </button>
+                                    <span className="text-xs font-bold text-[var(--primary-light)]">
+                                        Bộ phận: CSKH & Hỗ trợ
+                                    </span>
+                                </div>
+
+                                <div className="space-y-3 py-2">
+                                    <button
+                                        onClick={handleCallHotline}
+                                        className="w-full p-4 rounded-xl bg-emerald-600/10 border border-emerald-500/30 hover:bg-emerald-600/20 text-emerald-400 flex items-center justify-between transition-all"
+                                    >
+                                        <div className="flex items-center gap-3 text-left">
+                                            <i className="fa-solid fa-phone text-xl"></i>
+                                            <div>
+                                                <div className="font-bold text-sm">Gọi trực tiếp Hotline</div>
+                                                <div className="text-xs opacity-80">Gặp trực tiếp tư vấn viên ngay lập tức ({HOTLINE_NUMBER})</div>
+                                            </div>
+                                        </div>
+                                        <i className="fa-solid fa-chevron-right text-xs"></i>
+                                    </button>
+
+                                    <button
+                                        onClick={() => setStep("FORM")}
+                                        className="w-full p-4 rounded-xl bg-sky-500/10 border border-sky-500/30 hover:bg-sky-500/20 text-[var(--primary-light)] flex items-center justify-between transition-all"
+                                    >
+                                        <div className="flex items-center gap-3 text-left">
+                                            <i className="fa-solid fa-ticket text-xl"></i>
+                                            <div>
+                                                <div className="font-bold text-sm">Bốc số xếp hàng hỗ trợ</div>
+                                                <div className="text-xs opacity-80">Gửi thông tin để nhân viên liên hệ lại theo hàng chờ</div>
+                                            </div>
+                                        </div>
+                                        <i className="fa-solid fa-chevron-right text-xs"></i>
+                                    </button>
+                                </div>
+                            </div>
+                        )}
+
+                        {/* MÀN HÌNH ĐIỀN THÔNG TIN */}
+                        {step === "FORM" && (
+                            <div className="card p-5 border border-[var(--border-color)] space-y-4">
+                                <div className="flex items-center justify-between pb-3 border-b border-[var(--border-color)]">
+                                    <button
+                                        type="button"
+                                        onClick={() => setStep(selectedDept?.id === "CSKH" ? "CSKH_CHOICE" : "SELECT")}
+                                        className="text-xs font-bold text-[var(--text-muted)] hover:text-white flex items-center gap-1.5"
+                                    >
+                                        <i className="fa-solid fa-arrow-left"></i> Quay lại
+                                    </button>
+                                    <span className="text-xs font-bold text-[var(--primary-light)]">
+                                        Bộ phận: {selectedDept?.shortTitle}
+                                    </span>
+                                </div>
+
+                                <form onSubmit={handleSubmitTicket} className="space-y-4">
+                                    <div>
+                                        <label className="block text-xs font-bold text-[var(--text-sub)] uppercase mb-1.5">
+                                            Họ và tên khách hàng <span className="text-rose-400">*</span>
+                                        </label>
+                                        <div className="relative">
+                                            <i className="fa-solid fa-user absolute left-3.5 top-3 text-[var(--text-muted)] text-xs"></i>
+                                            <input
+                                                type="text"
+                                                placeholder="Nhập họ và tên của bạn..."
+                                                value={formData.customer_name}
+                                                onChange={(e) => {
+                                                    setFormData({...formData, customer_name: e.target.value});
+                                                    if (formErrors.customer_name) setFormErrors({...formErrors, customer_name: ''});
+                                                }}
+                                                className={`w-full pl-9 pr-3 py-2 bg-[#0a0f1d]/70 border rounded-[var(--radius-btn)] text-[var(--text-main)] placeholder-[var(--text-muted)] text-sm outline-none transition-all ${
+                                                    formErrors.customer_name 
+                                                        ? 'border-rose-500/80 focus:ring-2 focus:ring-rose-500/20' 
+                                                        : 'border-[var(--border-color)] focus:border-[var(--primary-light)] focus:ring-2 focus:ring-[var(--primary-glow)]'
+                                                }`}
+                                            />
+                                        </div>
+                                        {formErrors.customer_name && (
+                                            <p className="text-[11px] text-rose-400 mt-1 flex items-center gap-1 font-medium">
+                                                <i className="fa-solid fa-circle-exclamation text-[10px]"></i> {formErrors.customer_name}
+                                            </p>
+                                        )}
+                                    </div>
+
+                                    <div>
+                                        <label className="block text-xs font-bold text-[var(--text-sub)] uppercase mb-1.5">
+                                            Số điện thoại liên hệ <span className="text-rose-400">*</span>
+                                        </label>
+                                        <div className="relative">
+                                            <i className="fa-solid fa-phone absolute left-3.5 top-3 text-[var(--text-muted)] text-xs"></i>
+                                            <input
+                                                type="tel"
+                                                placeholder="Nhập 10 số điện thoại (VD: 0912345678)..."
+                                                value={formData.phone}
+                                                onChange={(e) => {
+                                                    setFormData({...formData, phone: e.target.value});
+                                                    if (formErrors.phone) setFormErrors({...formErrors, phone: ''});
+                                                }}
+                                                className={`w-full pl-9 pr-3 py-2 bg-[#0a0f1d]/70 border rounded-[var(--radius-btn)] text-[var(--text-main)] placeholder-[var(--text-muted)] text-sm outline-none transition-all ${
+                                                    formErrors.phone 
+                                                        ? 'border-rose-500/80 focus:ring-2 focus:ring-rose-500/20' 
+                                                        : 'border-[var(--border-color)] focus:border-[var(--primary-light)] focus:ring-2 focus:ring-[var(--primary-glow)]'
+                                                }`}
+                                            />
+                                        </div>
+                                        {formErrors.phone && (
+                                            <p className="text-[11px] text-rose-400 mt-1 flex items-center gap-1 font-medium">
+                                                <i className="fa-solid fa-circle-exclamation text-[10px]"></i> {formErrors.phone}
+                                            </p>
+                                        )}
+                                    </div>
+
+                                    <div>
+                                        <label className="block text-xs font-bold text-[var(--text-sub)] uppercase mb-1.5">
+                                            Nội dung / Mô tả tình trạng máy
+                                        </label>
+                                        <textarea
+                                            rows="3"
+                                            placeholder={selectedDept?.placeholder}
+                                            value={formData.device_info}
+                                            onChange={(e) => setFormData({...formData, device_info: e.target.value})}
+                                            className="w-full p-3 bg-[#0a0f1d]/70 border border-[var(--border-color)] rounded-[var(--radius-btn)] text-[var(--text-main)] placeholder-[var(--text-muted)] text-sm focus:border-[var(--primary-light)] focus:ring-2 focus:ring-[var(--primary-glow)] outline-none transition-all resize-none"
+                                        ></textarea>
+                                    </div>
+
+                                    <button
+                                        type="submit"
+                                        disabled={submitting}
+                                        className="btn-default w-full py-3 text-sm font-bold transition-all flex items-center justify-center gap-2 mt-2"
+                                    >
+                                        {submitting ? (
+                                            <i className="fa-solid fa-spinner animate-spin"></i>
+                                        ) : (
+                                            <>
+                                                <i className="fa-solid fa-ticket"></i>
+                                                <span>LẤY SỐ THỨ TỰ</span>
+                                            </>
+                                        )}
+                                    </button>
+                                </form>
+                            </div>
+                        )}
+                    </>
+                )}
+            </div>
+        );
+    }
+
+    // Mount React App
+    const root = ReactDOM.createRoot(document.getElementById("root"));
+    root.render(<PublicTicketApp />);
+</script>
+{% endraw %}
+{% endblock %}

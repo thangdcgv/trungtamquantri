@@ -250,35 +250,6 @@
         </div>
     </div>
 
-    <!-- HỘP THOẠI XỬ LÝ PHÁT HIỆN ĐĂNG NHẬP Ở TRÌNH DUYỆT / THIẾT BỊ KHÁC -->
-    {% if show_conflict_modal %}
-    <div class="modal-overlay">
-        <div class="modal-card">
-            <div class="modal-icon">⚠️</div>
-            <h3 style="color: #f8fafc; font-size: 1.15rem; font-weight: 700; margin-bottom: 0.5rem;">
-                Phát hiện đăng nhập ở nơi khác!
-            </h3>
-            <p style="color: #94a3b8; font-size: 0.875rem; margin-bottom: 1.25rem; line-height: 1.5;">
-                Tài khoản này đang có <strong style="color: #f59e0b;">{{ active_count }} phiên làm việc</strong> đang hoạt động. Bạn muốn xử lý như thế nào?
-            </p>
-
-            <form action="/auth/login" method="POST" style="display: flex; flex-direction: column; gap: 0.75rem;">
-                <!-- Giữ lại thông tin email & password từ lần submit trước -->
-                <input type="hidden" name="email" value="{{ email }}">
-                <input type="hidden" name="password" value="{{ password }}">
-
-                <button type="submit" name="conflict_action" value="continue" class="btn-secondary">
-                    Tiếp tục đăng nhập trùng
-                </button>
-
-                <button type="submit" name="conflict_action" value="logout_all" class="btn-danger">
-                    Đăng xuất tất cả thiết bị khác
-                </button>
-            </form>
-        </div>
-    </div>
-    {% endif %}
-
     <script>
         document.addEventListener('DOMContentLoaded', function() {
             const emailInput = document.getElementById('email');

@@ -6,15 +6,14 @@ from fastapi.responses import FileResponse, HTMLResponse, JSONResponse
 from fastapi.staticfiles import StaticFiles
 from fastapi.templating import Jinja2Templates
 from starlette.middleware.sessions import SessionMiddleware
+from fastapi.middleware.cors import CORSMiddleware
 from fastapi.exceptions import RequestValidationError
 from starlette.concurrency import run_in_threadpool
-from fastapi.middleware.cors import CORSMiddleware
 
-from config import supabase, settings
+from config import supabase, SUPABASE_URL, SUPABASE_KEY
 
-# Import các routers từ thư mục app
+# Import các routers
 from app.routes import router as main_router
-from app.chat import router as chat_router  # ✅ ĐÃ SỬA: import 'router' thay vì 'chat'
 from app.auth import router as auth_router
 from app.admin_routes import router as admin_router
 from app.warranty import router as warranty_router
@@ -26,8 +25,7 @@ from app.warranty_report import router as warranty_report_router
 from app.warranty_policy_routes import router as warranty_policy_router
 from app.inventory import router as inventory_router, api_router as inventory_api_router
 from app.tickets import router as tickets_router
-
-
+from app.reception import router as reception_router
 
 app = FastAPI(
     title="Máy In Đại Thành Center Hub",
@@ -35,57 +33,54 @@ app = FastAPI(
     version="1.0.0"
 )
 
+# === 1. Session Middleware (Thêm trước) ===
+SECRET_KEY = os.getenv("SECRET_KEY", "mayindaithanh-centerhub-secret-key-2026")
+app.add_middleware(SessionMiddleware, secret_key=SECRET_KEY)
+
+# === 2. CORS Middleware (Thêm sau để bọc ngoài cùng - LIFO) ===
+raw_origins = os.getenv("ALLOWED_ORIGINS", "http://localhost:8000,http://127.0.0.1:8000,http://localhost:3000")
+ALLOWED_ORIGINS = [origin.strip() for origin in raw_origins.split(",") if origin.strip()]
+
 app.add_middleware(
     CORSMiddleware,
-    allow_origins=["*"],  # Cho phép tất cả nguồn kết nối trong quá trình Dev
+    allow_origins=ALLOWED_ORIGINS,
     allow_credentials=True,
     allow_methods=["*"],
     allow_headers=["*"],
 )
 
-# 1. Khai báo biến templates & Nạp cấu hình Supabase Client toàn cục cho Jinja2
+# === Templates & Static ===
 templates = Jinja2Templates(directory="app/templates")
-templates.env.globals["SUPABASE_URL"] = settings.SUPABASE_URL
-templates.env.globals["SUPABASE_ANON_KEY"] = settings.SUPABASE_KEY
+templates.env.globals["SUPABASE_URL"] = SUPABASE_URL
+templates.env.globals["SUPABASE_KEY"] = SUPABASE_KEY
 
-# 2. SessionMiddleware
-SECRET_KEY = os.getenv("SECRET_KEY", "mayindaithanh-centerhub-secret-key-2026")
-app.add_middleware(SessionMiddleware, secret_key=SECRET_KEY)
-
-# 3. Mount Thư mục Static
 os.makedirs("app/static", exist_ok=True)
 app.mount("/static", StaticFiles(directory="app/static"), name="static")
 
-
-# 4. Favicon Routes
+# === Favicon & Zalo Verify ===
 @app.get('/favicon.png', include_in_schema=False)
 @app.get('/favicon.ico', include_in_schema=False)
 async def favicon():
     return FileResponse('app/static/favicon.png')
+
 @app.get("/zalo_verifierUVha58Jd0XW3pSYnhf_2JQexHNQtZPBC380.html", response_class=HTMLResponse)
 async def zalo_verify_file():
-    return """
-    <!DOCTYPE html>
-    <html>
-    <head>
-        <meta charset="utf-8">
-        <title>Zalo Verification</title>
-    </head>
-    <body>
-        There Is No Limit To What You Can Accomplish Using Zalo!
-    </body>
-    </html>
-    """
-# 5. Custom Validation Error Handler (422)
+    return HTMLResponse(content="""
+<!DOCTYPE html>
+<html>
+<head><meta charset="utf-8"><title>Zalo Verification</title></head>
+<body>There Is No Limit To What You Can Accomplish Using Zalo!</body>
+</html>
+""")
+
+# === Validation Error Handler ===
 @app.exception_handler(RequestValidationError)
 async def validation_exception_handler(request: Request, exc: RequestValidationError):
-    errors = exc.errors()
     error_messages = []
-    for error in errors:
+    for error in exc.errors():
         field = " -> ".join(str(loc) for loc in error.get("loc", []))
         msg = error.get("msg", "")
         error_messages.append(f"Trường [{field}]: {msg}")
-    
     return JSONResponse(
         status_code=422,
         content={
@@ -95,13 +90,10 @@ async def validation_exception_handler(request: Request, exc: RequestValidationE
         }
     )
 
-
-# Helper ghi log sự cố vào Database
+# === Log lỗi CSDL ===
 async def log_error_to_db(request: Request, exc: Exception, module: str = "System"):
-    """Hàm phụ trợ ghi log vào Supabase bất đồng bộ."""
     if not supabase:
         return
-    
     try:
         user_id = request.session.get('user_id') if "session" in request.scope else None
         log_payload = {
@@ -113,18 +105,19 @@ async def log_error_to_db(request: Request, exc: Exception, module: str = "Syste
             "user_id": str(user_id) if user_id else "Anonymous",
             "status": "OPEN"
         }
-        await run_in_threadpool(
-            lambda: supabase.table('system_logs').insert(log_payload).execute()
-        )
+        await run_in_threadpool(lambda: supabase.table('system_logs').insert(log_payload).execute())
     except Exception as db_err:
         print(f"❌ Lỗi ghi system_logs: {db_err}")
 
-
-# 6. Global Exception Handler (500)
+# === Global Exception Handler ===
 @app.exception_handler(Exception)
 async def global_exception_handler(request: Request, exc: Exception):
     await log_error_to_db(request, exc)
     
+    # Bỏ qua trả về HTTP Response nếu kết nối là WebSocket
+    if request.scope.get("type") == "websocket":
+        raise exc
+
     if request.url.path.startswith("/api/"):
         return JSONResponse(
             status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
@@ -135,24 +128,24 @@ async def global_exception_handler(request: Request, exc: Exception):
         status_code=status.HTTP_500_INTERNAL_SERVER_ERROR
     )
 
-
-# 7. ĐĂNG KHÁI BÁO ROUTERS HỆ THỐNG
-app.include_router(main_router)       
-app.include_router(auth_router)       
-app.include_router(admin_router)      
-app.include_router(warranty_router)   
-app.include_router(cham_cong_router)  
+# === ĐĂNG KÝ ROUTERS ===
+app.include_router(main_router)
+app.include_router(auth_router)
+app.include_router(admin_router)
+app.include_router(warranty_router)
+app.include_router(cham_cong_router)
 app.include_router(kho_key_router)
-app.include_router(kho_key_api_router)
 app.include_router(quan_ly_key_router)
 app.include_router(quan_ly_key_api_router, prefix="/admin")
-app.include_router(report_router)  
+app.include_router(report_router)
 app.include_router(warranty_report_router)
 app.include_router(warranty_policy_router)
-app.include_router(inventory_router)      
+app.include_router(inventory_router)
 app.include_router(inventory_api_router)
-app.include_router(chat_router)
+
+# Lưu ý kiểm tra URL WebSocket trong tickets_router
 app.include_router(tickets_router)
+app.include_router(reception_router)
 
 if __name__ == "__main__":
-    uvicorn.run("main:app", host="127.0.0.1", port=8000, reload=True)
+    uvicorn.run("main:app", host="0.0.0.0", port=8000, reload=True)

@@ -1,44 +1,76 @@
-from datetime import datetime, timezone, timedelta
 import logging
 import re
-from typing import Optional, Literal
+import asyncio
 import requests
-from fastapi import APIRouter, HTTPException, Query, Request, status as http_status
+from datetime import datetime, timezone, timedelta
+from pathlib import Path
+from typing import Optional, Literal
+
+from fastapi import APIRouter, HTTPException, Query, Request, Depends, WebSocket, WebSocketDisconnect, status as http_status
+from fastapi.responses import HTMLResponse
+from fastapi.templating import Jinja2Templates
 from pydantic import BaseModel, Field
-from config import supabase, ZALO_OA_ACCESS_TOKEN, ZNS_TEMPLATE_ID
 
+from config import supabase, ZNS_TEMPLATE_ID
+from app.websocket_manager import manager, VN_TZ
 
-router = APIRouter(prefix="/api", tags=["Tickets & Admin"])
+# === IMPORT HELPER & AUTH ===
+try:
+    from app.zalo_helper import get_zalo_access_token
+except ImportError:
+    from zalo_helper import get_zalo_access_token
 
-# Múi giờ Việt Nam (UTC+7)
-VN_TZ = timezone(timedelta(hours=7))
+try:
+    from app.admin_routes import require_roles, get_current_admin
+except ImportError:
+    from admin_routes import require_roles, get_current_admin
 
-# Mảng định nghĩa tiền tố mã số theo phòng ban
-DEPT_PREFIX_MAP = {
-    "repair": "SC",        # Sửa chữa
-    "installation": "LD",  # Lắp đặt
-    "sales": "KD",         # Kinh doanh
-    "cskh": "CS"           # CSKH
-}
+router = APIRouter(tags=["Tickets Queue"])
 
-# Tên phòng ban hiển thị
-DEPT_NAME_MAP = {
-    "repair": "Phòng Sửa Chữa",
-    "installation": "Phòng Lắp Đặt",
-    "sales": "Phòng Kinh Doanh",
-    "cskh": "Phòng CSKH"
-}
-
-# Logger cho server
+# Cấu hình Templates chuẩn xác theo vị trí app/tickets.py -> app/templates
+BASE_DIR = Path(__file__).resolve().parent
+templates = Jinja2Templates(directory=str(BASE_DIR / "templates"))
 logger = logging.getLogger("uvicorn.error")
 
-# Định nghĩa Type Validation
-DepartmentType = Literal["repair", "installation", "sales", "cskh"]
+# === ÁNH XẠ PHÒNG BAN ===
+DEPT_PREFIX_MAP = {
+    "KTSC": "SC",
+    "KTLD": "LD",
+    "KD": "KD",
+    "CSKH": "CS"
+}
+
+DEPT_NAME_MAP = {
+    "KTSC": "Phòng Sửa Chữa",
+    "KTLD": "Phòng Lắp Đặt",
+    "KD": "Phòng Kinh Doanh",
+    "CSKH": "Phòng CSKH"
+}
+
+def normalize_dept_to_ticket(dept: Optional[str]) -> str:
+    if not dept:
+        return "KTSC"
+    d = str(dept).strip().upper()
+    if d in ("KTSC", "KTLD", "KD", "CSKH", "ALL"):
+        return d
+    return "KTSC"
+
+def normalize_role(raw_role: Optional[str]) -> str:
+    r = str(raw_role or "").strip().lower()
+    if r in ("system admin", "super admin", "super_admin", "superadmin"):
+        return "super_admin"
+    if r in ("admin", "quản lý", "quan ly"):
+        return "admin"
+    if r in ("ktv", "ktsc", "kỹ thuật", "ky thuat"):
+        return "ktv"
+    if r in ("kd", "kinh doanh", "kinhdoanh", "sales"):
+        return "kd"
+    return "ktv"
+
+DepartmentType = Literal["KTSC", "KTLD", "KD", "CSKH"]
 StatusType = Literal["waiting", "processing", "completed", "cancelled"]
 
-
-# --- SCHEMAS (PYDANTIC MODELS) ---
-
+# --- SCHEMAS ---
 class CreateTicketRequest(BaseModel):
     department: DepartmentType
     customer_name: str = Field(..., min_length=1)
@@ -46,54 +78,36 @@ class CreateTicketRequest(BaseModel):
     zalo_id: Optional[str] = None
     device_info: Optional[str] = None
 
-
 class UpdateStatusRequest(BaseModel):
     status: StatusType
     assigned_to: Optional[str] = None
 
-
 class CallTicketRequest(BaseModel):
     assigned_to: Optional[str] = None
-
 
 class TransferDepartmentRequest(BaseModel):
     new_department: DepartmentType
     assigned_to: Optional[str] = None
     device_info: Optional[str] = None
 
-
-class CheckAdminRequest(BaseModel):
-    zalo_id: Optional[str] = None
-    phone: Optional[str] = None
-
-
 # --- HELPER FUNCTIONS ---
-
 def check_supabase():
-    """Kiểm tra kết nối Supabase trước khi truy vấn"""
     if supabase is None:
         raise HTTPException(
             status_code=http_status.HTTP_500_INTERNAL_SERVER_ERROR,
-            detail="Chưa cấu hình SUPABASE_URL hoặc SUPABASE_KEY trong file .env!"
+            detail="Chưa cấu hình SUPABASE_URL hoặc SUPABASE_KEY!"
         )
 
-
 def get_today_utc_start() -> str:
-    """Trả về mốc 00:00:00 ngày hôm nay theo giờ Việt Nam dạng chuỗi UTC chuẩn (An toàn cho Query URL)"""
     now_vn = datetime.now(VN_TZ)
     today_vn_start = now_vn.replace(hour=0, minute=0, second=0, microsecond=0)
-    # 🟢 Dùng chuẩn ISO đuôi 'Z' để không bị lỗi decode dấu '+' thành khoảng trắng trên URL
     return today_vn_start.astimezone(timezone.utc).strftime("%Y-%m-%dT%H:%M:%SZ")
 
-
 def generate_ticket_code(department: str) -> str:
-    """Sinh mã STT dạng PREFIX-00X theo phòng ban trong ngày."""
     check_supabase()
-    prefix = DEPT_PREFIX_MAP.get(department, "STT")
+    prefix = DEPT_PREFIX_MAP.get(department, "ST")
     today_start = get_today_utc_start()
-
     try:
-        # 🟢 Sắp xếp theo ID giảm dần thay vì created_at để đảm bảo lấy phiếu mới nhất
         res = supabase.table("tickets") \
             .select("ticket_code") \
             .eq("department", department) \
@@ -101,38 +115,32 @@ def generate_ticket_code(department: str) -> str:
             .order("id", desc=True) \
             .limit(1) \
             .execute()
-
         next_number = 1
-
         if res.data and len(res.data) > 0:
             last_code = res.data[0].get("ticket_code", "")
             match = re.search(r'(\d+)$', last_code)
             if match:
                 next_number = int(match.group(1)) + 1
-
         return f"{prefix}-{next_number:03d}"
-
     except Exception as e:
         logger.error(f"Lỗi sinh mã ticket: {e}")
         return f"{prefix}-001"
 
-
+# === GỬI THÔNG BÁO ZNS ===
 def send_zalo_notification(phone: str, customer_name: str, ticket_code: str):
-    """Gửi thông báo ZBS/ZNS tới khách hàng"""
-    if not phone or not ZALO_OA_ACCESS_TOKEN or not ZNS_TEMPLATE_ID:
-        logger.warning("Thiếu thông tin SĐT, ZALO_OA_ACCESS_TOKEN hoặc ZNS_TEMPLATE_ID")
+    token = get_zalo_access_token()
+    if not phone or not token or not ZNS_TEMPLATE_ID:
+        logger.warning("Thiếu thông tin gửi ZNS vé")
         return None
 
-    phone_clean = phone.strip()
+    phone_clean = re.sub(r"\D", "", phone.strip())
     if phone_clean.startswith("0"):
         phone_clean = "84" + phone_clean[1:]
+    elif not phone_clean.startswith("84"):
+        phone_clean = "84" + phone_clean
 
-    url = "https://business.openapi.zalo.me/message/template/send"
-    headers = {
-        "access_token": ZALO_OA_ACCESS_TOKEN,
-        "Content-Type": "application/json"
-    }
-
+    url = "https://business.openapi.zalo.me/message/template"
+    headers = {"access_token": token, "Content-Type": "application/json"}
     payload = {
         "phone": phone_clean,
         "template_id": ZNS_TEMPLATE_ID,
@@ -140,32 +148,103 @@ def send_zalo_notification(phone: str, customer_name: str, ticket_code: str):
             "customer_name": customer_name or "Khách hàng",
             "ticket_code": ticket_code
         },
-        "tracking_id": f"call_{ticket_code}_{int(datetime.now().timestamp())}"
+        "tracking_id": f"ticket_{ticket_code}_{int(datetime.now().timestamp())}"
     }
 
     try:
         response = requests.post(url, json=payload, headers=headers, timeout=5)
         res_data = response.json()
-        logger.info(f"Kết quả gửi Zalo ZBS tới {phone_clean}: {res_data}")
+        logger.info(f"📨 ZNS vé {ticket_code}: {res_data}")
         return res_data
     except Exception as e:
-        logger.error(f"Lỗi gửi API Zalo ZBS: {str(e)}")
+        logger.error(f"Lỗi gửi ZNS vé: {str(e)}")
         return None
 
+# ==========================================
+# === 🔌 WEBSOCKET ENDPOINT ===
+# ==========================================
+@router.websocket("/ws/tickets")
+@router.websocket("/tickets/ws")
+@router.websocket("/api/ws/tickets")
+async def websocket_tickets_endpoint(websocket: WebSocket):
+    await manager.connect(websocket)
+    try:
+        await websocket.send_json({"type": "connected"})
+        while True:
+            data = await websocket.receive_text()
+            if data == "ping":
+                await websocket.send_json({"type": "pong"})
+    except WebSocketDisconnect:
+        manager.disconnect(websocket)
+    except Exception as e:
+        logger.error(f"Lỗi WebSocket: {e}")
+        manager.disconnect(websocket)
 
-# --- WEBHOOK ZALO ---
+# ==========================================
+# === 🖥 GIAO DIỆN HTML ===
+# ==========================================
+@router.get("/ticket", response_class=HTMLResponse)
+async def public_ticket_page(request: Request):
+    """Giao diện bốc số điện tử dành cho khách hàng."""
+    return templates.TemplateResponse(
+        request=request,
+        name="public_ticket.html",
+        context={"request": request}
+    )
 
+# Bổ sung các alias path để hứng trọn vẹn request từ client mà không bị 404
+@router.get("/admin-queue", response_class=HTMLResponse)
+@router.get("/admin/queue", response_class=HTMLResponse)
+@router.get("/api/admin-queue", response_class=HTMLResponse)
+@router.get("/api/admin/queue", response_class=HTMLResponse)
+async def admin_queue_page(request: Request, admin: dict = Depends(require_roles(["admin", "super_admin", "system_admin"]))):
+    """Giao diện Quản lý hàng chờ cho nhân viên."""
+    check_supabase()
+    user_dept = "ALL"
+    try:
+        res = supabase.table("quan_tri_vien") \
+            .select("department", "ho_ten") \
+            .eq("auth_id", admin["auth_id"]) \
+            .limit(1) \
+            .execute()
+        if res.data and len(res.data) > 0:
+            raw_dept = res.data[0].get("department")
+            if raw_dept:
+                d = str(raw_dept).strip().upper()
+                if d in ("KTSC", "KTLD", "KD", "CSKH", "ALL"):
+                    user_dept = d
+                else:
+                    user_dept = "KTSC"
+    except Exception as e:
+        logger.error(f"Lỗi lấy department admin: {e}")
+
+    current_user = {
+        "name": admin.get("ho_ten") or admin.get("name", "Quản trị viên"),
+        "ho_ten": admin.get("ho_ten", "Quản trị viên"),
+        "role": normalize_role(admin.get("role")),
+        "department": user_dept
+    }
+    
+    # Render file reception.html (hoặc admin_queue.html tùy file trong app/templates của bạn)
+    template_name = "admin_queue.html" if (BASE_DIR / "templates" / "admin_queue.html").exists() else "reception.html"
+    return templates.TemplateResponse(
+        request=request,
+        name=template_name,
+        context={"current_user": current_user}
+    )
+
+# WEBHOOK ZALO
 @router.post("/webhook")
 @router.get("/webhook")
 async def zalo_webhook(request: Request):
     return {"status": "ok", "message": "Webhook received successfully"}
 
-
-# --- API ENDPOINTS ---
-
+# ==========================================
+# === 🎫 API BỐC SỐ & HÀNG CHỜ ===
+# ==========================================
 @router.post("/tickets/create")
+@router.post("/api/tickets/create")
 async def create_ticket(data: CreateTicketRequest):
-    """API Bốc số mới cho Khách hàng"""
     check_supabase()
     try:
         phone_clean = data.phone.strip() if data.phone and data.phone.strip() else None
@@ -174,14 +253,9 @@ async def create_ticket(data: CreateTicketRequest):
         device_info_clean = data.device_info.strip() if data.device_info and data.device_info.strip() else None
 
         if not phone_clean and not zalo_clean:
-            raise HTTPException(
-                status_code=http_status.HTTP_400_BAD_REQUEST,
-                detail="Vui lòng cung cấp số điện thoại hoặc Zalo ID!"
-            )
+            raise HTTPException(status_code=400, detail="Vui lòng cung cấp SĐT hoặc Zalo ID!")
 
         today_start = get_today_utc_start()
-
-        # Kiểm tra vé đang chờ/đang xử lý trong ngày
         query = supabase.table("tickets") \
             .select("*") \
             .gte("created_at", today_start) \
@@ -195,16 +269,14 @@ async def create_ticket(data: CreateTicketRequest):
             query = query.eq("zalo_id", zalo_clean)
 
         existing_ticket = query.execute()
-
         if existing_ticket.data and len(existing_ticket.data) > 0:
             return {
                 "success": False,
-                "message": "Bạn đã có một phiếu đang chờ xử lý trên hệ thống!",
+                "message": "Bạn đã có một phiếu đang chờ xử lý!",
                 "ticket": existing_ticket.data[0]
             }
 
         ticket_code = generate_ticket_code(data.department)
-
         payload = {
             "ticket_code": ticket_code,
             "department": data.department,
@@ -216,156 +288,175 @@ async def create_ticket(data: CreateTicketRequest):
         }
 
         insert_res = supabase.table("tickets").insert(payload).execute()
-
         if insert_res.data and len(insert_res.data) > 0:
-            return {
-                "success": True,
-                "message": "Bốc số thành công!",
-                "ticket": insert_res.data[0]
-            }
-        else:
-            raise HTTPException(
-                status_code=http_status.HTTP_500_INTERNAL_SERVER_ERROR,
-                detail="Không thể lưu thông tin bốc số vào CSDL."
-            )
+            new_ticket = insert_res.data[0]
 
-    except HTTPException as http_ex:
-        raise http_ex
+            await manager.broadcast({
+                "type": "new_ticket",
+                "ticket": new_ticket,
+                "department": new_ticket["department"],
+                "timestamp": datetime.now(VN_TZ).isoformat()
+            })
+            logger.info(f"📢 Đã tạo vé: {ticket_code}")
+
+            if new_ticket.get("phone"):
+                asyncio.create_task(asyncio.to_thread(
+                    send_zalo_notification,
+                    new_ticket["phone"],
+                    new_ticket.get("customer_name"),
+                    new_ticket["ticket_code"]
+                ))
+
+            return {"success": True, "message": "Bốc số thành công!", "ticket": new_ticket}
+
+        raise HTTPException(status_code=500, detail="Không thể lưu vé vào CSDL.")
+
+    except HTTPException:
+        raise
     except Exception as e:
-        logger.error(f"Lỗi bốc số API: {str(e)}")
-        raise HTTPException(
-            status_code=http_status.HTTP_500_INTERNAL_SERVER_ERROR,
-            detail=f"Lỗi hệ thống: {str(e)}"
-        )
+        logger.error(f"Lỗi bốc số: {str(e)}")
+        raise HTTPException(status_code=500, detail=f"Lỗi hệ thống: {str(e)}")
 
+@router.get("/tickets/my-ticket")
+@router.get("/api/tickets/my-ticket")
+async def get_my_ticket(
+    phone: Optional[str] = None,
+    zalo_id: Optional[str] = None,
+    ticket_id: Optional[str] = None
+):
+    """Tra cứu phiếu hiện tại của khách hàng & Bổ sung số đang phục vụ."""
+    check_supabase()
+    phone_clean = phone.strip() if phone else None
+    zalo_clean = zalo_id.strip() if zalo_id else None
 
-@router.post("/tickets/call/{ticket_id}")
-async def call_ticket(ticket_id: int, data: Optional[CallTicketRequest] = None):
-    """API Gọi số"""
+    if not phone_clean and not zalo_clean and not ticket_id:
+        raise HTTPException(status_code=400, detail="Cần cung cấp SĐT / Zalo ID / Mã vé")
+
+    today_start = get_today_utc_start()
+    query = supabase.table("tickets") \
+        .select("*") \
+        .gte("created_at", today_start) \
+        .in_("status", ["waiting", "processing", "completed"])
+
+    if ticket_id:
+        try:
+            query = query.eq("id", int(ticket_id))
+        except ValueError:
+            raise HTTPException(status_code=400, detail="Mã vé không hợp lệ")
+    elif phone_clean and zalo_clean:
+        query = query.or_(f"phone.eq.{phone_clean},zalo_id.eq.{zalo_clean}")
+    elif phone_clean:
+        query = query.eq("phone", phone_clean)
+    else:
+        query = query.eq("zalo_id", zalo_clean)
+
+    res = query.order("created_at", desc=True).limit(1).execute()
+    if res.data and len(res.data) > 0:
+        ticket = res.data[0]
+
+        current_res = supabase.table("tickets") \
+            .select("ticket_code") \
+            .eq("department", ticket["department"]) \
+            .eq("status", "processing") \
+            .gte("created_at", today_start) \
+            .order("updated_at", desc=True) \
+            .limit(1) \
+            .execute()
+
+        current_number = "--"
+        if current_res.data and len(current_res.data) > 0:
+            current_number = current_res.data[0].get("ticket_code", "--")
+        ticket["current_number"] = current_number
+        
+        technician_name = None
+        if ticket.get("assigned_to"):
+            try:
+                ktv_res = supabase.table("quan_tri_vien") \
+                    .select("ho_ten") \
+                    .eq("id", ticket["assigned_to"]) \
+                    .limit(1).execute()
+                if ktv_res.data and len(ktv_res.data) > 0:
+                    technician_name = ktv_res.data[0].get("ho_ten")
+            except Exception:
+                technician_name = ticket.get("assigned_to")
+        ticket["technician_name"] = technician_name
+        return {"has_ticket": True, "ticket": ticket}
+
+    return {"has_ticket": False, "ticket": None}
+
+@router.get("/tickets/queue")
+@router.get("/api/tickets/queue")
+async def get_queue_list(
+    department: Optional[str] = Query(None, description="KTSC/KTLD/KD/CSKH/ALL"),
+    status_filter: Optional[str] = Query(None, alias="status", description="waiting/processing/completed/cancelled")
+):
     check_supabase()
     try:
-        existing = supabase.table("tickets").select("*").eq("id", ticket_id).execute()
-        if not existing.data:
-            raise HTTPException(status_code=404, detail="Không tìm thấy phiếu bốc số này!")
+        today_start = get_today_utc_start()
+        query = supabase.table("tickets").select("*").gte("created_at", today_start)
+        if department and department != "ALL":
+            query = query.eq("department", department)
+        if status_filter and status_filter != "all":
+            query = query.eq("status", status_filter)
 
-        now_iso = datetime.now(timezone.utc).strftime("%Y-%m-%dT%H:%M:%SZ")
+        tickets = query.order("id", desc=False).execute().data or []
 
+        all_today_query = supabase.table("tickets") \
+            .select("status") \
+            .gte("created_at", today_start)
+        if department and department != "ALL":
+            all_today_query = all_today_query.eq("department", department)
+        all_today = all_today_query.execute().data or []
+
+        stats = {
+            "waiting": sum(1 for t in all_today if t.get("status") == "waiting"),
+            "processing": sum(1 for t in all_today if t.get("status") == "processing"),
+            "completed": sum(1 for t in all_today if t.get("status") == "completed")
+        }
+        return {"success": True, "total": len(tickets), "stats": stats, "tickets": tickets}
+    except Exception as e:
+        logger.error(f"Lỗi hàng chờ: {str(e)}")
+        raise HTTPException(status_code=500, detail=str(e))
+   
+@router.post("/tickets/call/{ticket_id}")
+@router.post("/api/tickets/call/{ticket_id}")
+async def call_ticket_endpoint(ticket_id: int, data: Optional[CallTicketRequest] = None):
+    """API tiếp nhận và gọi số (chuyển trạng thái sang processing)."""
+    check_supabase()
+    try:
+        now_utc = datetime.now(timezone.utc).strftime("%Y-%m-%dT%H:%M:%SZ")
         payload = {
             "status": "processing",
-            "updated_at": now_iso,
-            "called_at": now_iso
+            "updated_at": now_utc
         }
         if data and data.assigned_to:
             payload["assigned_to"] = data.assigned_to
 
         res = supabase.table("tickets").update(payload).eq("id", ticket_id).execute()
-
-        if not res.data:
-            raise HTTPException(status_code=500, detail="Không thể cập nhật trạng thái gọi số.")
-
-        updated_ticket = res.data[0]
-
-        # Gửi tin Zalo
-        customer_phone = updated_ticket.get("phone")
-        customer_name = updated_ticket.get("customer_name", "Khách hàng")
-        ticket_code = updated_ticket.get("ticket_code", "")
-
-        if customer_phone:
-            send_zalo_notification(
-                phone=customer_phone,
-                customer_name=customer_name,
-                ticket_code=ticket_code
-            )
-
-        return {
-            "success": True,
-            "message": f"Đã gọi số {ticket_code} thành công!",
-            "ticket": updated_ticket
-        }
-
-    except HTTPException as http_ex:
-        raise http_ex
+        if res.data and len(res.data) > 0:
+            updated_ticket = res.data[0]
+            
+            # Broadcast qua WebSocket để các màn hình khác cập nhật theo thời gian thực
+            await manager.broadcast({
+                "type": "status_update",
+                "ticket": updated_ticket,
+                "status": "processing",
+                "timestamp": datetime.now(VN_TZ).isoformat()
+            })
+            
+            logger.info(f"📢 Đã gọi/tiếp nhận vé ID {ticket_id}")
+            return {"success": True, "message": "Đã tiếp nhận vé!", "ticket": updated_ticket}
+            
+        raise HTTPException(status_code=404, detail="Không tìm thấy phiếu yêu cầu.")
+    except HTTPException:
+        raise
     except Exception as e:
-        logger.error(f"Lỗi gọi số API: {str(e)}")
+        logger.error(f"Lỗi gọi số vé: {str(e)}")
         raise HTTPException(status_code=500, detail=str(e))
-
-
-@router.get("/tickets/my-ticket")
-async def get_my_ticket(phone: Optional[str] = None, zalo_id: Optional[str] = None):
-    """API Tra cứu vé hiện tại của Khách hàng"""
-    check_supabase()
-    phone_clean = phone.strip() if phone else None
-    zalo_clean = zalo_id.strip() if zalo_id else None
-
-    if not phone_clean and not zalo_clean:
-        raise HTTPException(status_code=400, detail="Cần cung cấp Số điện thoại hoặc Zalo ID")
-
-    today_start = get_today_utc_start()
-
-    query = supabase.table("tickets") \
-        .select("*") \
-        .gte("created_at", today_start) \
-        .in_("status", ["waiting", "processing"])
-
-    if phone_clean and zalo_clean:
-        query = query.or_(f"phone.eq.{phone_clean},zalo_id.eq.{zalo_clean}")
-    elif phone_clean:
-        query = query.eq("phone", phone_clean)
-    elif zalo_clean:
-        query = query.eq("zalo_id", zalo_clean)
-
-    res = query.order("created_at", desc=True).limit(1).execute()
-
-    if res.data and len(res.data) > 0:
-        return {"has_ticket": True, "ticket": res.data[0]}
-
-    return {"has_ticket": False, "ticket": None}
-
-
-@router.get("/tickets/queue")
-async def get_queue_list(
-    department: Optional[str] = Query(None, description="Lọc phòng ban: repair, installation, sales, cskh hoặc 'all'"),
-    status_filter: Optional[str] = Query(None, alias="status", description="Lọc trạng thái: waiting, processing, completed, cancelled")
-):
-    """API Lấy danh sách hàng chờ & Thống kê cho Dashboard"""
-    check_supabase()
-    try:
-        today_start = get_today_utc_start()
-
-        query = supabase.table("tickets").select("*").gte("created_at", today_start)
-
-        if department and department != "all":
-            query = query.eq("department", department)
-
-        if status_filter and status_filter != "all":
-            query = query.eq("status", status_filter)
-
-        res = query.order("id", desc=False).execute()
-        tickets = res.data or []
-
-        all_today_res = supabase.table("tickets").select("status").gte("created_at", today_start).execute()
-        all_tickets = all_today_res.data or []
-
-        stats = {
-            "waiting": sum(1 for t in all_tickets if t.get("status") == "waiting"),
-            "processing": sum(1 for t in all_tickets if t.get("status") == "processing"),
-            "completed": sum(1 for t in all_tickets if t.get("status") == "completed")
-        }
-
-        return {
-            "success": True,
-            "total": len(tickets),
-            "stats": stats,
-            "tickets": tickets
-        }
-    except Exception as e:
-        logger.error(f"Lỗi get_queue_list: {str(e)}")
-        raise HTTPException(status_code=500, detail=str(e))
-
-
+    
 @router.patch("/tickets/{ticket_id}/status")
+@router.patch("/api/tickets/{ticket_id}/status")
 async def update_ticket_status(ticket_id: int, data: UpdateStatusRequest):
-    """API KTV đổi trạng thái phiếu"""
     check_supabase()
     try:
         payload = {
@@ -376,23 +467,27 @@ async def update_ticket_status(ticket_id: int, data: UpdateStatusRequest):
             payload["assigned_to"] = data.assigned_to
 
         res = supabase.table("tickets").update(payload).eq("id", ticket_id).execute()
-
         if res.data:
-            return {"success": True, "message": "Cập nhật trạng thái thành công!", "ticket": res.data[0]}
-        raise HTTPException(status_code=404, detail="Không tìm thấy phiếu bốc số.")
+            updated_ticket = res.data[0]
+            await manager.broadcast({
+                "type": "status_update",
+                "ticket": updated_ticket,
+                "status": data.status,
+                "timestamp": datetime.now(VN_TZ).isoformat()
+            })
+            return {"success": True, "message": "Cập nhật thành công!", "ticket": updated_ticket}
+        raise HTTPException(status_code=404, detail="Không tìm thấy phiếu.")
     except HTTPException:
         raise
     except Exception as e:
         raise HTTPException(status_code=500, detail=str(e))
 
-
 @router.patch("/tickets/{ticket_id}/transfer")
+@router.patch("/api/tickets/{ticket_id}/transfer")
 async def transfer_ticket_department(ticket_id: int, data: TransferDepartmentRequest):
-    """API Chuyển tiếp vé sang phòng ban khác"""
     check_supabase()
     try:
         new_code = generate_ticket_code(data.new_department)
-
         payload = {
             "department": data.new_department,
             "ticket_code": new_code,
@@ -401,152 +496,26 @@ async def transfer_ticket_department(ticket_id: int, data: TransferDepartmentReq
         }
         if data.assigned_to:
             payload["assigned_to"] = data.assigned_to
-
         if data.device_info is not None:
             payload["device_info"] = data.device_info.strip()
 
         res = supabase.table("tickets").update(payload).eq("id", ticket_id).execute()
-
         if res.data:
+            updated_ticket = res.data[0]
+            await manager.broadcast({
+                "type": "transfer_ticket",
+                "ticket": updated_ticket,
+                "new_department": data.new_department,
+                "timestamp": datetime.now(VN_TZ).isoformat()
+            })
+            logger.info(f"📢 Chuyển phòng: {new_code} → {data.new_department}")
             return {
                 "success": True,
                 "message": f"Đã chuyển vé sang phòng {data.new_department.upper()} với mã mới {new_code}",
-                "ticket": res.data[0]
+                "ticket": updated_ticket
             }
-        raise HTTPException(status_code=404, detail="Không tìm thấy phiếu bốc số.")
+        raise HTTPException(status_code=404, detail="Không tìm thấy phiếu.")
     except HTTPException:
         raise
     except Exception as e:
         raise HTTPException(status_code=500, detail=str(e))
-
-
-@router.post("/auth/check-admin")
-async def check_admin_permission(data: CheckAdminRequest):
-    """API Phân quyền KTV / Admin"""
-    check_supabase()
-    try:
-        user_phone = data.phone.strip() if data.phone else None
-        user_zalo_id = data.zalo_id.strip() if data.zalo_id else None
-
-        if not user_phone and not user_zalo_id:
-            return {"is_admin": False, "role": None}
-
-        query = supabase.table("admin_users").select("*")
-
-        if user_phone and user_zalo_id:
-            query = query.or_(f"phone.eq.{user_phone},zalo_id.eq.{user_zalo_id}")
-        elif user_phone:
-            query = query.eq("phone", user_phone)
-        elif user_zalo_id:
-            query = query.eq("zalo_id", user_zalo_id)
-
-        res = query.execute()
-
-        if res.data and len(res.data) > 0:
-            user = res.data[0]
-            return {
-                "is_admin": True,
-                "role": user.get("role", "tech"),
-                "name": user.get("name"),
-                "department": user.get("department", "all")
-            }
-
-        return {"is_admin": False, "role": None}
-    except Exception as e:
-        logger.error(f"Lỗi check_admin_permission: {str(e)}")
-        return {"is_admin": False, "role": None}
-# --- QUẢN LÝ THÀNH VIÊN (CHỈ SUPER_ADMIN) ---
-class AdminUserCreate(BaseModel):
-    name: str
-    phone: Optional[str] = None
-    zalo_id: str
-    department: str = "repair"
-    role: str = "ktv"
-
-class AdminUserUpdate(BaseModel):
-    name: Optional[str] = None
-    phone: Optional[str] = None
-    zalo_id: Optional[str] = None
-    department: Optional[str] = None
-    role: Optional[str] = None
-
-@router.get("/admin/users")
-async def list_admin_users():
-    """Lấy danh sách tất cả thành viên quản trị"""
-    check_supabase()
-    try:
-        result = supabase.table("admin_users").select("*").order("id", desc=True).execute()
-        return {"success": True, "users": result.data or []}
-    except Exception as e:
-        logger.error(f"Lỗi tải danh sách thành viên: {e}")
-        raise HTTPException(status_code=500, detail=f"Lỗi hệ thống: {str(e)}")
-
-@router.post("/admin/users")
-async def create_admin_user(data: AdminUserCreate):
-    """Thêm thành viên quản trị mới"""
-    check_supabase()
-    try:
-        # Kiểm tra trùng Zalo ID
-        exist = supabase.table("admin_users")\
-            .select("id")\
-            .eq("zalo_id", data.zalo_id)\
-            .execute()
-        if exist.data and len(exist.data) > 0:
-            raise HTTPException(status_code=400, detail="Zalo ID đã tồn tại!")
-        
-        result = supabase.table("admin_users").insert({
-            "name": data.name.strip(),
-            "phone": data.phone.strip() if data.phone else None,
-            "zalo_id": data.zalo_id.strip(),
-            "department": data.department,
-            "role": data.role
-        }).execute()
-        
-        return {"success": True, "user": result.data[0]}
-    except HTTPException:
-        raise
-    except Exception as e:
-        logger.error(f"Lỗi thêm thành viên: {e}")
-        raise HTTPException(status_code=500, detail=f"Lỗi hệ thống: {str(e)}")
-
-@router.patch("/admin/users/{user_id}")
-async def update_admin_user(user_id: int, data: AdminUserUpdate):
-    """Cập nhật thông tin thành viên"""
-    check_supabase()
-    try:
-        update_data = {}
-        if data.name: update_data["name"] = data.name.strip()
-        if data.phone: update_data["phone"] = data.phone.strip()
-        if data.zalo_id: update_data["zalo_id"] = data.zalo_id.strip()
-        if data.department: update_data["department"] = data.department
-        if data.role: update_data["role"] = data.role
-        
-        if not update_data:
-            raise HTTPException(status_code=400, detail="Không có dữ liệu để cập nhật")
-        
-        result = supabase.table("admin_users")\
-            .update(update_data)\
-            .eq("id", user_id)\
-            .execute()
-        
-        if not result.data or len(result.data) == 0:
-            raise HTTPException(status_code=404, detail="Không tìm thấy thành viên")
-        
-        return {"success": True, "user": result.data[0]}
-    except HTTPException:
-        raise
-    except Exception as e:
-        logger.error(f"Lỗi sửa thành viên: {e}")
-        raise HTTPException(status_code=500, detail=f"Lỗi hệ thống: {str(e)}")
-
-@router.delete("/admin/users/{user_id}")
-async def delete_admin_user(user_id: int):
-    """Xóa thành viên"""
-    check_supabase()
-    try:
-        # Ngăn tự xóa chính mình (có thể thêm kiểm tra hơn)
-        supabase.table("admin_users").delete().eq("id", user_id).execute()
-        return {"success": True}
-    except Exception as e:
-        logger.error(f"Lỗi xóa thành viên: {e}")
-        raise HTTPException(status_code=500, detail=f"Lỗi hệ thống: {str(e)}")
