@@ -602,7 +602,7 @@ async def submit_cham_cong(
                     content={"success": False, "message": "❌ Đơn này đã được duyệt, không thể chỉnh sửa!"}
                 )
                 
-            is_owner = (existing_record.get("username") == session_user) or (user_role in ("Admin", "Super Admin", "System Admin"))
+            is_owner = (existing_record.get("username") == session_user) or (user_role in ("admin", "super admin", "system admin"))
             if not is_owner:
                 return JSONResponse(
                     status_code=status.HTTP_403_FORBIDDEN,
@@ -611,7 +611,7 @@ async def submit_cham_cong(
 
         # 3. XÁC ĐỊNH NGƯỜI ĐƯỢC CHẤM CÔNG
         if target_username and target_username.strip():
-            if user_role in ("Admin", "Super Admin", "System Admin"):
+            if user_role in ("admin", "super admin", "system admin"):
                 target_user = target_username.strip()
                 try:
                     emp_res = supabase.table("quan_tri_vien").select("ho_ten").eq("username", target_user).limit(1).execute()
@@ -750,7 +750,7 @@ async def duyet_phieu(
     """Phê duyệt / Từ chối phiếu (Chỉ dành cho Admin)"""
     try:
         user_role = str(current_user.get("role") or "User").strip()
-        if user_role not in ("Admin", "Super Admin", "System Admin"):
+        if user_role not in ("admin", "super admin", "system admin"):
             return JSONResponse(
                 status_code=status.HTTP_403_FORBIDDEN,
                 content={"success": False, "message": "❌ Từ chối truy cập: Bạn không có quyền quản trị!"}
@@ -805,7 +805,7 @@ async def delete_cham_cong(
             )
 
         existing_record = existing_res.data[0]
-        is_admin = user_role in ("Admin", "Super Admin", "System Admin")
+        is_admin = user_role in ("admin", "super admin", "system admin")
         is_owner = existing_record.get("username") == session_user
 
         if not is_admin:
@@ -843,7 +843,7 @@ async def get_config_page(
 ):
     """Trang quản trị giao diện điều chỉnh định mức chấm công cho Admin"""
     user_role = str(current_user.get("role") or "User").strip()
-    if user_role not in ("Admin", "Super Admin", "System Admin"):
+    if user_role not in ("admin", "super admin", "system admin"):
         return HTMLResponse(content="<h3>❌ Bạn không có quyền truy cập trang này!</h3>", status_code=403)
 
     cfg = get_config_cham_cong()
@@ -862,7 +862,7 @@ async def update_config_cham_cong(
     """API lưu toàn bộ thông số định mức mới vào Supabase (Gom Batch Upsert tối ưu hiệu năng)"""
     try:
         user_role = str(current_user.get("role") or "User").strip()
-        if user_role not in ("Admin", "Super Admin", "System Admin"):
+        if user_role not in ("admin", "super admin", "system admin"):
             return JSONResponse(
                 status_code=status.HTTP_403_FORBIDDEN,
                 content={"success": False, "message": "❌ Bạn không có quyền thực hiện thao tác này!"}

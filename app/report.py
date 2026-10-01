@@ -19,7 +19,7 @@ logger = logging.getLogger(__name__)
 templates = Jinja2Templates(directory="templates")
 router = APIRouter(prefix="/admin/report", tags=["Báo cáo & Thống kê"])
 
-ALLOWED_ADMIN_ROLES = {"Admin", "Super Admin", "System Admin", "Manager"}
+ALLOWED_ADMIN_ROLES = {"admin", "super admin", "system admin"}
 NUMERIC_COLS = [
     "quang_duong", "combo", "device_cost", "distance_cost",
     "tho_phu_cost", "di_tinh_cost", "tien_ngoai_gio",

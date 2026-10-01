@@ -10,6 +10,7 @@ from app.auth import require_login
 from starlette.concurrency import run_in_threadpool
 from config import supabase, supabase_admin
 
+
 logger = logging.getLogger(__name__)
 router = APIRouter(prefix="/admin", tags=["Admin"])
 
@@ -44,16 +45,24 @@ def normalize_role(role_name: Optional[str]) -> str:
         return "user"
     return str(role_name).strip().lower()
 
+# === BẢNG PHÒNG BAN HỢP LỆ — TRÙNG KHỚP 100% VỚI CHECK CONSTRAINT ===
+VALID_DEPARTMENTS = {'KTSC', 'KTLD', 'KD', 'CSKH', 'KT', 'GN', 'ALL'}
+
 def normalize_dept(dept_name: Optional[str]) -> str:
-    """
-    Chuẩn hóa phòng ban:
-    - Bỏ khoảng trắng thừa → viết HOA → kiểm tra trong danh sách hợp lệ
-    - Trả về KTSC mặc định nếu trống / không khớp
-    """
-    if not dept_name:
+    """Chuẩn hóa phòng ban, trả về mặc định nếu không hợp lệ"""
+    if not dept_name or not str(dept_name).strip():
         return "KTSC"
     cleaned = str(dept_name).strip().upper()
-    return cleaned if cleaned in DEPARTMENTS else "KTSC"
+    # Đảm bảo luôn trả về giá trị có trong CHECK
+    if cleaned in VALID_DEPARTMENTS:
+        return cleaned
+    # Map các lỗi viết tắt/thường thường gặp
+    mapping = {
+        'GIAO NHAN': 'GN', 'GIAO NHẬN': 'GN', 'GN': 'GN',
+        'KE TOAN': 'KT', 'KẾ TOÁN': 'KT', 'KT': 'KT',
+        'TAT CA': 'ALL', 'TOAN BO': 'ALL', 'TẤT CẢ': 'ALL', 'TOÀN BỘ': 'ALL'
+    }
+    return mapping.get(cleaned, "KTSC")
 
 def can_manage_target_role(current_role: str, target_role: str) -> bool:
     c_role = normalize_role(current_role)
@@ -145,76 +154,6 @@ async def list_users(request: Request, admin: dict = Depends(get_current_admin))
         }
     )
 
-@router.post("/users/add")
-async def add_user(
-    request: Request,
-    email: str = Form(...),
-    password: str = Form(...),
-    ho_ten: str = Form(...),
-    username: Optional[str] = Form(None),
-    role: str = Form("User"),
-    department: str = Form("KTSC"),
-    chuc_danh: Optional[str] = Form(None),
-    so_dien_thoai: Optional[str] = Form(None),
-    admin: dict = Depends(get_current_admin)
-):
-    if not supabase or not supabase_admin:
-        request.session["error_message"] = "Không thể kết nối CSDL."
-        return RedirectResponse(url="/admin/users", status_code=303)
-
-    email_clean = email.strip().lower()
-    dept_clean = normalize_dept(department)
-
-    if not email_clean or not ho_ten.strip():
-        request.session["error_message"] = "Điền đầy đủ Email và Họ tên."
-        return RedirectResponse(url="/admin/users", status_code=303)
-    if len(password) < 6:
-        request.session["error_message"] = "Mật khẩu ít nhất 6 ký tự."
-        return RedirectResponse(url="/admin/users", status_code=303)
-    if not can_manage_target_role(admin["role_clean"], role):
-        request.session["error_message"] = "Không đủ quyền tạo tài khoản cấp này."
-        return RedirectResponse(url="/admin/users", status_code=303)
-
-    # Chỉ ALL / System / Super Admin được gán phòng ban ALL
-    if dept_clean == "ALL":
-        if not (admin["department"] == "ALL" or admin["role_clean"] in ["system admin", "super admin"]):
-            request.session["error_message"] = "Chỉ quản trị cấp cao mới được gán phòng ban ALL."
-            dept_clean = "KTSC"
-
-    auth_id = None
-    try:
-        def _create_auth_user():
-            return supabase_admin.auth.admin.create_user({
-                "email": email_clean,
-                "password": password,
-                "email_confirm": True
-            })
-        auth_response = await run_in_threadpool(_create_auth_user)
-        if not auth_response or not auth_response.user:
-            raise Exception("Không tạo được tài khoản Auth.")
-        auth_id = auth_response.user.id
-        final_username = username.strip() if username and username.strip() else email_clean.split('@')[0]
-
-        def _insert_profile():
-            return supabase.table('quan_tri_vien').insert({
-                "auth_id": auth_id,
-                "email": email_clean,
-                "username": final_username,
-                "ho_ten": ho_ten.strip(),
-                "role": role.strip(),
-                "department": dept_clean,
-                "chuc_danh": chuc_danh.strip() if chuc_danh else None,
-                "so_dien_thoai": so_dien_thoai.strip() if so_dien_thoai else None
-            }).execute()
-        await run_in_threadpool(_insert_profile)
-        request.session["success_message"] = f"Đã tạo {email_clean} — {dept_clean}!"
-    except Exception as e:
-        if auth_id:
-            await run_in_threadpool(supabase_admin.auth.admin.delete_user, auth_id)
-        logger.error(f"ADD USER ERR: {e}")
-        request.session["error_message"] = f"Thất bại: {str(e)}"
-    return RedirectResponse(url="/admin/users", status_code=303)
-
 @router.post("/users/edit/{user_id}")
 async def edit_user(
     request: Request,
@@ -228,93 +167,89 @@ async def edit_user(
     new_password: Optional[str] = Form(None),
     admin: dict = Depends(get_current_admin)
 ):
+    logger.info("[EDIT_USER] === BẮT ĐẦU XỬ LÝ ===")  # ✅ Dòng này phải thấy trước hết
     try:
+        # === Bước 1: Lấy thông tin user mục tiêu ===
         res = await run_in_threadpool(
-            lambda: supabase.table('quan_tri_vien').select('auth_id,role,department').eq("id", user_id).execute()
+            lambda: supabase.table('quan_tri_vien')
+                .select('auth_id,role,department')
+                .eq("id", user_id)
+                .execute()
         )
         if not res or not res.data:
             raise Exception("Không tìm tài khoản.")
+        
         target = res.data[0]
         target_auth_id = target["auth_id"]
         target_role = target["role"]
         target_dept = target.get("department", "KTSC")
 
+        # === Bước 2: Kiểm tra quyền quản lý cấp bậc ===
         if not can_manage_target_role(admin["role_clean"], target_role):
             raise Exception(f"Không sửa được tài khoản cấp {target_role}.")
         if not can_manage_target_role(admin["role_clean"], role):
             raise Exception(f"Không gán được quyền {role}.")
 
+        # === Bước 3: Chuẩn hóa phòng ban & KIỂM TRA ===
         dept_clean = normalize_dept(department)
-        if dept_clean != target_dept:
-            if not (admin["department"] == "ALL" or admin["role_clean"] in ["system admin", "super admin"]):
-                raise Exception("Chỉ quản trị cấp cao mới được chuyển phòng ban.")
-            if dept_clean == "ALL" and admin["department"] != "ALL":
-                raise Exception("Không gán phòng ban ALL.")
+        
+        # Bảo vệ phòng ban không hợp lệ
+        if dept_clean not in VALID_DEPARTMENTS:
+            raise Exception(f"Phòng ban '{department}' không hợp lệ. Các giá trị cho phép: {', '.join(VALID_DEPARTMENTS)}")
 
+        # === Bước 4: Kiểm tra quyền chuyển phòng ban — ĐÃ SỬA ĐÚNG ===
+        if dept_clean != target_dept:
+            # ✅ Chỉ quản trị cấp cao MỚI được đổi phòng ban
+            if admin["role_clean"] not in ["system admin", "super admin"]:
+                raise Exception("Chỉ Quản trị hệ thống mới được chuyển phòng ban.")
+
+        # === Bước 5: Cập nhật mật khẩu (nếu có) ===
         if new_password:
             if len(new_password) < 6:
-                raise Exception("Mật khẩu ≥ 6 ký tự.")
+                raise Exception("Mật khẩu phải có ít nhất 6 ký tự.")
             await run_in_threadpool(
                 supabase_admin.auth.admin.update_user_by_id,
-                target_auth_id, {"password": new_password}
+                target_auth_id,
+                {"password": new_password}
             )
 
+        # === Bước 6: Chuẩn bị dữ liệu cập nhật ===
         update_payload = {
             "ho_ten": ho_ten.strip(),
             "role": role.strip(),
-            "department": dept_clean,
+            "department": dept_clean,  # ✅ Đã chuẩn hóa & hợp lệ
             "chuc_danh": chuc_danh.strip() if chuc_danh else None,
             "so_dien_thoai": so_dien_thoai.strip() if so_dien_thoai else None
         }
         if username and username.strip():
             update_payload["username"] = username.strip()
+        # === Bước 6.5: DEBUG — Xem giá trị thực gửi ===
+        logger.info(f"[EDIT_USER] user_id={user_id}")
+        logger.info(f"  phòng cũ: '{target_dept}'")
+        logger.info(f"  phòng gửi form: '{department}'")
+        logger.info(f"  phòng chuẩn hóa: '{dept_clean}'")
+        logger.info(f"  quyền người sửa: '{admin['role_clean']}'")
+        logger.info(f"  update_payload: {update_payload}")
 
+        # === Bước 7: Lưu vào DB ===
         await run_in_threadpool(
-            lambda: supabase.table('quan_tri_vien').update(update_payload).eq("id", user_id).execute()
+            lambda: supabase.table('quan_tri_vien')
+                .update(update_payload)
+                .eq("id", user_id)
+                .execute()
         )
-        request.session["success_message"] = "Đã cập nhật!"
+
+        request.session["success_message"] = "✅ Đã cập nhật tài khoản!"
+
     except Exception as e:
-        logger.error(f"EDIT ERR: {e}")
-        request.session["error_message"] = f"Lỗi: {str(e)}"
-    return RedirectResponse(url="/admin/users", status_code=303)
+        error_msg = str(e)
+        # Tách lỗi constraint để rõ ràng
+        if "violates check constraint" in error_msg and "department" in error_msg:
+            error_msg = f"❌ Phòng ban không hợp lệ. Giá trị gửi: '{department}' → Đã chuẩn hóa: '{dept_clean}'. Các giá trị cho phép: KTSC, KTLD, KD, GN, KT, CSKH, ALL"
+        logger.error(f"EDIT ERR: {error_msg}")
+        request.session["error_message"] = error_msg
 
-@router.post("/users/update-role/{user_id}")
-async def update_user_role(
-    request: Request,
-    user_id: int,
-    role: str = Form(...),
-    department: Optional[str] = Form(None),
-    admin: dict = Depends(get_current_admin)
-):
-    try:
-        res = await run_in_threadpool(
-            lambda: supabase.table('quan_tri_vien').select('role,department').eq("id", user_id).execute()
-        )
-        if not res or not res.data:
-            raise Exception("Không tìm tài khoản.")
-        target = res.data[0]
-        if not can_manage_target_role(admin["role_clean"], target["role"]):
-            raise Exception("Không đủ quyền.")
-        if not can_manage_target_role(admin["role_clean"], role):
-            raise Exception("Không gán quyền này.")
-
-        payload: Dict[str, Any] = {"role": role.strip()}
-        if department:
-            dept_clean = normalize_dept(department)
-            if dept_clean != target.get("department"):
-                if not (admin["department"] == "ALL" or admin["role_clean"] in ["system admin", "super admin"]):
-                    raise Exception("Không chuyển phòng ban.")
-                if dept_clean == "ALL" and admin["department"] != "ALL":
-                    raise Exception("Không gán ALL.")
-            payload["department"] = dept_clean
-
-        await run_in_threadpool(
-            lambda: supabase.table('quan_tri_vien').update(payload).eq("id", user_id).execute()
-        )
-        request.session["success_message"] = "Đã cập nhật!"
-    except Exception as e:
-        logger.error(f"UPDATE ROLE ERR: {e}")
-        request.session["error_message"] = f"Lỗi: {str(e)}"
+    # Luôn redirect về trang danh sách (303 là bình thường, chỉ cần message đúng)
     return RedirectResponse(url="/admin/users", status_code=303)
 
 @router.post("/users/delete/{user_id}")
@@ -441,7 +376,7 @@ async def clear_logs(request: Request, admin: dict = Depends(get_current_admin))
 
 @router.get("/audit-logs", response_class=HTMLResponse)
 async def get_audit_logs(request: Request, current_user: dict = Depends(require_login)):
-    if not current_user or current_user.get("role") not in ['Super Admin', 'System Admin']:
+    if not current_user or current_user.get("role") not in ['super admin', 'system admin']:
         raise HTTPException(403, "Bị từ chối")
     audit_data = supabase.table("audit_logs").select("*").order("created_at", desc=True).limit(100).execute().data or []
     return templates.TemplateResponse(

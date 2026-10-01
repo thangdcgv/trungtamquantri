@@ -378,7 +378,7 @@
                 <span>Lễ Tân Nhận - Trả Hàng</span>
             </a>
 
-            {% if current_user and current_user.role in ['Admin', 'Super Admin', 'System Admin'] %}
+            {% if current_user and current_user.role in ['admin', 'super admin', 'system admin'] %}
                 <!-- Dành cho Admin -->
                 <a href="/admin" class="quick-btn btn-purple">
                     <i class="fa-solid fa-sliders"></i>

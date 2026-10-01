@@ -535,8 +535,8 @@
 </style>
 {% endblock %}
 {% block content %}
-{% set current_role = request.session.get('role', 'User') %}
-{% set current_dept = request.session.get('department', 'KTSC') %}
+{% set current_role = request.session.get('role', 'user')|string|lower|trim %}
+{% set current_dept = request.session.get('department', 'KTSC')|string|upper|trim %}
 
 <div class="admin-container">
     <!-- Header -->
@@ -553,7 +553,7 @@
             <p>Phòng ban hiện tại: <strong>{{ current_dept }}</strong></p>
         </div>
         <div class="admin-header-actions">
-            {% if current_dept == 'ALL' or current_role in ['Admin','System Admin','Super Admin'] %}
+            {% if current_dept == 'ALL' or current_role in ['admin','system admin','super admin'] %}
             <button type="button" onclick="openModal('addModal')" class="btn-custom btn-primary-gradient">
                 <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5">
                     <line x1="12" y1="5" x2="12" y2="19"></line>
@@ -587,7 +587,18 @@
             {% endif %}
         {% endfor %}
     {% endif %}
-
+    <!-- THÔNG BÁO THÀNH CÔNG / LỖI -->
+    {% if error_msg %}
+    <div style="background:rgba(239,68,68,.1);border:1px solid rgba(239,68,68,.3);color:#fca5a5;padding:.8rem 1rem;border-radius:10px;margin-bottom:1rem;">
+    ⛔ {{ error_msg }}
+    </div>
+    {% endif %}
+    {% if success_msg %}
+    <div style="background:rgba(34,197,94,.1);border:1px solid rgba(34,197,94,.3);color:#86efac;padding:.8rem 1rem;border-radius:10px;margin-bottom:1rem;">
+    ✅ {{ success_msg }}
+    </div>
+    {% endif %}
+    <!-- KẾT THÚC THÔNG BÁO -->
     <div class="stats-grid">
         <div class="stat-card">
             <div class="stat-info">
@@ -623,18 +634,18 @@
             <div class="stat-icon-wrapper" style="background:rgba(34,197,94,.12);color:#4ade80">💰</div>
         </div>
         <div class="stat-card">
-            <div class="stat-info">
-                <div class="stat-label">KT</div>
-                <div class="stat-value" style="color:#60a5fa">{{ ns.KT }}</div>
-            </div>
-            <div class="stat-icon-wrapper" style="background:rgba(96,165,250,.12);color:#60a5fa">�</div>
+        <div class="stat-info">
+            <div class="stat-label">KT</div>
+            <div class="stat-value" style="color:#facc15">{{ ns.KT }}</div>
+        </div>
+        <div class="stat-icon-wrapper" style="background:rgba(251,191,36,.12);color:#facc15">📝</div>
         </div>
         <div class="stat-card">
-            <div class="stat-info">
-                <div class="stat-label">GN</div>
-                <div class="stat-value" style="color:#c9ff05">{{ ns.GN }}</div>
-            </div>
-            <div class="stat-icon-wrapper" style="background:rgba(96,165,250,.12);color:#60a5fa">�</div>
+        <div class="stat-info">
+            <div class="stat-label">GN</div>
+            <div class="stat-value" style="color:#60a5fa">{{ ns.GN }}</div>
+        </div>
+        <div class="stat-icon-wrapper" style="background:rgba(96,165,250,.12);color:#60a5fa">📦</div>
         </div>
         <div class="stat-card">
             <div class="stat-info">
@@ -650,6 +661,7 @@
             </div>
             <div class="stat-icon-wrapper" style="background:rgba(239,68,68,.12);color:#f87171">👑</div>
         </div>
+
     </div>
 
     <!-- Bảng Dữ Liệu -->
@@ -697,15 +709,16 @@
                     {% if users %}
                         {% for u in users %}
                             {% set can_see = (current_dept == 'ALL' or u.department == current_dept) %}
+                            {% set u_role = (u.role|default('User')|string|lower|trim) %}
                             {% set can_manage = false %}
                             {% if can_see %}
-                                {% if current_role == 'Super Admin' %}
-                                    {% set can_manage = true %}
-                                {% elif current_role == 'System Admin' and u.role not in ['Super Admin'] %}
-                                    {% set can_manage = true %}
-                                {% elif current_role == 'Admin' and u.role == 'User' %}
-                                    {% set can_manage = true %}
-                                {% endif %}
+                            {% if current_role == 'super admin' %}
+                                {% set can_manage = true %}
+                            {% elif current_role == 'system admin' and u_role not in ['super admin'] %}
+                                {% set can_manage = true %}
+                            {% elif current_role == 'admin' and u_role == 'user' %}
+                                {% set can_manage = true %}
+                            {% endif %}
                             {% endif %}
                             {% if can_see %}
                             <tr class="user-row" 
@@ -738,11 +751,11 @@
                                         <select name="role" class="select-role-custom" onchange="this.form.submit()">
                                             <option value="User" {% if u.role=='User' %}selected{% endif %}>User</option>
                                             <option value="Admin" {% if u.role=='Admin' %}selected{% endif %}>Admin</option>
-                                            {% if current_role in ['System Admin','Super Admin'] %}
-                                            <option value="System Admin" {% if u.role=='System Admin' %}selected{% endif %}>Sys Admin</option>
+                                            {% if current_role in ['system admin','super admin'] %}
+                                            <option value="system admin" {% if u.role=='system admin' %}selected{% endif %}>Sys Admin</option>
                                             {% endif %}
-                                            {% if current_role == 'Super Admin' %}
-                                            <option value="Super Admin" {% if u.role=='Super Admin' %}selected{% endif %}>Super Admin</option>
+                                            {% if current_role == 'super admin' %}
+                                            <option value="super admin" {% if u.role=='super admin' %}selected{% endif %}>Super Admin</option>
                                             {% endif %}
                                         </select>
                                     </form>
@@ -835,8 +848,8 @@
                             <option value="KT">Kế toán</option>
                             <option value="GN">Giao nhận</option>
                             <option value="CSKH">Chăm sóc khách hàng</option>
-                            {% if current_dept == 'ALL' or current_role in ['System Admin','Super Admin'] %}
-                            <option value="ALL">Quản trị</option>
+                            {% if current_dept == 'ALL' or current_role in ['system admin','super admin'] %}
+                            <option value="ALL">Xem toàn bộ</option>
                             {% endif %}
                         </select>
                     </div>
@@ -845,11 +858,11 @@
                         <select name="role" class="input-control">
                             <option value="User" selected>User — Nhân viên</option>
                             <option value="Admin">Admin — Quản lý phòng ban</option>
-                            {% if current_role in ['System Admin','Super Admin'] %}
-                            <option value="System Admin">System Admin — Quản trị hệ thống</option>
+                            {% if current_role in ['system admin','super admin'] %}
+                            <option value="system admin">System Admin — Quản trị hệ thống</option>
                             {% endif %}
-                            {% if current_role == 'Super Admin' %}
-                            <option value="Super Admin">Super Admin — Quản trị tối cao</option>
+                            {% if current_role == 'super admin' %}
+                            <option value="super admin">Super Admin — Quản trị tối cao</option>
                             {% endif %}
                         </select>
                     </div>
@@ -890,11 +903,11 @@
                         <select id="edit_department" name="department" class="input-control">
                             <option value="KTSC">Kỹ thuật sửa chữa</option>
                             <option value="KTLD">Kỹ thuật lắp đặt</option>
-                            <option value="KT">Giao nhận</option>
+                            <option value="GN">Giao nhận</option>
                             <option value="KD">Kinh doanh</option>
                             <option value="CSKH">Chăm sóc khách hàng</option>
                             <option value="KT">Kế toán</option>
-                            {% if current_dept == 'ALL' or current_role in ['System Admin','Super Admin'] %}
+                            {% if current_dept == 'ALL' or current_role in ['system admin','super admin'] %}
                             <option value="ALL">Toàn bộ hệ thống</option>
                             {% endif %}
                         </select>
@@ -904,11 +917,11 @@
                         <select id="edit_role" name="role" class="input-control">
                             <option value="User">User — Nhân viên</option>
                             <option value="Admin">Admin — Quản lý phòng ban</option>
-                            {% if current_role in ['System Admin','Super Admin'] %}
-                            <option value="System Admin">System Admin</option>
+                            {% if current_role in ['system admin','super admin'] %}
+                            <option value="system admin">System Admin</option>
                             {% endif %}
-                            {% if current_role == 'Super Admin' %}
-                            <option value="Super Admin">Super Admin</option>
+                            {% if current_role == 'super admin' %}
+                            <option value="super admin">Super Admin</option>
                             {% endif %}
                         </select>
                     </div>

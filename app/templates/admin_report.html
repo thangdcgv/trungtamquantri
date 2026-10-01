@@ -22,7 +22,7 @@
                     </select>
                 </div>
                 
-                {% if current_user.role in ['Admin', 'Super Admin', 'System Admin', 'Manager'] %}
+                {% if current_user.role in ['admin', 'super admin', 'system admin'] %}
                 <div class="col-md-4">
                     <label class="form-label fw-bold">👤 Nhân viên</label>
                     <select id="selNv" class="form-select">
@@ -78,7 +78,7 @@
     </div>
 
     <!-- BIỂU ĐỒ (Dành cho Cấp quản lý) -->
-    {% if current_user.role in ['Admin', 'Super Admin', 'System Admin', 'Manager'] %}
+    {% if current_user.role in ['admin', 'super admin', 'system admin'] %}
     <div class="row g-3 mb-4" id="chartSection">
         <div class="col-md-6">
             <div class="card shadow-sm border-0 p-3">
@@ -99,7 +99,7 @@
     <div class="card shadow-sm border-0">
         <div class="card-header bg-white d-flex justify-content-between align-items-center py-3">
             <h5 class="fw-bold mb-0">📝 Chi Tiết Danh Sách Đơn</h5>
-            {% if current_user.role in ['Admin', 'Super Admin', 'System Admin'] %}
+            {% if current_user.role in ['admin', 'super admin', 'system admin'] %}
             <button id="btnDeleteSelected" class="btn btn-outline-danger btn-sm d-none" onclick="handleBulkDelete()">
                 🗑️ Xóa các mục đã chọn (<span id="selectedCount">0</span>)
             </button>
@@ -110,12 +110,12 @@
                 <table class="table table-hover align-middle mb-0 text-center">
                     <thead class="table-dark sticky-top">
                         <tr>
-                            {% if current_user.role in ['Admin', 'Super Admin', 'System Admin'] %}
+                            {% if current_user.role in ['admin', 'super admin', 'system admin'] %}
                             <th><input type="checkbox" id="selectAll" onclick="toggleSelectAll(this)"></th>
                             {% endif %}
                             <th>STT</th>
                             <th>🕒 Thời Gian</th>
-                            {% if current_user.role in ['Admin', 'Super Admin', 'System Admin', 'Manager'] %}
+                            {% if current_user.role in ['admin', 'super admin', 'system admin'] %}
                             <th>👤 Nhân Viên</th>
                             {% endif %}
                             <th>Số HĐ</th>
@@ -140,7 +140,7 @@
 let barChartInstance = null;
 let pieChartInstance = null;
 const userRole = "{{ current_user.role }}";
-const isAdmin = ["Admin", "Super Admin", "System Admin"].includes(userRole);
+const isAdmin = ["admin", "super admin", "system admin"].includes(userRole);
 
 // 1. Khởi tạo danh sách Tháng/Năm Dropdown
 function initMonthOptions() {
@@ -212,7 +212,7 @@ function renderTable(items) {
         if (item.trang_thai === 'Từ chối') statusBadge = 'bg-danger';
 
         let checkTd = isAdmin ? `<td><input type="checkbox" class="row-checkbox" value="${item.id}" onclick="updateSelectedCount()"></td>` : '';
-        let nvTd = ["Admin", "Super Admin", "System Admin", "Manager"].includes(userRole) ? `<td>${item.ten}</td>` : '';
+        let nvTd = ["admin", "super admin", "system admin"].includes(userRole) ? `<td>${item.ten}</td>` : '';
 
         tr.innerHTML = `
             ${checkTd}

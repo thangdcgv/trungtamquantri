@@ -158,9 +158,9 @@
                         {% set s_raw_user = (session_user if session_user is string else '') | string | lower | trim %}
 
                         {# 2. Phân cấp quyền #}
-                        {% set role_levels = {'Staff': 1, 'User': 1, 'Admin': 2, 'Super Admin': 3, 'System Admin': 4} %}
+                        {% set role_levels = {'Staff': 1, 'user': 1, 'admin': 2, 'super admin': 3, 'system admin': 4} %}
                         {% set current_user_level = role_levels.get(user_role, 1) %}
-                        {% set can_delete = (user_role == 'System Admin') %}
+                        {% set can_delete = (user_role == 'system admin') %}
 
                         {% for item in items %}
                             {# 3. Bóc tách staff_name từ DB (Xử lý an toàn nếu là Dict hoặc String) #}

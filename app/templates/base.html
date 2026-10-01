@@ -537,7 +537,7 @@
             <span>Thư viện</span>
         </a>
         <!-- Quản Lý Nhập Xuất Key -->
-         {% if current_user and current_user.get('role') in ['User', 'Super Admin', 'System Admin'] %}
+         {% if current_user and current_user.get('role') in ['user', 'super admin', 'system admin'] %}
         <a href="/admin/quan-ly-key" class="nav-item {% if request is defined and request.path.startswith('/admin/quan-ly-key') %}active{% endif %}">
             <svg viewBox="0 0 24 24">
                 <circle cx="7.5" cy="15.5" r="3.5"></circle>

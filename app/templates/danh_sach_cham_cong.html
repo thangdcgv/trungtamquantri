@@ -443,7 +443,7 @@
                 </div>
             </div>
             <div>
-                {% if user_role in ('Admin', 'System Admin', 'Super Admin') %}
+                {% if user_role in ('admin', 'system admin', 'super admin') %}
                     <span class="badge bg-danger-subtle text-danger border border-danger-subtle rounded-pill px-3 py-2">
                         <i class="fa-solid fa-user-shield me-1"></i> Admin
                     </span>
@@ -558,7 +558,7 @@
                         </select>
                     </div>
 
-                    {% if user_role in ('Admin', 'System Admin', 'Super Admin') %}
+                    {% if user_role in ('admin', 'system admin', 'super admin') %}
                     <div class="col-12 col-md-3">
                         <label class="form-label text-muted extra-small mb-1"><i class="fa-solid fa-user-gear me-1"></i>Kỹ thuật viên</label>
                         <select name="ktv" id="ktvSelect" class="form-select form-select-sm" onchange="this.form.submit()">
@@ -573,7 +573,7 @@
                     </div>
                     {% endif %}
 
-                    <div class="col-12 {% if user_role in ('Admin', 'System Admin', 'Super Admin') %}col-md-3{% else %}col-md-6{% endif %}">
+                    <div class="col-12 {% if user_role in ('admin', 'system admin', 'super admin') %}col-md-3{% else %}col-md-6{% endif %}">
                         <label class="form-label text-muted extra-small mb-1"><i class="fa-solid fa-list-ol me-1"></i>Hiển thị tối đa</label>
                         <select name="limit" class="form-select form-select-sm" onchange="this.form.submit()">
                             <option value="30" {% if limit == 30 %}selected{% endif %}>30 đơn gần nhất</option>
@@ -736,7 +736,7 @@
                         </div>
 
                         <!-- Footer Actions: Phân quyền Admin & User chính chủ -->
-                        {% set is_admin = user_role in ('Admin', 'System Admin') %}
+                        {% set is_admin = user_role in ('admin', 'system admin') %}
                         {% set is_owner = (current_user and item.username == current_user.username) %}
                         {% set can_user_edit = (is_owner and item.trang_thai != 'Đã duyệt') %}
 
@@ -749,7 +749,7 @@
                                 </a>
 
                                 <!-- Nút Xóa: Admin cấp cao HOẶC User chính chủ chưa duyệt -->
-                                {% if user_role in ('System Admin', 'Super Admin') or can_user_edit %}
+                                {% if user_role in ('system admin', 'super admin') or can_user_edit %}
                                     <button type="button" class="btn btn-danger btn-sm" onclick="deleteChamCong('{{ item.id }}')">
                                         🗑️ Xóa
                                     </button>

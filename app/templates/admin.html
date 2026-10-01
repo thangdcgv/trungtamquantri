@@ -301,7 +301,7 @@
         <div class="admin-grid">
             
             <!-- Module 1: Quản Lý Kho Key Chipless -->
-            {% if current_user and current_user.role in ['Super Admin', 'System Admin'] %}
+            {% if current_user and current_user.role in ['super admin', 'system admin'] %}
             <!-- Dành cho Super Admin / System Admin: Truy cập bình thường -->
             <a href="/admin/kho-key" class="admin-card accent-key">
                 <div>
@@ -477,7 +477,7 @@
             </a>
 
             <!-- Module 5: Giám Sát Log Lỗi System -->
-            {% if current_user and current_user.role in ['Super Admin', 'System Admin'] %}
+            {% if current_user and current_user.role in ['super admin', 'system admin'] %}
             <!-- Dành cho Super Admin / System Admin: Truy cập bình thường -->
             <a href="/admin/logs" class="admin-card accent-logs">
                 <div>
@@ -507,7 +507,7 @@
             </a>
             {% endif %}
             <!-- Module 6: Giám Sát Thay Đổi Hệ Thống (Audit Logs) -->
-            {% if current_user and current_user.role in ['Super Admin', 'System Admin'] %}
+            {% if current_user and current_user.role in ['super admin', 'system admin'] %}
             <!-- Dành cho Super Admin / System Admin: Truy cập bình thường -->
             <a href="/admin/audit-logs" class="admin-card accent-audit">
                 <div>

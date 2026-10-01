@@ -18,7 +18,7 @@ logger = logging.getLogger(__name__)
 router = APIRouter(prefix="/admin/bao-cao", tags=["Báo cáo & Thống kê"])
 templates = Jinja2Templates(directory="app/templates")
 
-ALLOWED_ADMIN_ROLES = {"Super Admin", "System Admin", "Admin"}
+ALLOWED_ADMIN_ROLES = {"super admin", "system admin", "admin"}
 
 
 def require_admin(user: dict = Depends(require_login)) -> dict:
