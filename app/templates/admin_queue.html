@@ -43,7 +43,7 @@ const DEPT_NAME = {
   CSKH: "CSKH"
 };
 const ROLE_LABEL = {
-  super_admin: "Quản trị cấp cao",
+  super_admin: "Super Admin",
   admin: "Quản lý",
   ktv: "Kỹ thuật",
   kd: "Kinh doanh",
@@ -315,7 +315,7 @@ function App() {
           </div>
           <div>
             <div className="flex items-center gap-2">
-              <h1 className="text-base sm:text-lg font-black tracking-wide text-[var(--text-main)] uppercase">QUẢN LÝ HÀNG CHỜ VÉ</h1>
+              <h1 className="text-base sm:text-lg font-black tracking-wide text-[var(--text-main)] uppercase">KHÁCH HÀNG CHỜ HỖ TRỢ</h1>
               <span className={`px-2 py-0.5 text-[10px] font-bold rounded-full border ${
                 wsConnected ? 'bg-emerald-500/10 border-emerald-500/20 text-emerald-400' : 'bg-rose-500/10 border-rose-500/20 text-rose-400 animate-pulse'
               }`}>
@@ -352,13 +352,6 @@ function App() {
             <i className={`fa-solid ${audioOn ? 'fa-volume-high' : 'fa-volume-xmark'}`}></i>
             {audioOn ? "Âm thanh: BẬT" : "Âm thanh: TẮT"}
           </button>
-
-          {user.role === "super_admin" && (
-            <a href="/admin/users" className="px-3 py-2 bg-slate-800 hover:bg-slate-700 border border-[var(--border-color)] text-slate-200 text-xs font-bold rounded-[var(--radius-btn)] transition-all flex items-center gap-1.5 no-underline">
-              <i className="fa-solid fa-users-gear"></i>
-              <span>Thành Viên</span>
-            </a>
-          )}
         </div>
       </div>
 
@@ -421,6 +414,7 @@ function App() {
               <option value="waiting">Đang chờ</option>
               <option value="processing">Đang xử lý</option>
               <option value="completed">Hoàn thành</option>
+              <option value="cancelled">Đã hủy</option> {/* ✅ Thêm bộ lọc đã hủy */}
             </select>
           </div>
         </div>
@@ -451,7 +445,9 @@ function App() {
               key={t.id} 
               className={`card flex flex-col justify-between p-4 border-l-4 transition-all hover:border-sky-500/40 ${
                 t.status === 'waiting' ? 'border-l-amber-500' :
-                t.status === 'processing' ? 'border-l-sky-500' : 'border-l-emerald-500 opacity-75'
+                t.status === 'processing' ? 'border-l-sky-500' :
+                t.status === 'completed' ? 'border-l-emerald-500 opacity-75' :
+                'border-l-rose-500 opacity-60 bg-rose-950/10' /* 🛑 Style cho vé bị hủy */
               }`}
             >
               <div>
@@ -459,14 +455,22 @@ function App() {
                   <span className="text-lg font-black text-[var(--text-main)] tracking-wider">
                     {t.ticket_code}
                   </span>
-                  <span className="text-[10px] font-bold px-2 py-0.5 rounded-md bg-sky-500/10 border border-sky-500/20 text-[var(--primary-light)] uppercase">
-                    {DEPT_NAME[t.department] || t.department}
-                  </span>
+                  <div className="flex items-center gap-1.5">
+                    {/* Huy hiệu trạng thái hủy nếu có */}
+                    {t.status === 'cancelled' && (
+                      <span className="text-[10px] font-bold px-2 py-0.5 rounded-md bg-rose-500/10 border border-rose-500/20 text-rose-400 uppercase">
+                        Đã hủy
+                      </span>
+                    )}
+                    <span className="text-[10px] font-bold px-2 py-0.5 rounded-md bg-sky-500/10 border border-sky-500/20 text-[var(--primary-light)] uppercase">
+                      {DEPT_NAME[t.department] || t.department}
+                    </span>
+                  </div>
                 </div>
 
                 <h3 className="font-bold text-[var(--text-main)] text-sm">{t.customer_name}</h3>
                 <p className="text-xs text-[var(--text-muted)] mt-0.5 mb-2">
-                  <i className="fa-solid fa-phone text-[10px] mr-1"></i>{t.phone || t.zalo_id || "Không có SĐT"}
+                  <i className="fa-solid fa-phone text-[10px] mr-1"></i>{t.phone || "Không có SĐT"}
                 </p>
 
                 {t.device_info && (
@@ -476,6 +480,7 @@ function App() {
                 )}
               </div>
 
+              {/* Các nút thao tác */}
               <div className="flex gap-2 pt-2 border-t border-[var(--border-color)] flex-wrap">
                 {t.status === "waiting" && (
                   <button 
@@ -495,7 +500,8 @@ function App() {
                   </button>
                 )}
 
-                {canTransfer && t.status !== "completed" && (
+                {/* 🛑 CHỈ HIỆN NÚT CHUYỂN KHI PHIẾU KHÔNG PHẢI LÀ 'completed' VÀ KHÔNG PHẢI LÀ 'cancelled' */}
+                {canTransfer && t.status !== "completed" && t.status !== "cancelled" && (
                   <button 
                     onClick={() => setTransferTicket(t)}
                     className="px-2.5 py-1.5 bg-amber-600/80 hover:bg-amber-600 text-white font-bold text-xs rounded-[var(--radius-btn)] transition-all flex items-center justify-center gap-1 shadow-sm border border-amber-500/30"

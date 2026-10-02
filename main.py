@@ -29,7 +29,7 @@ from app.reception import router as reception_router
 
 app = FastAPI(
     title="Máy In Đại Thành Center Hub",
-    description="Hệ thống quản lý chấm công, bảo hành và quản trị nội bộ",
+    description="Hệ thống quản trị nội bộ",
     version="1.0.0"
 )
 
@@ -62,16 +62,6 @@ app.mount("/static", StaticFiles(directory="app/static"), name="static")
 @app.get('/favicon.ico', include_in_schema=False)
 async def favicon():
     return FileResponse('app/static/favicon.png')
-
-@app.get("/zalo_verifierUVha58Jd0XW3pSYnhf_2JQexHNQtZPBC380.html", response_class=HTMLResponse)
-async def zalo_verify_file():
-    return HTMLResponse(content="""
-<!DOCTYPE html>
-<html>
-<head><meta charset="utf-8"><title>Zalo Verification</title></head>
-<body>There Is No Limit To What You Can Accomplish Using Zalo!</body>
-</html>
-""")
 
 # === Validation Error Handler ===
 @app.exception_handler(RequestValidationError)

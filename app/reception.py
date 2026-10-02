@@ -1,26 +1,26 @@
 from datetime import datetime, timezone
 from typing import Optional
 from pathlib import Path
-import asyncio
 import logging
-import requests
+import re
+import urllib.parse
 from fastapi import APIRouter, HTTPException, Query, Depends, Request
 from fastapi.responses import HTMLResponse
 from fastapi.templating import Jinja2Templates
 from pydantic import BaseModel, Field
-from config import (
-    supabase,
-    ZNS_RECEIVE_TEMPLATE_ID,
-    ZNS_RETURN_TEMPLATE_ID
-)
-from .zalo_helper import get_zalo_access_token
+
+from config import supabase
 from app.websocket_manager import manager, VN_TZ
 from app.admin_routes import require_roles
+from app.auth import get_current_user_or_redirect 
 
 BASE_DIR = Path(__file__).resolve().parent
 templates = Jinja2Templates(directory=str(BASE_DIR / "templates"))
 router = APIRouter(prefix="/api/reception", tags=["Reception"])
 logger = logging.getLogger("uvicorn.error")
+
+# Khai báo dependency dùng chung cho toàn bộ Router Reception để bảo mật
+AUTH_DEPENDENCY = Depends(require_roles(["cskh", "user", "admin", "super admin", "system admin"]))
 
 # --- SCHEMAS ---
 class ReceiveItemRequest(BaseModel):
@@ -30,57 +30,54 @@ class ReceiveItemRequest(BaseModel):
 
 class ReturnItemRequest(BaseModel):
     returned_note: Optional[str] = None
+    returned_method: Optional[str] = Field(None, description="Hình thức hoàn trả: Tại cửa hàng, Gửi Ship, ...")
 
-# --- GỬI ZNS ---
-def send_zalo_reception_msg(phone: str, customer_name: str, code: str, *, msg_type: str):
-    """
-    msg_type: 'receive' → tiếp nhận máy | 'return' → trả máy
-    Chỉ truyền đúng 2 biến: customer_name, ticket_code
-    """
-    template_id = (
-        ZNS_RECEIVE_TEMPLATE_ID if msg_type == "receive"
-        else ZNS_RETURN_TEMPLATE_ID
-    )
-    token = get_zalo_access_token()
+# --- HELPER TẠO NỘI DUNG VÀ DEEP LINK SMS ---
+def generate_sms_info(phone: str, customer_name: str, code: str, note: Optional[str], msg_type: str) -> dict:
+    """Tạo nội dung SMS và Deep Link tương thích iPhone/Android/Windows"""
+    # 1. Chuẩn hóa SĐT: Chỉ giữ lại chữ số, chuyển 84xxx -> 0xxx
+    phone_digits = re.sub(r"\D", "", phone or "")
+    if phone_digits.startswith("84"):
+        phone_clean = "0" + phone_digits[2:]
+    elif not phone_digits.startswith("0") and len(phone_digits) >= 9:
+        phone_clean = "0" + phone_digits
+    else:
+        phone_clean = phone_digits
 
-    if not phone or not token or not template_id:
-        logger.warning(f"Thiếu thông tin ZNS [{msg_type}] — phone/token/template_id")
-        return None
+    now_str = datetime.now(VN_TZ).strftime("%H:%M %d/%m/%Y")
+    note_str = note.strip() if note and note.strip() else "Bình thường"
 
-    # Chuẩn hóa SĐT: 091... → 8491..., giữ nguyên nếu đã có 84
-    phone_clean = phone.strip()
-    if phone_clean.startswith("0"):
-        phone_clean = "84" + phone_clean[1:]
-    elif not phone_clean.startswith("84"):
-        phone_clean = "84" + phone_clean
+    # 2. Soạn mẫu tin nhắn
+    if msg_type == "receive":
+        sms_text = (
+            f"May in Dai Thanh da tao phieu [{code}] ghi nhan thiet bi cua KH {customer_name} "
+            f"luc {now_str}. Tinh trang: {note_str}."
+        )
+    else:
+        sms_text = (
+            f"May in Dai Thanh da hoan tra thiet bi [{code}] cho KH {customer_name} "
+            f"luc {now_str}. Cam on Quy khach!"
+        )
 
-    # ✅ ĐÚNG URL — KHÔNG có /send ở cuối
-    url = "https://business.openapi.zalo.me/message/template"
-    headers = {"access_token": token, "Content-Type": "application/json"}
-    payload = {
+    # 3. Mã hóa URL cho nội dung SMS
+    encoded_text = urllib.parse.quote(sms_text)
+
+    # 4. Tạo deep link chuẩn (Android/Standard dùng '?', iOS đôi khi cần '&')
+    sms_link_android = f"sms:{phone_clean}?body={encoded_text}"
+    sms_link_ios = f"sms:{phone_clean}&body={encoded_text}"
+
+    return {
         "phone": phone_clean,
-        "template_id": template_id,
-        "template_data": {
-            "customer_name": customer_name or "Khách hàng",
-            "ticket_code": code
-        },
-        "tracking_id": f"{msg_type}_{code}_{int(datetime.now().timestamp())}"
+        "text": sms_text,
+        "sms_link": sms_link_android,
+        "sms_link_ios": sms_link_ios
     }
-
-    try:
-        res = requests.post(url, json=payload, headers=headers, timeout=5)
-        data = res.json()
-        logger.info(f"📨 ZNS [{msg_type}] {code}: {data}")
-        return data
-    except Exception as e:
-        logger.error(f"Lỗi gửi ZNS: {e}")
-        return None
 
 # --- TRANG GIAO DIỆN ---
 @router.get("/delivery", response_class=HTMLResponse)
 async def reception_page(
     request: Request,
-    user: dict = Depends(require_roles([ "cskh", "ktv", "admin", "super admin", "system admin"]))
+    user: dict = Depends(get_current_user_or_redirect)
 ):
     return templates.TemplateResponse(
         request=request,
@@ -90,16 +87,17 @@ async def reception_page(
 
 # --- 1. TIẾP NHẬN MÁY ---
 @router.post("/receive")
-async def create_reception_record(data: ReceiveItemRequest):
+async def create_reception_record(
+    data: ReceiveItemRequest,
+    user: dict = Depends(get_current_user_or_redirect)
+):
     try:
         phone_clean = data.phone.strip()
         name_clean = data.customer_name.strip()
 
-        # Sinh mã phiếu: NT-xxxx-xxx (đếm tăng dần trong ngày)
         today_str = datetime.now(VN_TZ).strftime("%Y%m%d")
         prefix = f"NT-{today_str[-4:]}-"
 
-        # Lấy số thứ tự tiếp theo trong ngày
         today_start = datetime.now(VN_TZ).replace(
             hour=0, minute=0, second=0, microsecond=0
         ).astimezone(timezone.utc).strftime("%Y-%m-%dT%H:%M:%SZ")
@@ -123,7 +121,6 @@ async def create_reception_record(data: ReceiveItemRequest):
 
         code = f"{prefix}{next_num:03d}"
 
-        # ✅ Khớp 100% cấu trúc bảng reception_records
         payload = {
             "code": code,
             "customer_name": name_clean,
@@ -131,7 +128,6 @@ async def create_reception_record(data: ReceiveItemRequest):
             "received_note": data.received_note,
             "status": "received",
             "received_date": datetime.now(timezone.utc).isoformat()
-            # created_at / updated_at có default → không cần truyền
         }
 
         insert_res = supabase.table("reception_records").insert(payload).execute()
@@ -140,22 +136,26 @@ async def create_reception_record(data: ReceiveItemRequest):
 
         record = insert_res.data[0]
 
-        # Gửi ZNS — chạy nền không block
-        asyncio.create_task(asyncio.to_thread(
-            send_zalo_reception_msg,
-            phone_clean, name_clean, code,
-            msg_type="receive"
-        ))
-
+        # Phát tin nhắn WebSocket cập nhật Realtime cho các máy khác
         await manager.broadcast({
             "type": "reception_new",
             "record": record
         })
 
+        # Tạo thông tin SMS trả về cho Frontend
+        sms_info = generate_sms_info(
+            phone=phone_clean,
+            customer_name=name_clean,
+            code=code,
+            note=data.received_note,
+            msg_type="receive"
+        )
+
         return {
             "success": True,
-            "message": "Đã tạo phiếu & gửi Zalo cho khách!",
-            "data": record
+            "message": "Đã tạo phiếu tiếp nhận!",
+            "data": record,
+            "sms_info": sms_info
         }
 
     except HTTPException:
@@ -166,7 +166,10 @@ async def create_reception_record(data: ReceiveItemRequest):
 
 # --- 2. TRA CỨU ---
 @router.get("/search")
-async def search_reception_records(query_str: str = Query(..., description="SĐT / Tên / Mã phiếu")):
+async def search_reception_records(
+    query_str: str = Query(..., description="SĐT / Tên / Mã phiếu"),
+    user: dict = AUTH_DEPENDENCY
+):
     try:
         q = query_str.strip()
         if not q:
@@ -190,15 +193,19 @@ async def search_reception_records(query_str: str = Query(..., description="SĐT
 
 # --- 3. TRẢ MÁY ---
 @router.post("/return/{record_id}")
-async def return_item_to_customer(record_id: str, data: ReturnItemRequest):
+async def return_item_to_customer(
+    record_id: str, 
+    data: ReturnItemRequest,
+    user: dict = AUTH_DEPENDENCY
+):
     try:
         now_utc = datetime.now(timezone.utc).isoformat()
 
-        # ✅ Khớp cấu trúc bảng: updated_at cũng cập nhật
         payload = {
             "status": "returned",
             "returned_date": now_utc,
             "returned_note": data.returned_note,
+            "returned_method": data.returned_method,
             "updated_at": now_utc
         }
 
@@ -212,24 +219,25 @@ async def return_item_to_customer(record_id: str, data: ReturnItemRequest):
 
         record = res.data[0]
 
-        # Gửi ZNS thông báo đã trả máy
-        asyncio.create_task(asyncio.to_thread(
-            send_zalo_reception_msg,
-            record["phone"],
-            record["customer_name"],
-            record["code"],
-            msg_type="return"
-        ))
-
         await manager.broadcast({
             "type": "reception_returned",
             "record": record
         })
 
+        # Tạo thông tin SMS trả máy
+        sms_info = generate_sms_info(
+            phone=record["phone"],
+            customer_name=record["customer_name"],
+            code=record["code"],
+            note=data.returned_note,
+            msg_type="return"
+        )
+
         return {
             "success": True,
-            "message": "Đã trả máy & gửi Zalo cho khách!",
-            "data": record
+            "message": "Đã ghi nhận trả máy!",
+            "data": record,
+            "sms_info": sms_info
         }
 
     except HTTPException:

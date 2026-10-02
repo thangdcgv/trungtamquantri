@@ -27,20 +27,6 @@ class Settings:
         "SECRET_KEY", "default-secret-key-change-it-in-production"
     ).strip()
 
-    # === ZALO OA & ZNS ===
-    ZALO_OA_ACCESS_TOKEN: str = os.getenv("ZALO_OA_ACCESS_TOKEN", "").strip()
-    
-    # Mẫu ZNS cho vé/bốc số
-    ZNS_TEMPLATE_ID: str = os.getenv("ZNS_TEMPLATE_ID", "").strip()
-    
-    # ✅ THÊM: 2 mẫu riêng cho Lễ Tân Nhận-Trả
-    ZNS_RECEIVE_TEMPLATE_ID: str = os.getenv("ZNS_RECEIVE_TEMPLATE_ID", "").strip()
-    ZNS_RETURN_TEMPLATE_ID: str = os.getenv("ZNS_RETURN_TEMPLATE_ID", "").strip()
-
-    # ✅ THÊM: Thông số refresh token
-    ZALO_APP_ID: Optional[str] = os.getenv("ZALO_APP_ID")
-    ZALO_SECRET_KEY: Optional[str] = os.getenv("ZALO_SECRET_KEY")
-    REFRESH_TOKEN: Optional[str] = os.getenv("REFRESH_TOKEN")
 
 settings = Settings()
 
@@ -79,14 +65,3 @@ SUPABASE_URL = settings.SUPABASE_URL       # ✅ Thêm
 SUPABASE_KEY = settings.SUPABASE_KEY 
 SECRET_KEY = settings.SECRET_KEY 
 
-ZALO_OA_ACCESS_TOKEN = settings.ZALO_OA_ACCESS_TOKEN
-ZNS_TEMPLATE_ID = settings.ZNS_TEMPLATE_ID
-
-# ✅ Xuất cho reception.py
-ZNS_RECEIVE_TEMPLATE_ID = settings.ZNS_RECEIVE_TEMPLATE_ID
-ZNS_RETURN_TEMPLATE_ID = settings.ZNS_RETURN_TEMPLATE_ID
-
-# ✅ Xuất cho zalo_helper.py
-ZALO_APP_ID = settings.ZALO_APP_ID
-ZALO_SECRET_KEY = settings.ZALO_SECRET_KEY
-REFRESH_TOKEN = settings.REFRESH_TOKEN

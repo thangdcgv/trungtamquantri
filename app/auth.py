@@ -64,6 +64,15 @@ def extract_user_from_session(request: Request) -> Optional[Dict[str, Any]]:
         return None
 
     ho_ten = request.session.get("ho_ten") or "Quản trị viên"
+    role = str(request.session.get("role") or "User").strip()
+    
+    # Lấy department từ session, nếu là super/system admin thì luôn là ALL
+    dept = request.session.get("department")
+    if role.lower() in SUPER_ADMIN_ROLES:
+        dept = "ALL"
+    else:
+        dept = dept or "KTSC"
+
     return {
         "auth_id": str(user_id),
         "id": str(user_id),
@@ -71,7 +80,8 @@ def extract_user_from_session(request: Request) -> Optional[Dict[str, Any]]:
         "username": request.session.get("username") or "",
         "ho_ten": ho_ten,
         "name": ho_ten,
-        "role": str(request.session.get("role") or "User").strip(),
+        "role": role,
+        "department": dept,  # ✅ ĐÃ BỔ SUNG
         "access_token": request.session.get("access_token"),
         "session_token": session_token,
     }
@@ -244,12 +254,18 @@ async def login(
         username = email_clean.split("@")[0]
         ho_ten = "Quản trị viên"
         role = "User"
+        department = "KTSC"  # Mặc định
 
         if user_record and user_record.data:
             user_info = user_record.data[0]
             username = user_info.get("username") or username
             ho_ten = user_info.get("ho_ten") or user_info.get("name") or ho_ten
             role = str(user_info.get("role") or "User").strip()
+            department = str(user_info.get("department") or "KTSC").strip()
+
+        # 🔥 Ép department thành 'ALL' nếu là tài khoản quản trị cấp cao
+        if role.lower() in SUPER_ADMIN_ROLES:
+            department = "ALL"
 
         # 6. Cập nhật Session Cookie
         request.session.clear()
@@ -259,6 +275,7 @@ async def login(
         request.session["username"] = username
         request.session["ho_ten"] = ho_ten
         request.session["role"] = role
+        request.session["department"] = department  # ✅ LƯU PHÒNG BAN VÀO SESSION
 
         if response.session:
             request.session["access_token"] = response.session.access_token

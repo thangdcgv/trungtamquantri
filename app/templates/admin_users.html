@@ -1,10 +1,11 @@
 {% extends "base.html" %}
 {% block title %}Quản Lý Tài Khoản & Phân Quyền - Máy In Đại Thành{% endblock %}
+
 {% block head %}
 <style>
 /* ==========================================
-       GLOBAL DESIGN TOKENS
-       ========================================== */
+   GLOBAL DESIGN TOKENS
+   ========================================== */
 :root {
     --bg-main: #0f172a;
     --bg-card: rgba(30, 41, 59, 0.65);
@@ -21,660 +22,129 @@
     --transition: 0.2s cubic-bezier(0.4, 0, 0.2, 1);
 }
 
-/* ==========================================
-       CONTAINER & HEADER
-       ========================================== */
-.admin-container {
-    width: 100%;
-    max-width: 1400px;
-    margin: 0 auto;
-    padding: 1.5rem;
-    box-sizing: border-box;
-}
-.admin-header {
-    display: flex;
-    justify-content: space-between;
-    align-items: center;
-    margin-bottom: 1.25rem;
-    padding-bottom: 1rem;
-    border-bottom: var(--border);
-    gap: 1rem;
-    flex-wrap: wrap;
-}
+.admin-container { width: 100%; max-width: 1400px; margin: 0 auto; padding: 1.5rem; box-sizing: border-box; }
+.admin-header { display: flex; justify-content: space-between; align-items: center; margin-bottom: 1.25rem; padding-bottom: 1rem; border-bottom: var(--border); gap: 1rem; flex-wrap: wrap; }
 .admin-header-title { flex: 1; min-width: 240px; }
-.admin-header-title h1 {
-    font-size: clamp(1.25rem, 2vw, 1.6rem);
-    font-weight: 800;
-    color: var(--text-main);
-    letter-spacing: -0.015em;
-    margin: 0;
-    display: flex;
-    align-items: center;
-    gap: 0.65rem;
-}
-.admin-header-title h1 svg {
-    color: var(--primary-light);
-    width: 26px;
-    height: 26px;
-    stroke-width: 2.2;
-    flex-shrink: 0;
-}
-.admin-header-title p {
-    font-size: 0.88rem;
-    color: var(--text-muted);
-    margin: 0.25rem 0 0;
-}
-.admin-header-actions {
-    display: flex;
-    align-items: center;
-    gap: 0.65rem;
-    flex-wrap: wrap;
-}
+.admin-header-title h1 { font-size: clamp(1.25rem, 2vw, 1.6rem); font-weight: 800; color: var(--text-main); margin: 0; display: flex; align-items: center; gap: 0.65rem; }
+.admin-header-title h1 svg { color: var(--primary-light); width: 26px; height: 26px; }
+.admin-header-title p { font-size: 0.88rem; color: var(--text-muted); margin: 0.25rem 0 0; }
+.admin-header-actions { display: flex; align-items: center; gap: 0.65rem; flex-wrap: wrap; }
 
-/* ==========================================
-       STATS OVERVIEW GRID
-       ========================================== */
-.stats-grid {
-    display: grid;
-    grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
-    gap: 1rem;
-    margin-bottom: 1.25rem;
-}
-.stat-card {
-    background: var(--bg-card);
-    border: var(--border);
-    backdrop-filter: blur(10px);
-    -webkit-backdrop-filter: blur(10px);
-    border-radius: var(--radius-md);
-    padding: 1rem 1.25rem;
-    display: flex;
-    align-items: center;
-    justify-content: space-between;
-    transition: transform var(--transition), border-color var(--transition);
-}
-.stat-card:hover {
-    transform: translateY(-2px);
-    border-color: rgba(255, 255, 255, 0.2);
-    background: var(--bg-card-hover);
-}
-.stat-info .stat-label {
-    font-size: 0.7rem;
-    text-transform: uppercase;
-    letter-spacing: 0.06em;
-    color: var(--text-muted);
-    font-weight: 700;
-}
-.stat-info .stat-value {
-    font-size: clamp(1.2rem, 2vw, 1.6rem);
-    font-weight: 800;
-    color: var(--text-main);
-    margin-top: 0.2rem;
-    line-height: 1;
-}
-.stat-icon-wrapper {
-    width: 44px;
-    height: 44px;
-    border-radius: var(--radius-md);
-    display: flex;
-    align-items: center;
-    justify-content: center;
-    flex-shrink: 0;
-}
-.stat-icon-wrapper svg {
-    width: 20px;
-    height: 20px;
-    stroke-width: 2;
-}
+.stats-grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(200px, 1fr)); gap: 1rem; margin-bottom: 1.25rem; }
+.stat-card { background: var(--bg-card); border: var(--border); border-radius: var(--radius-md); padding: 1rem 1.25rem; display: flex; align-items: center; justify-content: space-between; }
+.stat-info .stat-label { font-size: 0.7rem; text-transform: uppercase; color: var(--text-muted); font-weight: 700; }
+.stat-info .stat-value { font-size: clamp(1.2rem, 2vw, 1.6rem); font-weight: 800; color: var(--text-main); margin-top: 0.2rem; }
+.stat-icon-wrapper { width: 44px; height: 44px; border-radius: var(--radius-md); display: flex; align-items: center; justify-content: center; }
 
-/* ==========================================
-       DEPARTMENT BADGE
-       ========================================== */
-.dept-badge {
-    display: inline-block;
-    padding: 0.25rem 0.6rem;
-    border-radius: 6px;
-    font-size: 0.75rem;
-    font-weight: 700;
-    text-transform: uppercase;
-    letter-spacing: 0.05em;
-}
+.dept-badge { display: inline-block; padding: 0.25rem 0.6rem; border-radius: 6px; font-size: 0.75rem; font-weight: 700; text-transform: uppercase; }
 .dept-KTSC { background: rgba(56, 189, 248, 0.15); color: #38bdf8; border: 1px solid rgba(56, 189, 248, 0.25); }
 .dept-KTLD { background: rgba(168, 85, 247, 0.15); color: #c084fc; border: 1px solid rgba(168, 85, 247, 0.25); }
-.dept-KD  { background: rgba(34, 197, 94, 0.15); color: #4ade80; border: 1px solid rgba(34, 197, 94, 0.25); }
-.dept-KT { background: rgba(251, 191, 36, 0.15); color: #facc15; border: 1px solid rgba(251, 191, 36, 0.25); }
-.dept-GN { background: rgba(96, 165, 250, 0.15); color: #60a5fa; border: 1px solid rgba(96, 165, 250, 0.25); }
+.dept-KD   { background: rgba(34, 197, 94, 0.15); color: #4ade80; border: 1px solid rgba(34, 197, 94, 0.25); }
+.dept-KT   { background: rgba(251, 191, 36, 0.15); color: #facc15; border: 1px solid rgba(251, 191, 36, 0.25); }
+.dept-GN   { background: rgba(96, 165, 250, 0.15); color: #60a5fa; border: 1px solid rgba(96, 165, 250, 0.25); }
 .dept-CSKH { background: rgba(251, 146, 60, 0.15); color: #fb923c; border: 1px solid rgba(251, 146, 60, 0.25); }
-.dept-ALL { background: rgba(239, 68, 68, 0.15); color: #f87171; border: 1px solid rgba(239, 68, 68, 0.25); }
+.dept-ALL  { background: rgba(239, 68, 68, 0.15); color: #f87171; border: 1px solid rgba(239, 68, 68, 0.25); }
 
-/* ==========================================
-       BUTTONS & CONTROLS
-       ========================================== */
-.btn-custom {
-    display: inline-flex;
-    align-items: center;
-    justify-content: center;
-    gap: 0.5rem;
-    padding: 0.65rem 1.2rem;
-    border-radius: 10px;
-    font-size: 0.88rem;
-    font-weight: 600;
-    cursor: pointer;
-    transition: all var(--transition);
-    text-decoration: none !important;
-    border: 1px solid transparent;
-    white-space: nowrap;
-    min-height: 42px;
-    box-sizing: border-box;
-}
-.btn-primary-gradient {
-    background: linear-gradient(135deg, #0284c7 0%, #0369a1 100%);
-    color: #fff;
-    border: 1px solid rgba(56, 189, 248, 0.3);
-    box-shadow: 0 4px 14px rgba(2, 132, 199, 0.3);
-}
-.btn-primary-gradient:hover {
-    background: linear-gradient(135deg, #0369a1 0%, #075985 100%);
-    box-shadow: 0 6px 18px rgba(2, 132, 199, 0.4);
-    color: #fff;
-}
-.btn-glass {
-    background: rgba(255, 255, 255, 0.04);
-    border: var(--border);
-    color: var(--text-main);
-}
-.btn-glass:hover {
-    background: rgba(255, 255, 255, 0.08);
-    border-color: rgba(255, 255, 255, 0.2);
-    color: #fff;
-}
+.btn-custom { display: inline-flex; align-items: center; justify-content: center; gap: 0.5rem; padding: 0.65rem 1.2rem; border-radius: 10px; font-size: 0.88rem; font-weight: 600; cursor: pointer; text-decoration: none !important; border: 1px solid transparent; min-height: 42px; }
+.btn-primary-gradient { background: linear-gradient(135deg, #0284c7 0%, #0369a1 100%); color: #fff; border: 1px solid rgba(56, 189, 248, 0.3); }
+.btn-glass { background: rgba(255, 255, 255, 0.04); border: var(--border); color: var(--text-main); }
+.btn-glass:hover { background: rgba(255, 255, 255, 0.08); color: #fff; }
 
-/* ==========================================
-       MAIN PANEL & TABLE
-       ========================================== */
-.panel-card {
-    background: var(--bg-card);
-    border: var(--border);
-    backdrop-filter: blur(12px);
-    -webkit-backdrop-filter: blur(12px);
-    border-radius: var(--radius-lg);
-    overflow: hidden;
-    box-shadow: 0 8px 24px rgba(0, 0, 0, 0.25);
-}
-.toolbar-wrapper {
-    padding: 1.1rem 1.35rem;
-    border-bottom: var(--border);
-    display: flex;
-    justify-content: space-between;
-    align-items: center;
-    gap: 1rem;
-    flex-wrap: wrap;
-}
-.search-box-custom {
-    position: relative;
-    flex: 1;
-    max-width: 360px;
-    min-width: 200px;
-}
-.search-input-custom {
-    width: 100%;
-    background: rgba(15, 23, 42, 0.6);
-    border: var(--border);
-    padding: 0.7rem 0.9rem 0.7rem 2.6rem;
-    border-radius: 10px;
-    color: var(--text-main);
-    font-size: 0.9rem;
-    transition: all var(--transition);
-    box-sizing: border-box;
-}
-.search-input-custom:focus {
-    border-color: var(--border-focus);
-    outline: none;
-    background: rgba(15, 23, 42, 0.9);
-    box-shadow: 0 0 0 3px rgba(56, 189, 248, 0.15);
-}
-.search-icon-custom {
-    position: absolute;
-    left: 0.85rem;
-    top: 50%;
-    transform: translateY(-50%);
-    color: var(--text-muted);
-    pointer-events: none;
-    display: flex;
-}
-.search-icon-custom svg { width: 18px; height: 18px; stroke-width: 2; }
+.panel-card { background: var(--bg-card); border: var(--border); border-radius: var(--radius-lg); overflow: hidden; box-shadow: 0 8px 24px rgba(0, 0, 0, 0.25); }
+.toolbar-wrapper { padding: 1.1rem 1.35rem; border-bottom: var(--border); display: flex; justify-content: space-between; align-items: center; gap: 1rem; flex-wrap: wrap; }
+.search-box-custom { position: relative; flex: 1; max-width: 360px; min-width: 200px; }
+.search-input-custom { width: 100%; background: rgba(15, 23, 42, 0.6); border: var(--border); padding: 0.7rem 0.9rem 0.7rem 2.6rem; border-radius: 10px; color: var(--text-main); font-size: 0.9rem; }
+.search-input-custom:focus { border-color: var(--border-focus); outline: none; }
+.search-icon-custom { position: absolute; left: 0.85rem; top: 50%; transform: translateY(-50%); color: var(--text-muted); }
+.filter-dept { background: rgba(15, 23, 42, 0.8); border: var(--border); color: var(--text-main); padding: 0.7rem 0.9rem; border-radius: 10px; font-size: 0.88rem; }
 
-.filter-dept {
-    background: rgba(15, 23, 42, 0.8);
-    border: var(--border);
-    color: var(--text-main);
-    padding: 0.7rem 0.9rem;
-    border-radius: 10px;
-    font-size: 0.88rem;
-    cursor: pointer;
-}
-.filter-dept:focus { border-color: var(--border-focus); outline: none; }
-
-.total-count-badge { font-size: 0.85rem; color: var(--text-muted); }
-
-.table-responsive {
-    width: 100%;
-    overflow-x: auto;
-    -webkit-overflow-scrolling: touch;
-}
-.modern-table {
-    width: 100%;
-    min-width: 900px;
-    border-collapse: separate;
-    border-spacing: 0;
-    text-align: left;
-    font-size: 0.9rem;
-}
-.modern-table th {
-    background: rgba(15, 23, 42, 0.75);
-    color: var(--text-muted);
-    font-weight: 700;
-    text-transform: uppercase;
-    font-size: 0.7rem;
-    letter-spacing: 0.07em;
-    padding: 0.9rem 1rem;
-    border-bottom: var(--border);
-    white-space: nowrap;
-}
-.modern-table td {
-    padding: 0.9rem 1rem;
-    border-bottom: var(--border);
-    vertical-align: middle;
-    color: var(--text-main);
-}
-.modern-table tbody tr { transition: background var(--transition); }
+.table-responsive { width: 100%; overflow-x: auto; }
+.modern-table { width: 100%; min-width: 900px; border-collapse: separate; border-spacing: 0; text-align: left; font-size: 0.9rem; }
+.modern-table th { background: rgba(15, 23, 42, 0.75); color: var(--text-muted); font-weight: 700; text-transform: uppercase; font-size: 0.7rem; padding: 0.9rem 1rem; border-bottom: var(--border); }
+.modern-table td { padding: 0.9rem 1rem; border-bottom: var(--border); color: var(--text-main); vertical-align: middle; }
 .modern-table tbody tr:hover { background: rgba(255, 255, 255, 0.03); }
-.modern-table tbody tr:last-child td { border-bottom: none; }
 
-/* Profile Meta */
-.user-profile-meta {
-    display: flex;
-    align-items: center;
-    gap: 0.8rem;
-}
-.avatar-circle {
-    width: 40px;
-    height: 40px;
-    border-radius: var(--radius-sm);
-    background: linear-gradient(135deg, #0284c7 0%, #6366f1 100%);
-    color: #fff;
-    display: flex;
-    align-items: center;
-    justify-content: center;
-    font-weight: 800;
-    font-size: 0.95rem;
-    flex-shrink: 0;
-    box-shadow: 0 4px 10px rgba(0, 0, 0, 0.25);
-}
-.user-name { font-weight: 700; color: var(--text-main); font-size: 0.9rem; line-height: 1.3; }
+.user-profile-meta { display: flex; align-items: center; gap: 0.8rem; }
+.avatar-circle { width: 40px; height: 40px; border-radius: var(--radius-sm); background: linear-gradient(135deg, #0284c7 0%, #6366f1 100%); color: #fff; display: flex; align-items: center; justify-content: center; font-weight: 800; }
+.user-name { font-weight: 700; color: var(--text-main); font-size: 0.9rem; }
 .user-handle { font-size: 0.78rem; color: var(--text-muted); }
-.phone-number { font-size: 0.82rem; color: var(--text-muted); margin-top: 0.15rem; }
-.email-text { font-size: 0.85rem; }
+.phone-number { font-size: 0.82rem; color: var(--text-muted); }
 
-/* Select Controls */
-.select-role-custom, .select-dept-custom {
-    background: rgba(15, 23, 42, 0.8);
-    border: var(--border);
-    color: var(--text-main);
-    padding: 0.5rem 0.75rem;
-    border-radius: var(--radius-sm);
-    font-size: 0.8rem;
-    font-weight: 600;
-    cursor: pointer;
-    transition: border-color var(--transition);
-    width: 100%;
-    max-width: 130px;
-}
-.select-role-custom:focus, .select-dept-custom:focus {
-    border-color: var(--border-focus);
-    outline: none;
-}
-.badge-role-locked { color: #64748b; font-size: 0.8rem; }
-.no-permission-text { color: #64748b; font-size: 0.8rem; }
+.select-role-custom { background: rgba(15, 23, 42, 0.8); border: var(--border); color: var(--text-main); padding: 0.5rem 0.75rem; border-radius: var(--radius-sm); font-size: 0.8rem; font-weight: 600; width: 100%; max-width: 130px; }
+.actions-flex { display: flex; gap: 0.45rem; justify-content: flex-end; }
+.btn-action-icon { padding: 0.5rem 0.7rem; border-radius: var(--radius-sm); font-size: 0.8rem; font-weight: 600; cursor: pointer; border: 1px solid transparent; display: inline-flex; align-items: center; gap: 0.3rem; }
+.btn-action-edit { background: rgba(56, 189, 248, 0.12); color: var(--primary-light); border-color: rgba(56, 189, 248, 0.25); }
+.btn-action-delete { background: rgba(239, 68, 68, 0.12); color: #f87171; border-color: rgba(239, 68, 68, 0.25); }
 
-/* Action Buttons */
-.actions-flex {
-    display: flex;
-    gap: 0.45rem;
-    justify-content: flex-end;
-    flex-wrap: nowrap;
-}
-.btn-action-icon {
-    padding: 0.5rem 0.7rem;
-    border-radius: var(--radius-sm);
-    font-size: 0.8rem;
-    font-weight: 600;
-    cursor: pointer;
-    border: 1px solid transparent;
-    transition: all var(--transition);
-    display: inline-flex;
-    align-items: center;
-    gap: 0.3rem;
-}
-.btn-action-edit {
-    background: rgba(56, 189, 248, 0.12);
-    color: var(--primary-light);
-    border-color: rgba(56, 189, 248, 0.25);
-}
-.btn-action-edit:hover {
-    background: rgba(56, 189, 248, 0.25);
-    color: #fff;
-}
-.btn-action-delete {
-    background: rgba(239, 68, 68, 0.12);
-    color: #f87171;
-    border-color: rgba(239, 68, 68, 0.25);
-}
-.btn-action-delete:hover {
-    background: rgba(239, 68, 68, 0.25);
-    color: #fff;
-}
-
-/* ==========================================
-       MODALS
-       ========================================== */
-.modal-overlay {
-    position: fixed;
-    inset: 0;
-    background: rgba(0, 0, 0, 0.75);
-    backdrop-filter: blur(8px);
-    -webkit-backdrop-filter: blur(8px);
-    display: none;
-    align-items: center;
-    justify-content: center;
-    z-index: 1050;
-    padding: 1rem;
-    box-sizing: border-box;
-}
+.modal-overlay { position: fixed; inset: 0; background: rgba(0, 0, 0, 0.75); backdrop-filter: blur(8px); display: none; align-items: center; justify-content: center; z-index: 1050; padding: 1rem; }
 .modal-overlay.active { display: flex; }
-.modal-card {
-    background: #0f172a;
-    border: var(--border);
-    border-radius: var(--radius-lg);
-    width: 100%;
-    max-width: 600px;
-    box-shadow: 0 25px 50px -12px rgba(0, 0, 0, 0.7);
-    animation: modalSlideUp 0.25s cubic-bezier(0.16, 1, 0.3, 1);
-    overflow: hidden;
-    display: flex;
-    flex-direction: column;
-    max-height: 90vh;
-}
-@keyframes modalSlideUp {
-    from { opacity: 0; transform: translateY(16px) scale(0.98); }
-    to { opacity: 1; transform: translateY(0) scale(1); }
-}
-.modal-header {
-    padding: 1.1rem 1.35rem;
-    border-bottom: var(--border);
-    display: flex;
-    justify-content: space-between;
-    align-items: center;
-    background: rgba(255, 255, 255, 0.02);
-    flex-shrink: 0;
-}
-.modal-title {
-    font-weight: 700;
-    font-size: 1.05rem;
-    color: var(--text-main);
-    display: flex;
-    align-items: center;
-    gap: 0.5rem;
-}
-.modal-close-btn {
-    background: transparent;
-    border: none;
-    color: var(--text-muted);
-    cursor: pointer;
-    padding: 0.35rem;
-    border-radius: 6px;
-    display: flex;
-    transition: all var(--transition);
-}
-.modal-close-btn:hover {
-    background: rgba(255, 255, 255, 0.1);
-    color: #fff;
-}
-.modal-body {
-    padding: 1.35rem;
-    overflow-y: auto;
-    -webkit-overflow-scrolling: touch;
-}
-.form-grid-layout {
-    display: grid;
-    grid-template-columns: repeat(2, 1fr);
-    gap: 1rem;
-}
+.modal-card { background: #0f172a; border: var(--border); border-radius: var(--radius-lg); width: 100%; max-width: 600px; max-height: 90vh; display: flex; flex-direction: column; overflow: hidden; }
+.modal-header { padding: 1.1rem 1.35rem; border-bottom: var(--border); display: flex; justify-content: space-between; align-items: center; background: rgba(255, 255, 255, 0.02); }
+.modal-title { font-weight: 700; font-size: 1.05rem; color: var(--text-main); }
+.modal-close-btn { background: transparent; border: none; color: var(--text-muted); cursor: pointer; font-size: 1rem; }
+.modal-body { padding: 1.35rem; overflow-y: auto; }
+.form-grid-layout { display: grid; grid-template-columns: repeat(2, 1fr); gap: 1rem; }
 .form-field-full { grid-column: span 2; }
 .form-field-half { grid-column: span 1; }
-.field-label {
-    display: block;
-    font-size: 0.8rem;
-    color: var(--text-muted);
-    font-weight: 600;
-    margin-bottom: 0.35rem;
-}
-.input-control {
-    width: 100%;
-    background: rgba(15, 23, 42, 0.8);
-    border: var(--border);
-    padding: 0.7rem 0.9rem;
-    border-radius: var(--radius-sm);
-    color: var(--text-main);
-    font-size: 0.88rem;
-    box-sizing: border-box;
-    transition: all var(--transition);
-}
-.input-control:focus {
-    border-color: var(--border-focus);
-    outline: none;
-    background: rgba(15, 23, 42, 1);
-    box-shadow: 0 0 0 3px rgba(56, 189, 248, 0.15);
-}
-.modal-footer {
-    padding: 1rem 1.35rem;
-    border-top: var(--border);
-    display: flex;
-    justify-content: flex-end;
-    gap: 0.6rem;
-    background: rgba(0, 0, 0, 0.2);
-    flex-shrink: 0;
-}
-
-/* ==========================================
-       RESPONSIVE
-       ========================================== */
-@media (max-width: 1199px) {
-    .admin-container { padding: 1.25rem; }
-    .stats-grid { grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 1rem; }
-    .toolbar-wrapper { flex-wrap: wrap; }
-    .search-box-custom { max-width: 100%; }
-}
-@media (max-width: 768px) {
-    .admin-container { padding: 1rem; }
-    .admin-header { flex-direction: column; align-items: flex-start; }
-    .admin-header-actions { width: 100%; justify-content: space-between; }
-    .stats-grid { grid-template-columns: 1fr; }
-    .form-grid-layout { grid-template-columns: 1fr; }
-    .form-field-half, .form-field-full { grid-column: span 1; }
-    .modal-footer { flex-direction: column-reverse; }
-    .modal-footer .btn-custom { width: 100%; text-align: center; }
-    .modern-table { min-width: 100%; display: block; }
-    .modern-table thead { display: none; }
-    .modern-table tbody { display: block; width: 100%; }
-    .modern-table tbody tr {
-        display: flex;
-        flex-direction: column;
-        background: rgba(30, 41, 59, 0.4);
-        margin-bottom: 1rem;
-        border-radius: var(--radius-md);
-        border: var(--border);
-        padding: 0.75rem;
-    }
-    .modern-table td {
-        display: flex;
-        justify-content: space-between;
-        align-items: center;
-        padding: 0.6rem 0.4rem;
-        border-bottom: 1px dashed rgba(255, 255, 255, 0.1);
-    }
-    .modern-table td::before {
-        content: attr(data-label);
-        font-weight: 700;
-        font-size: 0.75rem;
-        text-transform: uppercase;
-        color: var(--text-muted);
-        flex-shrink: 0;
-    }
-    .select-role-custom, .select-dept-custom { max-width: 120px; }
-}
+.field-label { display: block; font-size: 0.8rem; color: var(--text-muted); font-weight: 600; margin-bottom: 0.35rem; }
+.input-control { width: 100%; background: rgba(15, 23, 42, 0.8); border: var(--border); padding: 0.7rem 0.9rem; border-radius: var(--radius-sm); color: var(--text-main); font-size: 0.88rem; box-sizing: border-box; }
+.input-control:focus { border-color: var(--border-focus); outline: none; }
+.modal-footer { padding: 1rem 1.35rem; border-top: var(--border); display: flex; justify-content: flex-end; gap: 0.6rem; background: rgba(0, 0, 0, 0.2); }
 </style>
 {% endblock %}
+
 {% block content %}
 {% set current_role = request.session.get('role', 'user')|string|lower|trim %}
 {% set current_dept = request.session.get('department', 'KTSC')|string|upper|trim %}
 
 <div class="admin-container">
-    <!-- Header -->
     <div class="admin-header">
         <div class="admin-header-title">
             <h1>
-                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor">
-                    <path d="M17 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2"></path>
-                    <circle cx="9" cy="7" r="4"></circle>
-                    <path d="M23 21v-2a4 4 0 0 0-3-3.87"></path>
-                </svg>
+                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor"><path d="M17 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2"></path><circle cx="9" cy="7" r="4"></circle></svg>
                 Quản Lý Tài Khoản
             </h1>
             <p>Phòng ban hiện tại: <strong>{{ current_dept }}</strong></p>
         </div>
         <div class="admin-header-actions">
             {% if current_dept == 'ALL' or current_role in ['admin','system admin','super admin'] %}
-            <button type="button" onclick="openModal('addModal')" class="btn-custom btn-primary-gradient">
-                <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5">
-                    <line x1="12" y1="5" x2="12" y2="19"></line>
-                    <line x1="5" y1="12" x2="19" y2="12"></line>
-                </svg>
-                Thêm tài khoản
-            </button>
+            <button type="button" onclick="openModal('addModal')" class="btn-custom btn-primary-gradient">Thêm tài khoản</button>
             {% endif %}
-            <a href="/admin" class="btn-custom btn-glass">
-                <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
-                    <line x1="19" y1="12" x2="5" y2="12"></line>
-                    <polyline points="12 19 5 12 12 5"></polyline>
-                </svg>
-                Quay lại
-            </a>
+            <a href="/admin" class="btn-custom btn-glass">Quay lại</a>
         </div>
     </div>
 
-    <!-- Thống kê theo phòng ban -->
-    {% set ns = namespace(total=0, KTSC=0, KTLD=0, KD=0, CSKH=0, ALL=0, KT=0, GN=0) %}
+    {% set ns = namespace(total=0, visible_total=0, KTSC=0, KTLD=0, KD=0, CSKH=0, ALL=0, KT=0, GN=0) %}
     {% if users %}
         {% for u in users %}
+            {% set dept_code = (u.department or 'KTSC')|string|upper|trim %}
             {% set ns.total = ns.total + 1 %}
-            {% if u.department == 'KTSC' %}{% set ns.KTSC = ns.KTSC + 1 %}
-            {% elif u.department == 'KTLD' %}{% set ns.KTLD = ns.KTLD + 1 %}
-            {% elif u.department == 'KD' %}{% set ns.KD = ns.KD + 1 %}
-            {% elif u.department == 'KT' %}{% set ns.KT = ns.KT + 1 %}
-            {% elif u.department == 'GN' %}{% set ns.GN = ns.GN + 1 %}
-            {% elif u.department == 'CSKH' %}{% set ns.CSKH = ns.CSKH + 1 %}
-            {% elif u.department == 'ALL' %}{% set ns.ALL = ns.ALL + 1 %}
+            {% if dept_code == 'KTSC' %}{% set ns.KTSC = ns.KTSC + 1 %}
+            {% elif dept_code == 'KTLD' %}{% set ns.KTLD = ns.KTLD + 1 %}
+            {% elif dept_code == 'KD' %}{% set ns.KD = ns.KD + 1 %}
+            {% elif dept_code == 'KT' %}{% set ns.KT = ns.KT + 1 %}
+            {% elif dept_code == 'GN' %}{% set ns.GN = ns.GN + 1 %}
+            {% elif dept_code == 'CSKH' %}{% set ns.CSKH = ns.CSKH + 1 %}
+            {% elif dept_code == 'ALL' %}{% set ns.ALL = ns.ALL + 1 %}
+            {% endif %}
+            {% if current_dept == 'ALL' or dept_code == current_dept %}
+                {% set ns.visible_total = ns.visible_total + 1 %}
             {% endif %}
         {% endfor %}
     {% endif %}
-    <!-- THÔNG BÁO THÀNH CÔNG / LỖI -->
+
     {% if error_msg %}
-    <div style="background:rgba(239,68,68,.1);border:1px solid rgba(239,68,68,.3);color:#fca5a5;padding:.8rem 1rem;border-radius:10px;margin-bottom:1rem;">
-    ⛔ {{ error_msg }}
-    </div>
+    <div style="background:rgba(239,68,68,.1);border:1px solid rgba(239,68,68,.3);color:#fca5a5;padding:.8rem 1rem;border-radius:10px;margin-bottom:1rem;">⛔ {{ error_msg }}</div>
     {% endif %}
     {% if success_msg %}
-    <div style="background:rgba(34,197,94,.1);border:1px solid rgba(34,197,94,.3);color:#86efac;padding:.8rem 1rem;border-radius:10px;margin-bottom:1rem;">
-    ✅ {{ success_msg }}
-    </div>
+    <div style="background:rgba(34,197,94,.1);border:1px solid rgba(34,197,94,.3);color:#86efac;padding:.8rem 1rem;border-radius:10px;margin-bottom:1rem;">✅ {{ success_msg }}</div>
     {% endif %}
-    <!-- KẾT THÚC THÔNG BÁO -->
-    <div class="stats-grid">
-        <div class="stat-card">
-            <div class="stat-info">
-                <div class="stat-label">Tổng Nhân Sự</div>
-                <div class="stat-value">{{ ns.total }}</div>
-            </div>
-            <div class="stat-icon-wrapper" style="background:rgba(56,189,248,.12);color:#38bdf8">
-                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor">
-                    <path d="M17 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2"></path>
-                    <circle cx="9" cy="7" r="4"></circle>
-                </svg>
-            </div>
-        </div>
-        <div class="stat-card">
-            <div class="stat-info">
-                <div class="stat-label">KTSC</div>
-                <div class="stat-value" style="color:#38bdf8">{{ ns.KTSC }}</div>
-            </div>
-            <div class="stat-icon-wrapper" style="background:rgba(56,189,248,.12);color:#38bdf8">🔧</div>
-        </div>
-        <div class="stat-card">
-            <div class="stat-info">
-                <div class="stat-label">KTLD</div>
-                <div class="stat-value" style="color:#c084fc">{{ ns.KTLD }}</div>
-            </div>
-            <div class="stat-icon-wrapper" style="background:rgba(168,85,247,.12);color:#c084fc">🔌</div>
-        </div>
-        <div class="stat-card">
-            <div class="stat-info">
-                <div class="stat-label">KD</div>
-                <div class="stat-value" style="color:#4ade80">{{ ns.KD }}</div>
-            </div>
-            <div class="stat-icon-wrapper" style="background:rgba(34,197,94,.12);color:#4ade80">💰</div>
-        </div>
-        <div class="stat-card">
-        <div class="stat-info">
-            <div class="stat-label">KT</div>
-            <div class="stat-value" style="color:#facc15">{{ ns.KT }}</div>
-        </div>
-        <div class="stat-icon-wrapper" style="background:rgba(251,191,36,.12);color:#facc15">📝</div>
-        </div>
-        <div class="stat-card">
-        <div class="stat-info">
-            <div class="stat-label">GN</div>
-            <div class="stat-value" style="color:#60a5fa">{{ ns.GN }}</div>
-        </div>
-        <div class="stat-icon-wrapper" style="background:rgba(96,165,250,.12);color:#60a5fa">📦</div>
-        </div>
-        <div class="stat-card">
-            <div class="stat-info">
-                <div class="stat-label">CSKH</div>
-                <div class="stat-value" style="color:#fb923c">{{ ns.CSKH }}</div>
-            </div>
-            <div class="stat-icon-wrapper" style="background:rgba(251,146,60,.12);color:#fb923c">💬</div>
-        </div>
-        <div class="stat-card">
-            <div class="stat-info">
-                <div class="stat-label">Tất Cả</div>
-                <div class="stat-value" style="color:#f87171">{{ ns.ALL }}</div>
-            </div>
-            <div class="stat-icon-wrapper" style="background:rgba(239,68,68,.12);color:#f87171">👑</div>
-        </div>
 
-    </div>
-
-    <!-- Bảng Dữ Liệu -->
     <div class="panel-card">
         <div class="toolbar-wrapper">
             <div style="display:flex;gap:0.75rem;align-items:center;flex-wrap:wrap">
                 <div class="search-box-custom">
-                    <span class="search-icon-custom">
-                        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor">
-                            <circle cx="11" cy="11" r="8"></circle>
-                            <line x1="21" y1="21" x2="16.65" y2="16.65"></line>
-                        </svg>
-                    </span>
+                    <span class="search-icon-custom">🔍</span>
                     <input type="text" id="userSearchInput" class="search-input-custom" placeholder="Tìm tên, tài khoản..." onkeyup="filterUsers()">
                 </div>
                 <select id="deptFilter" class="filter-dept" onchange="filterUsers()">
@@ -688,43 +158,45 @@
                     <option value="ALL">Quản trị</option>
                 </select>
             </div>
-            <div class="total-count-badge">
-                Hiển thị: <strong id="totalCount">{{ ns.total }}</strong> / {{ ns.total }}
-            </div>
+            <div class="total-count-badge">Hiển thị: <strong id="totalCount">{{ ns.visible_total }}</strong> / {{ ns.total }}</div>
         </div>
 
         <div class="table-responsive">
             <table class="modern-table" id="usersTable">
                 <thead>
                     <tr>
-                        <th class="col-user">Nhân Sự</th>
-                        <th class="col-dept">Phòng Ban</th>
-                        <th class="col-title">Chức Danh & SĐT</th>
-                        <th class="col-email">Email</th>
-                        <th class="col-role">Quyền Hạn</th>
-                        <th class="col-actions">Thao Tác</th>
+                        <th>Nhân Sự</th>
+                        <th>Phòng Ban</th>
+                        <th>Chức Danh & SĐT</th>
+                        <th>Email</th>
+                        <th>Quyền Hạn</th>
+                        <th style="text-align:right">Thao Tác</th>
                     </tr>
                 </thead>
                 <tbody>
-                    {% if users %}
+                    {% if users and ns.visible_total > 0 %}
                         {% for u in users %}
-                            {% set can_see = (current_dept == 'ALL' or u.department == current_dept) %}
+                            {% set u_dept = (u.department or 'KTSC')|string|upper|trim %}
+                            {% set can_see = (current_dept == 'ALL' or u_dept == current_dept) %}
                             {% set u_role = (u.role|default('User')|string|lower|trim) %}
+
                             {% set can_manage = false %}
                             {% if can_see %}
-                            {% if current_role == 'super admin' %}
-                                {% set can_manage = true %}
-                            {% elif current_role == 'system admin' and u_role not in ['super admin'] %}
-                                {% set can_manage = true %}
-                            {% elif current_role == 'admin' and u_role == 'user' %}
-                                {% set can_manage = true %}
+                                {% if current_role == 'system admin' %}
+                                    <!-- System Admin có quyền cao nhất, quản lý được tất cả các cấp -->
+                                    {% set can_manage = true %}
+                                {% elif current_role == 'super admin' and u_role != 'system admin' %}
+                                    <!-- Super Admin quản lý được super admin, admin, user - NHƯNG KHÔNG ĐƯỢC CHẠM VÀO system admin -->
+                                    {% set can_manage = true %}
+                                {% elif current_role == 'admin' and u_role == 'user' %}
+                                    <!-- Admin thường chỉ quản lý được user -->
+                                    {% set can_manage = true %}
+                                {% endif %}
                             {% endif %}
-                            {% endif %}
+
                             {% if can_see %}
-                            <tr class="user-row" 
-                                data-search="{{ (u.ho_ten or '')|lower }} {{ (u.username or '')|lower }} {{ (u.email or '')|lower }}"
-                                data-dept="{{ u.department or 'KTSC' }}">
-                                <td class="col-user" data-label="Nhân Sự">
+                            <tr class="user-row" data-search="{{ (u.ho_ten or '')|lower }} {{ (u.username or '')|lower }} {{ (u.email or '')|lower }}" data-dept="{{ u_dept }}">
+                                <td>
                                     <div class="user-profile-meta">
                                         <div class="avatar-circle">{{ (u.ho_ten[:1]|upper) if u.ho_ten else 'U' }}</div>
                                         <div>
@@ -733,60 +205,41 @@
                                         </div>
                                     </div>
                                 </td>
-                                <td class="col-dept" data-label="Phòng Ban">
-                                    <span class="dept-badge dept-{{ u.department or 'KTSC' }}">
-                                        {{ u.department or 'KTSC' }}
-                                    </span>
-                                </td>
-                                <td class="col-title" data-label="Chức Danh & SĐT">
+                                <td><span class="dept-badge dept-{{ u_dept }}">{{ u_dept }}</span></td>
+                                <td>
                                     <div>{{ u.chuc_danh or 'Nhân viên' }}</div>
                                     <div class="phone-number">{{ u.so_dien_thoai or 'Chưa có SĐT' }}</div>
                                 </td>
-                                <td class="col-email" data-label="Email">
-                                    <span class="email-text" title="{{ u.email }}">{{ u.email or 'N/A' }}</span>
-                                </td>
-                                <td class="col-role" data-label="Quyền Hạn">
+                                <td><span title="{{ u.email }}">{{ u.email or 'N/A' }}</span></td>
+                                <td>
                                     {% if can_manage %}
-                                    <form action="/admin/users/update-role/{{ u.id }}" method="POST" class="role-form">
+                                    <!-- Sửa lại action trỏ đúng route update-role nhận auth_id -->
+                                    <form action="/admin/users/update-role/{{ u.auth_id }}" method="POST">
                                         <select name="role" class="select-role-custom" onchange="this.form.submit()">
                                             <option value="User" {% if u.role=='User' %}selected{% endif %}>User</option>
                                             <option value="Admin" {% if u.role=='Admin' %}selected{% endif %}>Admin</option>
                                             {% if current_role in ['system admin','super admin'] %}
                                             <option value="system admin" {% if u.role=='system admin' %}selected{% endif %}>Sys Admin</option>
-                                            {% endif %}
-                                            {% if current_role == 'super admin' %}
                                             <option value="super admin" {% if u.role=='super admin' %}selected{% endif %}>Super Admin</option>
                                             {% endif %}
                                         </select>
                                     </form>
                                     {% else %}
-                                    <span class="badge-role-locked">🔒 {{ u.role or 'User' }}</span>
+                                    <span>🔒 {{ u.role or 'User' }}</span>
                                     {% endif %}
                                 </td>
-                                <td class="col-actions" data-label="Thao Tác">
+                                <td>
                                     {% if can_manage %}
                                     <div class="actions-flex">
-                                        <button type="button" class="btn-action-icon btn-action-edit" 
-                                                data-user='{{ u|tojson|safe }}' onclick='openEditModalFromBtn(this)'>
-                                            <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
-                                                <path d="M11 4H4a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2v-7"></path>
-                                                <path d="M18.5 2.5a2.121 2.121 0 0 1 3 3L12 15l-4 1 1-4 9.5-9.5z"></path>
-                                            </svg>
-                                            Sửa
-                                        </button>
-                                        <form action="/admin/users/delete/{{ u.id }}" method="POST" 
-                                              onsubmit="return confirm('Xóa tài khoản này?');" style="margin:0">
-                                            <button type="submit" class="btn-action-icon btn-action-delete">
-                                                <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
-                                                    <polyline points="3 6 5 6 21 6"></polyline>
-                                                    <path d="M19 6v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6"></path>
-                                                </svg>
-                                                Xóa
-                                            </button>
+                                        <!-- Dùng u|tojson để chuyển đối tượng sang JSON cho modal -->
+                                        <button type="button" class="btn-action-icon btn-action-edit" data-user="{{ u|tojson|forceescape }}" onclick="openEditModalFromBtn(this)">Sửa</button>
+                                        <!-- Sửa lại action xóa trỏ tới auth_id thay vì id -->
+                                        <form action="/admin/users/delete/{{ u.auth_id }}" method="POST" onsubmit="return confirm('Xóa tài khoản này?');" style="margin:0">
+                                            <button type="submit" class="btn-action-icon btn-action-delete">Xóa</button>
                                         </form>
                                     </div>
                                     {% else %}
-                                    <span class="no-permission-text">—</span>
+                                    <span>—</span>
                                     {% endif %}
                                 </td>
                             </tr>
@@ -794,9 +247,7 @@
                         {% endfor %}
                     {% else %}
                     <tr>
-                        <td colspan="6" style="text-align:center;padding:2rem;color:var(--text-muted)">
-                            Chưa có tài khoản nào trong hệ thống.
-                        </td>
+                        <td colspan="6" style="text-align:center;padding:2rem;color:var(--text-muted)">Chưa có tài khoản nào thuộc phạm vi quản lý.</td>
                     </tr>
                     {% endif %}
                 </tbody>
@@ -810,59 +261,28 @@
     <div class="modal-card">
         <div class="modal-header">
             <div class="modal-title">Thêm Tài Khoản Mới</div>
-            <button class="modal-close-btn" onclick="closeModal('addModal')">✕</button>
+            <button type="button" class="modal-close-btn" onclick="closeModal('addModal')">✕</button>
         </div>
         <form action="/admin/users/add" method="POST">
             <div class="modal-body">
                 <div class="form-grid-layout">
-                    <div class="form-field-half">
-                        <label class="field-label">Họ và tên</label>
-                        <input type="text" name="ho_ten" class="input-control" required>
-                    </div>
-                    <div class="form-field-half">
-                        <label class="field-label">Tên đăng nhập</label>
-                        <input type="text" name="username" class="input-control" required>
-                    </div>
-                    <div class="form-field-half">
-                        <label class="field-label">Email</label>
-                        <input type="email" name="email" class="input-control" required>
-                    </div>
-                    <div class="form-field-half">
-                        <label class="field-label">Mật khẩu</label>
-                        <input type="password" name="password" class="input-control" required>
-                    </div>
-                    <div class="form-field-half">
-                        <label class="field-label">Chức danh</label>
-                        <input type="text" name="chuc_danh" class="input-control">
-                    </div>
-                    <div class="form-field-half">
-                        <label class="field-label">Số điện thoại</label>
-                        <input type="text" name="so_dien_thoai" class="input-control">
-                    </div>
+                    <div class="form-field-half"><label class="field-label">Họ và tên</label><input type="text" name="ho_ten" class="input-control" required></div>
+                    <div class="form-field-half"><label class="field-label">Tên đăng nhập</label><input type="text" name="username" class="input-control" required></div>
+                    <div class="form-field-half"><label class="field-label">Email</label><input type="email" name="email" class="input-control" required></div>
+                    <div class="form-field-half"><label class="field-label">Mật khẩu</label><input type="password" name="password" class="input-control" required></div>
+                    <div class="form-field-half"><label class="field-label">Chức danh</label><input type="text" name="chuc_danh" class="input-control"></div>
+                    <div class="form-field-half"><label class="field-label">Số điện thoại</label><input type="text" name="so_dien_thoai" class="input-control"></div>
                     <div class="form-field-full">
                         <label class="field-label">Phòng ban</label>
                         <select name="department" class="input-control">
                             <option value="KTSC" selected>Kỹ thuật sửa chữa</option>
                             <option value="KTLD">Kỹ thuật lắp đặt</option>
                             <option value="KD">Kinh doanh</option>
-                            <option value="KT">Kế toán</option>
                             <option value="GN">Giao nhận</option>
+                            <option value="KT">Kế toán</option>
                             <option value="CSKH">Chăm sóc khách hàng</option>
-                            {% if current_dept == 'ALL' or current_role in ['system admin','super admin'] %}
-                            <option value="ALL">Xem toàn bộ</option>
-                            {% endif %}
-                        </select>
-                    </div>
-                    <div class="form-field-full">
-                        <label class="field-label">Phân quyền</label>
-                        <select name="role" class="input-control">
-                            <option value="User" selected>User — Nhân viên</option>
-                            <option value="Admin">Admin — Quản lý phòng ban</option>
-                            {% if current_role in ['system admin','super admin'] %}
-                            <option value="system admin">System Admin — Quản trị hệ thống</option>
-                            {% endif %}
-                            {% if current_role == 'super admin' %}
-                            <option value="super admin">Super Admin — Quản trị tối cao</option>
+                            {% if current_role in ['system admin', 'super admin'] %}
+                            <option value="ALL">Quản trị hệ thống (ALL)</option>
                             {% endif %}
                         </select>
                     </div>
@@ -870,7 +290,7 @@
             </div>
             <div class="modal-footer">
                 <button type="button" class="btn-custom btn-glass" onclick="closeModal('addModal')">Hủy</button>
-                <button type="submit" class="btn-custom btn-primary-gradient">Tạo Tài Khoản</button>
+                <button type="submit" class="btn-custom btn-primary-gradient">Tạo tài khoản</button>
             </div>
         </form>
     </div>
@@ -880,102 +300,104 @@
 <div class="modal-overlay" id="editModal">
     <div class="modal-card">
         <div class="modal-header">
-            <div class="modal-title">Chỉnh Sửa Tài Khoản</div>
-            <button class="modal-close-btn" onclick="closeModal('editModal')">✕</button>
+            <div class="modal-title">Cập Nhật Thông Tin Tài Khoản</div>
+            <button type="button" class="modal-close-btn" onclick="closeModal('editModal')">✕</button>
         </div>
-        <form id="editForm" method="POST">
+        <form id="editUserForm" action="" method="POST">
             <div class="modal-body">
                 <div class="form-grid-layout">
-                    <div class="form-field-full">
-                        <label class="field-label">Họ và tên</label>
-                        <input type="text" id="edit_ho_ten" name="ho_ten" class="input-control" required>
-                    </div>
+                    <div class="form-field-half"><label class="field-label">Họ và tên</label><input type="text" id="edit_ho_ten" name="ho_ten" class="input-control" required></div>
+                    <div class="form-field-half"><label class="field-label">Tên đăng nhập</label><input type="text" id="edit_username" name="username" class="input-control" readonly style="opacity:0.6; cursor:not-allowed;"></div>
+                    <div class="form-field-half"><label class="field-label">Email</label><input type="email" id="edit_email" name="email" class="input-control" required></div>
+                    
+                    <!-- QUAN TRỌNG: Đổi tên name thành new_password để khớp backend -->
+                    <div class="form-field-half"><label class="field-label">Mật khẩu mới (Bỏ trống nếu không đổi)</label><input type="password" name="new_password" class="input-control" placeholder="••••••••"></div>
+                    
+                    <div class="form-field-half"><label class="field-label">Chức danh</label><input type="text" id="edit_chuc_danh" name="chuc_danh" class="input-control"></div>
+                    <div class="form-field-half"><label class="field-label">Số điện thoại</label><input type="text" id="edit_so_dien_thoai" name="so_dien_thoai" class="input-control"></div>
+                    
+                    <!-- Bổ sung chọn Role trong modal sửa để tránh mất quyền -->
                     <div class="form-field-half">
-                        <label class="field-label">Chức danh</label>
-                        <input type="text" id="edit_chuc_danh" name="chuc_danh" class="input-control">
+                        <label class="field-label">Quyền hạn (Role)</label>
+                        <select id="edit_role" name="role" class="input-control">
+                            <option value="User">User</option>
+                            <option value="Admin">Admin</option>
+                            <option value="system admin">Sys Admin</option>
+                            <option value="super admin">Super Admin</option>
+                        </select>
                     </div>
+
                     <div class="form-field-half">
-                        <label class="field-label">Số điện thoại</label>
-                        <input type="text" id="edit_so_dien_thoai" name="so_dien_thoai" class="input-control">
-                    </div>
-                    <div class="form-field-full">
                         <label class="field-label">Phòng ban</label>
                         <select id="edit_department" name="department" class="input-control">
                             <option value="KTSC">Kỹ thuật sửa chữa</option>
                             <option value="KTLD">Kỹ thuật lắp đặt</option>
-                            <option value="GN">Giao nhận</option>
                             <option value="KD">Kinh doanh</option>
-                            <option value="CSKH">Chăm sóc khách hàng</option>
+                            <option value="GN">Giao nhận</option>
                             <option value="KT">Kế toán</option>
-                            {% if current_dept == 'ALL' or current_role in ['system admin','super admin'] %}
-                            <option value="ALL">Toàn bộ hệ thống</option>
-                            {% endif %}
-                        </select>
-                    </div>
-                    <div class="form-field-full">
-                        <label class="field-label">Phân quyền</label>
-                        <select id="edit_role" name="role" class="input-control">
-                            <option value="User">User — Nhân viên</option>
-                            <option value="Admin">Admin — Quản lý phòng ban</option>
-                            {% if current_role in ['system admin','super admin'] %}
-                            <option value="system admin">System Admin</option>
-                            {% endif %}
-                            {% if current_role == 'super admin' %}
-                            <option value="super admin">Super Admin</option>
-                            {% endif %}
+                            <option value="CSKH">Chăm sóc khách hàng</option>
+                            <option value="ALL">Quản trị hệ thống (ALL)</option>
                         </select>
                     </div>
                 </div>
             </div>
             <div class="modal-footer">
                 <button type="button" class="btn-custom btn-glass" onclick="closeModal('editModal')">Hủy</button>
-                <button type="submit" class="btn-custom btn-primary-gradient">Lưu Thay Đổi</button>
+                <button type="submit" class="btn-custom btn-primary-gradient">Cập nhật</button>
             </div>
         </form>
     </div>
 </div>
 
 <script>
-function openModal(id) { document.getElementById(id).classList.add('active'); }
-function closeModal(id) { document.getElementById(id).classList.remove('active'); }
-
-function openEditModal(user) {
-    document.getElementById('editForm').action = '/admin/users/edit/' + user.id;
-    document.getElementById('edit_ho_ten').value = user.ho_ten || '';
-    document.getElementById('edit_chuc_danh').value = user.chuc_danh || '';
-    document.getElementById('edit_so_dien_thoai').value = user.so_dien_thoai || '';
-    document.getElementById('edit_department').value = user.department || 'KTSC';
-    document.getElementById('edit_role').value = user.role || 'User';
-    openModal('editModal');
-}
+function openModal(id) { document.getElementById(id)?.classList.add('active'); }
+function closeModal(id) { document.getElementById(id)?.classList.remove('active'); }
 
 function openEditModalFromBtn(btn) {
     try {
-        const user = JSON.parse(btn.getAttribute('data-user'));
-        openEditModal(user);
-    } catch(e) { console.error('Lỗi dữ liệu:', e); }
+        const userData = JSON.parse(btn.getAttribute('data-user'));
+        const form = document.getElementById('editUserForm');
+        
+        // QUAN TRỌNG: Dùng userData.auth_id thay vì userData.id để khớp với route backend
+        form.action = '/admin/users/edit/' + userData.auth_id;
+        
+        document.getElementById('edit_ho_ten').value = userData.ho_ten || '';
+        document.getElementById('edit_username').value = userData.username || '';
+        document.getElementById('edit_email').value = userData.email || '';
+        document.getElementById('edit_chuc_danh').value = userData.chuc_danh || '';
+        document.getElementById('edit_so_dien_thoai').value = userData.so_dien_thoai || '';
+        document.getElementById('edit_department').value = (userData.department || 'KTSC').toUpperCase();
+        document.getElementById('edit_role').value = userData.role || 'User';
+        
+        openModal('editModal');
+    } catch (e) {
+        console.error("Lỗi parse dữ liệu người dùng:", e);
+    }
 }
 
 function filterUsers() {
-    const q = document.getElementById('userSearchInput').value.toLowerCase();
-    const dept = document.getElementById('deptFilter').value;
-    const rows = document.querySelectorAll('.user-row');
-    let count = 0;
+    const searchVal = document.getElementById('userSearchInput').value.toLowerCase().trim();
+    const deptVal = document.getElementById('deptFilter').value.toUpperCase().trim();
+    const rows = document.querySelectorAll('#usersTable .user-row');
+    let visibleCount = 0;
+
     rows.forEach(row => {
-        const matchSearch = !q || row.dataset.search.includes(q);
-        const matchDept = !dept || row.dataset.dept === dept;
-        if (matchSearch && matchDept) {
+        const rowSearch = row.getAttribute('data-search') || '';
+        const rowDept = row.getAttribute('data-dept') || '';
+        if ((!searchVal || rowSearch.includes(searchVal)) && (!deptVal || rowDept === deptVal)) {
             row.style.display = '';
-            count++;
+            visibleCount++;
         } else {
             row.style.display = 'none';
         }
     });
-    document.getElementById('totalCount').textContent = count;
+    document.getElementById('totalCount').textContent = visibleCount;
 }
 
-window.onclick = e => {
-    if (e.target.classList.contains('modal-overlay')) e.target.classList.remove('active');
-};
+window.addEventListener('click', function(e) {
+    if (e.target.classList.contains('modal-overlay')) {
+        e.target.classList.remove('active');
+    }
+});
 </script>
 {% endblock %}
