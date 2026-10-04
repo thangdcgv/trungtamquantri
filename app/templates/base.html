@@ -502,16 +502,9 @@
     </main>
     <!-- Bottom Navigation Bar Compact -->
     <nav class="bottom-nav">
-        <!-- 1. Trang chủ Hub -->
-        <a href="/" class="nav-item {% if request is defined and request.path == '/' %}active{% endif %}">
-            <svg viewBox="0 0 24 24">
-                <path d="M3 9l9-7 9 7v11a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2z"></path>
-                <polyline points="9 22 9 12 15 12 15 22"></polyline>
-            </svg>
-            <span>Trang chủ</span>
-        </a>
 
         <!-- 2. App Chấm Công Lắp Đặt Nội Bộ -->
+         {% if current_user and (current_user.get('role') in ['admin', 'super admin', 'system admin'] or current_user.get('department') in ['KT', 'GN', 'KTLD']) %}
         <a href="/cham-cong/form" class="nav-item {% if request is defined and '/cham-cong' in request.path %}active{% endif %}">
             <svg viewBox="0 0 24 24">
                 <circle cx="12" cy="12" r="10"></circle>
@@ -519,7 +512,7 @@
             </svg>
             <span>Chấm công</span>
         </a>
-
+        {% endif %}
         <!-- 3. App Bảo Hành Nội Bộ -->
         <a href="/warranty/list" class="nav-item {% if '/warranty' in request.url.path %}active{% endif %}">
             <svg viewBox="0 0 24 24">
@@ -528,6 +521,7 @@
             <span>Bảo hành</span>
         </a>
         <!-- 4. Điều hướng tới Thư Viện Máy In -->
+        {% if current_user and (user_role in ['admin', 'super admin', 'system admin'] or user_dept in ['KT', 'KD' ,'GN']) %}
         <a href="https://printer-guide.onrender.com" target="_blank" rel="noopener noreferrer" class="nav-item">
             <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
                 <path d="M2 3h6a4 4 0 0 1 4 4v14a3 3 0 0 0-3-3H2z"></path>
@@ -535,8 +529,12 @@
             </svg>
             <span>Thư viện</span>
         </a>
-        <!-- Quản Lý Nhập Xuất Key -->
-         {% if current_user and current_user.get('role') in ['user', 'super admin', 'system admin'] %}
+        {% endif %}
+       <!-- Quản Lý Nhập Xuất Key -->
+        {% set user_dept = (current_user.get('department') or '')|upper|trim %}
+        {% set user_role = (current_user.get('role') or '')|lower|trim %}
+
+        {% if current_user and (user_role in ['admin', 'super admin', 'system admin'] or user_dept in ['KTSC', 'KTLD']) %}
         <a href="/admin/quan-ly-key" class="nav-item {% if request is defined and request.path.startswith('/admin/quan-ly-key') %}active{% endif %}">
             <svg viewBox="0 0 24 24">
                 <circle cx="7.5" cy="15.5" r="3.5"></circle>
@@ -545,7 +543,19 @@
             <span>Quản lý Key</span>
         </a>
         {% endif %}
-        
+        <!--nhập hàng-->
+        <!-- Nhập Hàng / Kiểm Kê Seri -->
+        {% if current_user and (user_role in ['admin', 'super admin', 'system admin'] or user_dept in ['KTSC', 'KTLD', 'GN', 'KT']) %}
+        <a href="/inventory/scan" class="nav-item {% if request is defined and request.path.startswith('/inventory') %}active{% endif %}">
+            <!-- SVG Icon Thùng hàng (Inventory Box) chuẩn 24x24 -->
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                <path d="M21 8a2 2 0 0 0-1-1.73l-7-4a2 2 0 0 0-2 0l-7 4A2 2 0 0 0 3 8v8a2 2 0 0 0 1 1.73l7 4a2 2 0 0 0 2 0l7-4A2 2 0 0 0 21 16Z"></path>
+                <path d="m3.3 7 8.7 5 8.7-5"></path>
+                <path d="M12 22V12"></path>
+            </svg>
+            <span>Nhập hàng</span>
+        </a>
+        {% endif %}
     </nav>
  <!-- Thư viện Bootstrap 5 JS (bao gồm Popper.js) -->
     <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/js/bootstrap.bundle.min.js"></script>

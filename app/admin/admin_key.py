@@ -4,8 +4,7 @@ import traceback
 from typing import Optional, List
 from fastapi import APIRouter, Request, Form, Query, HTTPException, status, Depends
 from fastapi.responses import HTMLResponse, RedirectResponse
-from app.auth import get_current_user_or_redirect  # Import hàm từ auth.py
-from app.auth import require_login
+from app.auth import require_login, get_current_user_or_redirect
 from fastapi.templating import Jinja2Templates
 from pydantic import BaseModel, Field
 from config import supabase

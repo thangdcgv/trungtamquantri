@@ -362,10 +362,23 @@
     <!-- TOP SECTION: WELCOME BANNER & LAUNCHPAD -->
     <div class="top-section">
         <div class="quick-launchpad">
+           {% set user_dept = (current_user.get('department') or '')|upper|trim %}
+            {% set user_role = (current_user.get('role') or '')|lower|trim %}
+
+            {% if current_user and (user_role in ['admin', 'super admin', 'system admin'] or user_dept in ['KTLD', 'KT', 'GN']) %}
             <a href="/cham-cong/list" class="quick-btn btn-cyan">
                 <i class="fa-solid fa-clipboard-check"></i>
                 <span>Duyệt Chấm Công</span>
             </a>
+            {% else %}
+                <!-- Dành cho User thường -->
+                <a href="javascript:void(0);" 
+                onclick="alert('⚠️ Bạn không có quyền truy cập vào trang Quản Trị!')" 
+                class="quick-btn btn-purple disabled-btn">
+                    <i class="fa-solid fa-sliders"></i>
+                    <span>Duyệt Chấm Công</span>
+                </a>
+            {% endif %}
 
             <!-- 👈 KHU VỰC ĐIỀU HƯỚNG: HÀNG CHỜ & LỄ TÂN NHẬN TRẢ HÀNG -->
             <a href="/api/admin-queue" class="quick-btn btn-blue">
@@ -377,7 +390,7 @@
                 <i class="fa-solid fa-boxes-packing"></i>
                 <span>Lễ Tân Nhận - Trả Hàng</span>
             </a>
-
+            
             {% if current_user and current_user.role in ['admin', 'super admin', 'system admin'] %}
                 <!-- Dành cho Admin -->
                 <a href="/admin" class="quick-btn btn-purple">

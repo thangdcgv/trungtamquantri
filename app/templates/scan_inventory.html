@@ -1,599 +1,1353 @@
 <!DOCTYPE html>
 <html lang="vi">
 <head>
-    <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Quét & Nhập Kho Seri Máy In</title>
-    
-    <!-- Bootstrap 5.3 CSS -->
-    <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css" rel="stylesheet">
-    <!-- FontAwesome 6 -->
-    <link href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css" rel="stylesheet">
-    <!-- Tailwind CSS (Play CDN for utility classes) -->
-    <script src="https://cdn.tailwindcss.com"></script>
-    <!-- HTML5 QRCode Scanner -->
-    <script src="https://unpkg.com/html5-qrcode" type="text/javascript"></script>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, viewport-fit=cover">
+<title>{{ page_title|default("Kiểm Kê Seri Kho Máy In") }}</title>
 
-    <style>
-        body {
-            background-color: #0f172a;
-            color: #f8fafc;
-            font-family: system-ui, -apple-system, "Segoe UI", Roboto, sans-serif;
-            min-height: 100vh;
-        }
+<!-- Fonts: Sora (display) + Public Sans (body) — hỗ trợ tiếng Việt -->
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Sora:wght@400;500;600;700;800&family=Public+Sans:wght@400;500;600;700&display=swap" rel="stylesheet">
 
-        /* MOBILE-FIRST CONTAINER */
-        .app-container {
-            max-width: 600px;
-            margin: 0 auto;
-            padding: 12px 12px 100px 12px;
-        }
+<!-- FontAwesome 6 & Bootstrap 5.3 -->
+<link href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css" rel="stylesheet">
+<link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css" rel="stylesheet">
 
-        .scan-card {
-            background: rgba(18, 25, 41, 0.9);
-            border: 1px solid rgba(255, 255, 255, 0.1);
-            border-radius: 16px;
-            padding: 1rem;
-            backdrop-filter: blur(12px);
-        }
+<!-- HTML5 QRCode Scanner -->
+<script src="https://unpkg.com/html5-qrcode" type="text/javascript"></script>
 
-        .form-label-sm {
-            font-size: 0.8rem;
-            font-weight: 600;
-            color: #94a3b8;
-            margin-bottom: 4px;
-            display: block;
-        }
+<!-- SheetJS (xlsx) — Xuất Excel -->
+<script src="https://cdn.jsdelivr.net/npm/xlsx@0.18.5/dist/xlsx.full.min.js"></script>
 
-        .glass-input {
-            background: rgba(15, 23, 42, 0.7) !important;
-            border: 1px solid rgba(255, 255, 255, 0.15) !important;
-            color: #f8fafc !important;
-            border-radius: 10px !important;
-            height: 46px;
-            font-size: 0.95rem;
-        }
+<style>
+:root {
+    --bg-body: #f4f6fb;
+    --panel-bg: #ffffff;
+    --panel-border: #e5e9f2;
+    --accent: #0d9488;            /* teal-600 — chủ đạo */
+    --accent-dark: #0f766e;
+    --accent-soft: rgba(13, 148, 136, 0.10);
+    --accent-glow: rgba(13, 148, 136, 0.18);
+    --accent2: #2563eb;           /* blue — phụ */
+    --accent2-soft: rgba(37, 99, 235, 0.10);
+    --amber: #d97706;
+    --amber-soft: rgba(217, 119, 6, 0.10);
+    --rose: #e11d48;
+    --rose-soft: rgba(225, 29, 72, 0.10);
+    --emerald: #059669;
+    --emerald-soft: rgba(5, 150, 105, 0.10);
+    --violet: #7c3aed;
+    --text-main: #0f172a;
+    --text-muted: #64748b;
+    --text-faint: #94a3b8;
+    --header-bg: linear-gradient(135deg, #0f172a 0%, #1e293b 100%);
+    --radius-lg: 16px;
+    --radius-md: 12px;
+    --radius-sm: 8px;
+    --shadow-sm: 0 1px 2px rgba(15, 23, 42, 0.04);
+    --shadow-md: 0 4px 12px -2px rgba(15, 23, 42, 0.08);
+    --shadow-lg: 0 12px 32px -8px rgba(15, 23, 42, 0.15);
+    --font-display: 'Sora', -apple-system, sans-serif;
+    --font-body: 'Public Sans', -apple-system, sans-serif;
+}
 
-        .glass-input:focus {
-            border-color: #10b981 !important;
-            box-shadow: 0 0 0 0.2rem rgba(16, 185, 129, 0.25) !important;
-        }
+* { -webkit-tap-highlight-color: transparent; }
 
-        /* SWITCH TỰ ĐỘNG LƯU (AUTO-SAVE) */
-        .auto-save-box {
-            background: rgba(15, 23, 42, 0.8);
-            border: 1px solid rgba(255, 255, 255, 0.12);
-            border-radius: 12px;
-            padding: 8px 14px;
-        }
+body {
+    background-color: var(--bg-body);
+    color: var(--text-main);
+    font-family: var(--font-body);
+    min-height: 100vh;
+    padding-bottom: calc(90px + env(safe-area-inset-bottom));
+    padding-top: env(safe-area-inset-top);
+    user-select: none;
+    font-size: 15px;
+}
 
-        .form-check-input {
-            width: 2.6em !important;
-            height: 1.3em !important;
-            cursor: pointer;
-        }
+/* ============ HEADER ============ */
+.app-header {
+    background: var(--header-bg);
+    color: #fff;
+    position: sticky;
+    top: 0;
+    z-index: 1000;
+    box-shadow: 0 4px 20px rgba(15, 23, 42, 0.25);
+}
+.app-header .header-inner {
+    padding: 14px 16px calc(14px + env(safe-area-inset-top));
+}
+.app-title {
+    font-family: var(--font-display);
+    font-weight: 700;
+    font-size: 1.05rem;
+    letter-spacing: -0.01em;
+    margin: 0;
+    line-height: 1.2;
+}
+.app-subtitle {
+    font-size: 0.7rem;
+    color: #94a3b8;
+    font-weight: 500;
+    letter-spacing: 0.08em;
+    text-transform: uppercase;
+    margin-top: 2px;
+}
+.header-icon-wrap {
+    width: 40px; height: 40px;
+    border-radius: 12px;
+    background: linear-gradient(135deg, var(--accent), #14b8a6);
+    display: flex; align-items: center; justify-content: center;
+    box-shadow: 0 4px 12px rgba(13, 148, 136, 0.4);
+    flex-shrink: 0;
+}
+.network-badge {
+    font-size: 0.68rem;
+    font-weight: 600;
+    padding: 4px 10px;
+    border-radius: 20px;
+    display: inline-flex;
+    align-items: center;
+    gap: 5px;
+}
+.network-online { background: rgba(16, 185, 129, 0.15); color: #34d399; border: 1px solid rgba(16,185,129,0.3); }
+.network-offline { background: rgba(244, 63, 94, 0.15); color: #fb7185; border: 1px solid rgba(244,63,94,0.3); }
 
-        .form-check-input:checked {
-            background-color: #10b981;
-            border-color: #10b981;
-        }
+/* ============ TAB NAVIGATION ============ */
+.tab-nav {
+    background: var(--panel-bg);
+    border-bottom: 1px solid var(--panel-border);
+    position: sticky;
+    top: 0;
+    z-index: 999;
+    padding: 0 8px;
+    box-shadow: var(--shadow-sm);
+}
+.tab-btn {
+    flex: 1;
+    padding: 12px 8px;
+    border: none;
+    background: transparent;
+    font-family: var(--font-display);
+    font-weight: 600;
+    font-size: 0.78rem;
+    color: var(--text-muted);
+    cursor: pointer;
+    position: relative;
+    transition: color 0.2s;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    gap: 6px;
+    letter-spacing: 0.01em;
+}
+.tab-btn.active { color: var(--accent-dark); }
+.tab-btn.active::after {
+    content: '';
+    position: absolute;
+    bottom: -1px; left: 20%; right: 20%;
+    height: 3px;
+    background: linear-gradient(90deg, var(--accent), #14b8a6);
+    border-radius: 3px 3px 0 0;
+}
+.tab-btn .tab-count {
+    background: var(--accent-soft);
+    color: var(--accent-dark);
+    font-size: 0.65rem;
+    font-weight: 700;
+    padding: 1px 7px;
+    border-radius: 10px;
+    min-width: 20px;
+    text-align: center;
+}
+.tab-pane-section { display: none; }
+.tab-pane-section.active { display: block; animation: fadeIn 0.25s ease; }
+@keyframes fadeIn { from { opacity: 0; transform: translateY(6px); } to { opacity: 1; transform: translateY(0); } }
 
-        /* PREVIEW ẢNH MẮT CẮT KHI SCAN */
-        .photo-preview-box {
-            width: 58px;
-            height: 58px;
-            border-radius: 10px;
-            border: 1px dashed rgba(255, 255, 255, 0.25);
-            display: flex;
-            align-items: center;
-            justify-content: center;
-            overflow: hidden;
-            background: rgba(15, 23, 42, 0.6);
-            position: relative;
-            flex-shrink: 0;
-        }
+/* ============ CARDS ============ */
+.glass-card {
+    background: var(--panel-bg);
+    border: 1px solid var(--panel-border);
+    border-radius: var(--radius-lg);
+    box-shadow: var(--shadow-sm);
+    transition: box-shadow 0.2s;
+}
+.glass-card:hover { box-shadow: var(--shadow-md); }
 
-        .photo-preview-box img {
-            width: 100%;
-            height: 100%;
-            object-fit: cover;
-        }
+.card-header {
+    padding: 14px 16px;
+    border-bottom: 1px solid var(--panel-border);
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 8px;
+}
+.card-title {
+    font-family: var(--font-display);
+    font-weight: 700;
+    font-size: 0.85rem;
+    color: var(--text-main);
+    margin: 0;
+    display: flex;
+    align-items: center;
+    gap: 8px;
+}
+.card-title .title-icon {
+    width: 28px; height: 28px;
+    border-radius: 8px;
+    display: flex; align-items: center; justify-content: center;
+    font-size: 0.8rem;
+}
 
-        /* BẢNG BẢN GHI/LỊCH SỬ QUÉT */
-        .sheet-card {
-            background: rgba(18, 25, 41, 0.75);
-            border: 1px solid rgba(255, 255, 255, 0.08);
-            border-radius: 14px;
-            overflow: hidden;
-        }
+/* ============ KPI STATS ============ */
+.kpi-row { display: grid; grid-template-columns: repeat(3, 1fr); gap: 10px; margin-bottom: 14px; }
+.kpi-card {
+    background: var(--panel-bg);
+    border: 1px solid var(--panel-border);
+    border-radius: var(--radius-md);
+    padding: 12px 10px;
+    text-align: center;
+    position: relative;
+    overflow: hidden;
+}
+.kpi-card::before {
+    content: '';
+    position: absolute;
+    top: 0; left: 0; right: 0;
+    height: 3px;
+}
+.kpi-card.kpi-total::before { background: linear-gradient(90deg, var(--accent), #14b8a6); }
+.kpi-card.kpi-pending::before { background: linear-gradient(90deg, var(--amber), #f59e0b); }
+.kpi-card.kpi-saved::before { background: linear-gradient(90deg, var(--emerald), #10b981); }
+.kpi-value {
+    font-family: var(--font-display);
+    font-weight: 800;
+    font-size: 1.5rem;
+    line-height: 1.1;
+    font-variant-numeric: tabular-nums;
+}
+.kpi-total .kpi-value { color: var(--accent-dark); }
+.kpi-pending .kpi-value { color: var(--amber); }
+.kpi-saved .kpi-value { color: var(--emerald); }
+.kpi-label {
+    font-size: 0.65rem;
+    font-weight: 600;
+    color: var(--text-muted);
+    text-transform: uppercase;
+    letter-spacing: 0.05em;
+    margin-top: 4px;
+}
 
-        .sheet-table {
-            width: 100%;
-            border-collapse: collapse;
-            font-size: 0.82rem;
-        }
+/* ============ FORM ELEMENTS ============ */
+.form-label-custom {
+    font-size: 0.7rem;
+    font-weight: 700;
+    text-transform: uppercase;
+    letter-spacing: 0.06em;
+    color: var(--text-muted);
+    margin-bottom: 6px;
+    display: flex;
+    align-items: center;
+    gap: 6px;
+}
+.glass-input {
+    background: #f8fafc !important;
+    border: 1.5px solid #e2e8f0 !important;
+    color: var(--text-main) !important;
+    border-radius: var(--radius-md) !important;
+    min-height: 46px;
+    font-size: 0.92rem;
+    font-weight: 500;
+    transition: all 0.2s ease;
+    font-family: var(--font-body);
+}
+.glass-input:focus {
+    background: #ffffff !important;
+    border-color: var(--accent) !important;
+    box-shadow: 0 0 0 4px var(--accent-glow) !important;
+}
+.glass-input:disabled {
+    background: #f1f5f9 !important;
+    color: var(--text-muted) !important;
+    border-color: #e2e8f0 !important;
+}
 
-        .sheet-table th {
-            background: rgba(30, 41, 59, 0.9);
-            color: #94a3b8;
-            padding: 0.6rem 0.5rem;
-            font-weight: 600;
-            font-size: 0.72rem;
-            text-transform: uppercase;
-            border-bottom: 1px solid rgba(255, 255, 255, 0.08);
-        }
+/* Switch custom */
+.form-switch .form-check-input {
+    width: 38px; height: 20px;
+    cursor: pointer;
+    border-color: #cbd5e1;
+}
+.form-switch .form-check-input:checked {
+    background-color: var(--accent);
+    border-color: var(--accent);
+}
 
-        .sheet-table td {
-            padding: 0.6rem 0.5rem;
-            border-bottom: 1px solid rgba(255, 255, 255, 0.04);
-            color: #cbd5e1;
-            vertical-align: middle;
-        }
+/* ============ DROPDOWN GỢI Ý ============ */
+.custom-dropdown {
+    position: absolute;
+    top: 100%; left: 0; right: 0;
+    z-index: 1050;
+    background: #ffffff;
+    border: 1px solid var(--panel-border);
+    border-radius: var(--radius-md);
+    max-height: 240px;
+    overflow-y: auto;
+    margin-top: 6px;
+    box-shadow: var(--shadow-lg);
+    animation: dropIn 0.15s ease;
+}
+@keyframes dropIn { from { opacity: 0; transform: translateY(-6px); } to { opacity: 1; transform: translateY(0); } }
+.dropdown-item-custom {
+    padding: 11px 14px;
+    color: var(--text-main);
+    cursor: pointer;
+    font-size: 0.85rem;
+    border-bottom: 1px solid #f1f5f9;
+    transition: background 0.12s;
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 8px;
+}
+.dropdown-item-custom:last-child { border-bottom: none; }
+.dropdown-item-custom:hover { background: var(--accent-soft); }
+.dropdown-item-custom .brand-tag {
+    font-weight: 700;
+    color: var(--accent-dark);
+    font-size: 0.8rem;
+}
+.dropdown-item-custom .model-code { font-weight: 500; }
+.dropdown-item-custom .model-id { font-size: 0.7rem; color: var(--text-faint); font-family: monospace; }
 
-        /* FAB CONTAINER */
-        .fab-container {
-            position: fixed;
-            bottom: 16px;
-            left: 50%;
-            transform: translateX(-50%);
-            display: flex;
-            align-items: center;
-            gap: 14px;
-            z-index: 999;
-            background: rgba(15, 23, 42, 0.9);
-            padding: 8px 20px;
-            border-radius: 50px;
-            border: 1px solid rgba(255, 255, 255, 0.15);
-            backdrop-filter: blur(16px);
-            box-shadow: 0 8px 30px rgba(0,0,0,0.6);
-        }
+/* ============ CAMERA SCANNER ============ */
+.scanner-viewport-container {
+    position: relative;
+    width: 100%;
+    aspect-ratio: 4/3;
+    max-height: 340px;
+    background: #0f172a;
+    border-radius: var(--radius-md);
+    overflow: hidden;
+    border: 2px solid var(--panel-border);
+}
+#interactive-scanner { width: 100%; height: 100%; display: flex; align-items: center; justify-content: center; }
+#interactive-scanner video { width: 100% !important; height: 100% !important; object-fit: cover !important; }
 
-        .fab-btn {
-            width: 44px;
-            height: 44px;
-            border-radius: 50%;
-            border: none;
-            display: flex;
-            align-items: center;
-            justify-content: center;
-            font-size: 1.1rem;
-            color: #fff;
-            cursor: pointer;
-            transition: transform 0.1s ease;
-        }
+.scan-laser-overlay {
+    position: absolute; inset: 0;
+    pointer-events: none;
+    display: flex; align-items: center; justify-content: center;
+}
+.scan-target-box {
+    width: 78%; height: 52%;
+    max-height: 150px;
+    border: 2px solid rgba(20, 184, 166, 0.9);
+    border-radius: 12px;
+    position: relative;
+    box-shadow: 0 0 0 4000px rgba(15, 23, 42, 0.55);
+}
+.scan-target-box::before, .scan-target-box::after,
+.scan-target-box .corner::before, .scan-target-box .corner::after {
+    content: ''; position: absolute; width: 22px; height: 22px;
+    border-color: #2dd4bf; border-style: solid; border-width: 0;
+}
+.scan-target-box::before { top: -2px; left: -2px; border-top-width: 3px; border-left-width: 3px; border-top-left-radius: 8px; }
+.scan-target-box::after { top: -2px; right: -2px; border-top-width: 3px; border-right-width: 3px; border-top-right-radius: 8px; }
+.scan-target-box .corner::before { bottom: -2px; left: -2px; border-bottom-width: 3px; border-left-width: 3px; border-bottom-left-radius: 8px; position: absolute; content: ''; width: 22px; height: 22px; }
+.scan-target-box .corner::after { bottom: -2px; right: -2px; border-bottom-width: 3px; border-right-width: 3px; border-bottom-right-radius: 8px; position: absolute; content: ''; width: 22px; height: 22px; }
 
-        .fab-btn:active { transform: scale(0.92); }
-        .fab-btn.btn-reset { background: #475569; }
-        .fab-btn.btn-scan { background: #059669; width: 52px; height: 52px; font-size: 1.3rem; }
-        .fab-btn.btn-save-all { background: #2563eb; }
+.laser-line {
+    position: absolute;
+    width: calc(100% - 8px); left: 4px;
+    height: 2.5px;
+    background: linear-gradient(90deg, transparent, #2dd4bf, transparent);
+    box-shadow: 0 0 12px #2dd4bf, 0 0 4px #fff;
+    animation: scanAnimation 2.2s infinite ease-in-out;
+}
+@keyframes scanAnimation {
+    0% { top: 6%; opacity: 0.5; }
+    50% { top: 92%; opacity: 1; }
+    100% { top: 6%; opacity: 0.5; }
+}
 
-        #reader-modal-body video {
-            object-fit: cover !important;
-            border-radius: 8px;
-        }
-        .custom-dropdown {
-            position: absolute;
-            top: 100%;
-            left: 0;
-            right: 0;
-            z-index: 1050;
-            background: #1e293b;
-            border: 1px solid rgba(255, 255, 255, 0.15);
-            border-radius: 10px;
-            max-height: 220px;
-            overflow-y: auto;
-            margin-top: 4px;
-            box-shadow: 0 10px 25px -5px rgba(0, 0, 0, 0.5);
-        }
+/* ============ BUTTONS ============ */
+.btn-action-main {
+    min-height: 48px;
+    border-radius: var(--radius-md);
+    font-weight: 700;
+    font-size: 0.9rem;
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    gap: 8px;
+    transition: transform 0.1s ease, box-shadow 0.2s, background-color 0.2s;
+    font-family: var(--font-display);
+    letter-spacing: 0.01em;
+    border: none;
+}
+.btn-action-main:active { transform: scale(0.97); }
+.btn-primary-accent {
+    background: linear-gradient(135deg, var(--accent), #14b8a6);
+    color: #fff;
+    box-shadow: 0 4px 14px rgba(13, 148, 136, 0.35);
+}
+.btn-primary-accent:hover { color: #fff; box-shadow: 0 6px 20px rgba(13, 148, 136, 0.45); }
+.btn-primary-accent:disabled { opacity: 0.6; box-shadow: none; }
+.btn-excel {
+    background: linear-gradient(135deg, #1d6f42, #217346);
+    color: #fff;
+    box-shadow: 0 4px 14px rgba(29, 111, 66, 0.3);
+}
+.btn-excel:hover { color: #fff; }
+.btn-soft {
+    background: var(--panel-bg);
+    border: 1.5px solid var(--panel-border);
+    color: var(--text-muted);
+    font-weight: 600;
+}
+.btn-soft:hover { color: var(--text-main); border-color: #cbd5e1; }
+.btn-cam-toggle {
+    padding: 6px 14px;
+    border-radius: 8px;
+    font-size: 0.75rem;
+    font-weight: 700;
+    border: none;
+    display: inline-flex;
+    align-items: center;
+    gap: 6px;
+    transition: all 0.15s;
+}
+.btn-cam-on { background: linear-gradient(135deg, var(--accent), #14b8a6); color: #fff; }
+.btn-cam-off { background: var(--rose); color: #fff; }
 
-        .dropdown-item-custom {
-            padding: 10px 14px;
-            color: #f8fafc;
-            cursor: pointer;
-            font-size: 0.9rem;
-            border-bottom: 1px solid rgba(255, 255, 255, 0.05);
-            transition: background 0.15s ease;
-        }
+/* ============ BADGE TRẠNG THÁI ============ */
+.badge-status {
+    padding: 4px 10px;
+    border-radius: 6px;
+    font-size: 0.65rem;
+    font-weight: 700;
+    text-transform: uppercase;
+    white-space: nowrap;
+    letter-spacing: 0.03em;
+    display: inline-block;
+}
+.badge-saved, .badge-verified, .badge-completed { background: var(--emerald-soft); color: var(--emerald); border: 1px solid #a7f3d0; }
+.badge-pending { background: var(--amber-soft); color: var(--amber); border: 1px solid #fde68a; }
+.badge-rejected { background: var(--rose-soft); color: var(--rose); border: 1px solid #fecdd3; }
 
-        .dropdown-item-custom:hover, .dropdown-item-custom.active {
-            background: rgba(16, 185, 129, 0.2);
-            color: #34d399;
-        }
-    </style>
+/* ============ TABLE ============ */
+.table-custom { margin-bottom: 0; color: var(--text-main); width: 100%; }
+.table-custom th {
+    background: #f8fafc;
+    color: var(--text-muted);
+    font-weight: 700;
+    font-size: 0.68rem;
+    text-transform: uppercase;
+    letter-spacing: 0.05em;
+    border-bottom: 1.5px solid var(--panel-border);
+    padding: 10px 12px;
+    white-space: nowrap;
+}
+.table-custom td {
+    padding: 11px 12px;
+    vertical-align: middle;
+    border-bottom: 1px solid #f1f5f9;
+    font-size: 0.83rem;
+}
+.table-custom tbody tr { transition: background 0.12s; }
+.table-custom tbody tr:hover { background-color: #f8fafc; }
+.serial-cell {
+    font-family: 'Sora', monospace;
+    font-weight: 700;
+    color: var(--accent2);
+    font-size: 0.82rem;
+    letter-spacing: 0.02em;
+    word-break: break-all;
+}
+.text-truncate-mobile { max-width: 130px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+@media (min-width: 576px) { .text-truncate-mobile { max-width: 200px; } }
+
+/* ============ FLASH FEEDBACK ============ */
+.flash-feedback {
+    position: fixed;
+    top: calc(80px + env(safe-area-inset-top));
+    left: 50%;
+    transform: translateX(-50%);
+    z-index: 2000;
+    min-width: 280px;
+    max-width: 92%;
+    pointer-events: none;
+    display: none;
+    transition: opacity 0.3s ease;
+}
+#flash-content {
+    padding: 12px 20px;
+    border-radius: 12px;
+    text-align: center;
+    font-weight: 600;
+    font-size: 0.85rem;
+    box-shadow: var(--shadow-lg);
+    backdrop-filter: blur(10px);
+}
+
+/* ============ BOTTOM ACTION BAR ============ */
+.bottom-action-bar {
+    position: fixed;
+    bottom: 0; left: 0; right: 0;
+    background: rgba(255, 255, 255, 0.97);
+    backdrop-filter: blur(16px);
+    border-top: 1px solid var(--panel-border);
+    padding: 10px 14px calc(10px + env(safe-area-inset-bottom));
+    z-index: 1000;
+    box-shadow: 0 -4px 20px rgba(15, 23, 42, 0.06);
+}
+.bottom-action-bar .bar-inner {
+    max-width: 720px;
+    margin: 0 auto;
+    display: flex;
+    gap: 8px;
+}
+
+/* ============ EMPTY STATE ============ */
+.empty-state {
+    text-align: center;
+    padding: 40px 20px;
+    color: var(--text-faint);
+}
+.empty-state .empty-icon {
+    font-size: 2.5rem;
+    opacity: 0.3;
+    margin-bottom: 10px;
+}
+.empty-state p { font-size: 0.82rem; margin: 0; }
+
+/* ============ PAGINATION ============ */
+.pagination-custom {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    gap: 6px;
+    padding: 12px;
+    flex-wrap: wrap;
+}
+.page-btn {
+    min-width: 34px; height: 34px;
+    border-radius: 8px;
+    border: 1px solid var(--panel-border);
+    background: #fff;
+    color: var(--text-muted);
+    font-weight: 600;
+    font-size: 0.8rem;
+    cursor: pointer;
+    transition: all 0.15s;
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    padding: 0 8px;
+}
+.page-btn:hover:not(:disabled) { border-color: var(--accent); color: var(--accent-dark); }
+.page-btn.active { background: var(--accent); color: #fff; border-color: var(--accent); }
+.page-btn:disabled { opacity: 0.4; cursor: not-allowed; }
+.page-info { font-size: 0.75rem; color: var(--text-muted); font-weight: 500; }
+
+/* ============ FILTER BAR ============ */
+.filter-bar {
+    display: flex;
+    gap: 8px;
+    flex-wrap: wrap;
+    padding: 12px 16px;
+    border-bottom: 1px solid var(--panel-border);
+    background: #fafbfd;
+}
+.filter-select, .filter-input {
+    flex: 1;
+    min-width: 120px;
+    padding: 8px 12px;
+    border: 1.5px solid #e2e8f0;
+    border-radius: 8px;
+    font-size: 0.82rem;
+    background: #fff;
+    color: var(--text-main);
+    font-family: var(--font-body);
+    outline: none;
+    transition: border-color 0.15s;
+}
+.filter-select:focus, .filter-input:focus { border-color: var(--accent); }
+
+/* ============ LOADING SPINNER ============ */
+.spinner-inline {
+    display: inline-block;
+    width: 16px; height: 16px;
+    border: 2px solid rgba(255,255,255,0.3);
+    border-top-color: #fff;
+    border-radius: 50%;
+    animation: spin 0.7s linear infinite;
+}
+@keyframes spin { to { transform: rotate(360deg); } }
+
+/* ============ STATS BIG CARDS ============ */
+.stats-grid { display: grid; grid-template-columns: repeat(2, 1fr); gap: 12px; }
+.stat-big-card {
+    background: var(--panel-bg);
+    border: 1px solid var(--panel-border);
+    border-radius: var(--radius-lg);
+    padding: 18px 16px;
+    position: relative;
+    overflow: hidden;
+}
+.stat-big-card .stat-icon {
+    position: absolute;
+    top: 14px; right: 14px;
+    width: 36px; height: 36px;
+    border-radius: 10px;
+    display: flex; align-items: center; justify-content: center;
+    font-size: 1rem;
+}
+.stat-big-card .stat-num {
+    font-family: var(--font-display);
+    font-weight: 800;
+    font-size: 2rem;
+    line-height: 1;
+    font-variant-numeric: tabular-nums;
+}
+.stat-big-card .stat-label {
+    font-size: 0.72rem;
+    font-weight: 600;
+    color: var(--text-muted);
+    text-transform: uppercase;
+    letter-spacing: 0.05em;
+    margin-top: 8px;
+}
+.stat-total .stat-num { color: var(--accent-dark); }
+.stat-total .stat-icon { background: var(--accent-soft); color: var(--accent-dark); }
+.stat-pending .stat-num { color: var(--amber); }
+.stat-pending .stat-icon { background: var(--amber-soft); color: var(--amber); }
+.stat-verified .stat-num { color: var(--emerald); }
+.stat-verified .stat-icon { background: var(--emerald-soft); color: var(--emerald); }
+.stat-rejected .stat-num { color: var(--rose); }
+.stat-rejected .stat-icon { background: var(--rose-soft); color: var(--rose); }
+
+/* Progress bar */
+.progress-wrap { margin-top: 10px; }
+.progress-track {
+    height: 6px;
+    background: #e2e8f0;
+    border-radius: 3px;
+    overflow: hidden;
+}
+.progress-fill {
+    height: 100%;
+    border-radius: 3px;
+    transition: width 0.5s ease;
+}
+
+/* Scrollbar */
+::-webkit-scrollbar { width: 6px; height: 6px; }
+::-webkit-scrollbar-thumb { background: #cbd5e1; border-radius: 3px; }
+::-webkit-scrollbar-track { background: transparent; }
+
+/* Toast for export */
+.export-toast {
+    position: fixed;
+    bottom: 100px;
+    left: 50%;
+    transform: translateX(-50%);
+    background: #1d6f42;
+    color: #fff;
+    padding: 10px 20px;
+    border-radius: 10px;
+    font-size: 0.82rem;
+    font-weight: 600;
+    box-shadow: var(--shadow-lg);
+    z-index: 2000;
+    display: none;
+    animation: slideUp 0.3s ease;
+}
+@keyframes slideUp { from { opacity: 0; transform: translate(-50%, 20px); } to { opacity: 1; transform: translate(-50%, 0); } }
+</style>
 </head>
 <body>
 
-<div class="app-container">
+<!-- FLASH FEEDBACK -->
+<div id="flash-feedback" class="flash-feedback">
+    <div id="flash-content"></div>
+</div>
 
-    <!-- HEADER & CÔNG TẮC BẬT TẮT TỰ ĐỘNG LƯU -->
-    <div class="d-flex align-items-center justify-content-between mb-3 px-1">
-        <div>
-            <h6 class="text-white fw-bold mb-0">Quét & Nhập Kho</h6>
-            <span class="text-slate-400 fs-7">Máy In & Barcode/QR</span>
-        </div>
-        
-        <!-- CÔNG TẮC GẠT AUTO-SAVE -->
-        <div class="auto-save-box d-flex align-items-center gap-2">
-            <span class="fs-7 fw-bold text-emerald-400" id="auto-save-text">Tự động lưu: ON</span>
-            <div class="form-check form-switch mb-0">
-                <input class="form-check-input" type="checkbox" id="toggle-auto-save" checked onchange="onAutoSaveToggle()">
+<!-- EXPORT TOAST -->
+<div id="export-toast" class="export-toast">
+    <i class="fa-solid fa-file-excel me-2"></i><span id="export-toast-text">Đã xuất file Excel</span>
+</div>
+
+<!-- ===== HEADER ===== -->
+<header class="app-header">
+    <div class="header-inner d-flex align-items-center justify-content-between gap-3">
+        <div class="d-flex align-items-center gap-3 overflow-hidden">
+            <a href="/inventory" class="text-white-50 text-decoration-none flex-shrink-0" style="color:#94a3b8;">
+                <i class="fa-solid fa-arrow-left fs-5"></i>
+            </a>
+            <div class="header-icon-wrap">
+                <i class="fa-solid fa-barcode text-white fs-5"></i>
             </div>
+            <div class="overflow-hidden">
+                <h1 class="app-title text-truncate">Kiểm Kê Seri Kho Máy In</h1>
+                <div class="app-subtitle">WMS Enterprise · Inventory Scan</div>
+            </div>
+        </div>
+        <div class="d-flex align-items-center gap-2 flex-shrink-0">
+            <span id="network-status" class="network-badge network-online">
+                <i class="fa-solid fa-wifi"></i> Online
+            </span>
         </div>
     </div>
 
-    <!-- FORM NHẬP / THÔNG TIN VỪA QUÉT -->
-    <div class="scan-card mb-3">
-        <form id="scan-form" onsubmit="event.preventDefault();">
-            <input type="hidden" id="image_base64" value="">
+    <!-- TAB NAV -->
+    <nav class="tab-nav d-flex" style="background:transparent; border-bottom:1px solid rgba(255,255,255,0.08); padding:0 8px;">
+        <button class="tab-btn active" data-tab="scan" style="color:#ffffff;" onclick="switchTab('scan')">
+            <i class="fa-solid fa-camera-retro"></i> Quét Mã
+            <span class="tab-count" id="tab-scan-count">0</span>
+        </button>
+        <button class="tab-btn" data-tab="history" style="color:#94a3b8;" onclick="switchTab('history')">
+            <i class="fa-solid fa-clock-rotate-left"></i> Lịch Sử
+        </button>
+        <button class="tab-btn" data-tab="stats" style="color:#94a3b8;" onclick="switchTab('stats')">
+            <i class="fa-solid fa-chart-pie"></i> Thống Kê
+        </button>
+    </nav>
+</header>
 
-            <!-- MODEL MÁY IN -->
-            <div class="mb-2.5 position-relative">
-                <label class="form-label-sm">Model Máy In:</label>
-                <input type="text" id="model_search" class="form-control glass-input text-emerald-400 fw-bold" 
-                    placeholder="Gõ để tìm model (vd: PRO-1000, Epson)..." autocomplete="off" oninput="onModelInput(this)">
-                
-                <!-- Input ẩn chứa ID thực tế để gửi xuống Database -->
-                <input type="hidden" id="printer_id" name="printer_id" required>
+<!-- ===== MAIN CONTENT ===== -->
+<main class="container my-3 px-2 mx-auto" style="max-width: 720px;">
 
-                <!-- Dropdown gợi ý tự thiết kế (Custom UI) -->
-                <div id="printer-dropdown" class="custom-dropdown d-none"></div>
+    <!-- ============ TAB 1: QUÉT MÃ ============ -->
+    <section id="tab-scan" class="tab-pane-section active">
+
+        <!-- KPI Mini -->
+        <div class="kpi-row">
+            <div class="kpi-card kpi-total">
+                <div class="kpi-value" id="kpi-total">0</div>
+                <div class="kpi-label">Tổng phiên</div>
             </div>
+            <div class="kpi-card kpi-pending">
+                <div class="kpi-value" id="kpi-pending">0</div>
+                <div class="kpi-label">Chờ đồng bộ</div>
+            </div>
+            <div class="kpi-card kpi-saved">
+                <div class="kpi-value" id="kpi-saved">0</div>
+                <div class="kpi-label">Đã lưu</div>
+            </div>
+        </div>
 
-            <!-- QUÉT / NHẬP SERIAL -->
-            <div class="mb-2.5">
-                <label class="form-label-sm">Số Seri (Serial No.):</label>
-                <div class="d-flex gap-2">
-                    <input type="text" id="serial_number" class="form-control glass-input fw-bold text-emerald-400 flex-grow-1" 
-                           placeholder="Nhập tay hoặc bấm Camera để quét..." required autocomplete="off">
-                    
-                    <button type="button" class="btn btn-emerald bg-emerald-600 hover:bg-emerald-500 text-white px-3 d-flex align-items-center gap-1 border-0" onclick="openCameraModal()">
-                        <i class="fa-solid fa-qrcode fs-5"></i>
-                        <span class="fs-7 fw-semibold d-none d-sm-inline">Quét</span>
+        <!-- MODEL SELECTOR -->
+        <div class="glass-card mb-3">
+            <div class="card-header">
+                <h3 class="card-title">
+                    <span class="title-icon" style="background:var(--accent-soft);color:var(--accent-dark);">
+                        <i class="fa-solid fa-print"></i>
+                    </span>
+                    Model Máy In
+                </h3>
+                <div class="form-check form-switch mb-0 d-flex align-items-center gap-2">
+                    <label class="form-check-label fs-7 fw-bold" for="lock-model-switch" id="lock-model-label" style="font-size:0.72rem;color:var(--text-muted);">Khóa Model</label>
+                    <input class="form-check-input" type="checkbox" id="lock-model-switch" onchange="toggleLockModel()" style="cursor:pointer;margin:0;">
+                </div>
+            </div>
+            <div class="p-3">
+                <div class="position-relative">
+                    <input type="text" id="model_search" class="form-control glass-input fw-bold"
+                           style="color:var(--accent-dark) !important;"
+                           placeholder="Tìm kiếm Model (VD: L8050, PRO-1000...)" autocomplete="off"
+                           oninput="onModelInput(this)">
+                    <input type="hidden" id="printer_id" name="printer_id">
+                    <div id="printer-dropdown" class="custom-dropdown d-none"></div>
+                </div>
+                <div id="selected-model-info" class="d-none mt-2 p-2 rounded" style="background:var(--accent-soft);font-size:0.78rem;font-weight:600;color:var(--accent-dark);">
+                    <i class="fa-solid fa-circle-check me-1"></i> Đã chọn: <span id="selected-model-text"></span>
+                </div>
+            </div>
+        </div>
+
+        <!-- CAMERA + MANUAL INPUT -->
+        <div class="glass-card mb-3">
+            <div class="card-header">
+                <h3 class="card-title">
+                    <span class="title-icon" style="background:var(--accent2-soft);color:var(--accent2);">
+                        <i class="fa-solid fa-camera"></i>
+                    </span>
+                    Camera Quét Mã
+                </h3>
+                <div class="d-flex gap-2 align-items-center">
+                    <button type="button" id="btn-toggle-torch" class="btn btn-sm btn-outline-secondary py-1 px-2 d-none" onclick="toggleTorch()" style="font-size:0.75rem;">
+                        <i class="fa-solid fa-lightbulb"></i>
+                    </button>
+                    <button type="button" id="btn-toggle-camera" class="btn-cam-toggle btn-cam-on" onclick="toggleCameraStream()">
+                        <i class="fa-solid fa-power-off"></i> Bật Cam
                     </button>
                 </div>
             </div>
-
-            <!-- ẢNH CẮT TỰ ĐỘNG TỪ CAMERA -->
-            <div class="d-flex align-items-center gap-2 pt-1">
-                <div class="photo-preview-box">
-                    <i class="fa-solid fa-image text-slate-500 fs-5" id="img-placeholder"></i>
-                    <img id="img-preview" src="" class="d-none" alt="Ảnh quét">
+            <div class="p-3">
+                <div class="scanner-viewport-container mb-3 d-none" id="scanner-wrapper">
+                    <div id="interactive-scanner"></div>
+                    <div class="scan-laser-overlay">
+                        <div class="scan-target-box">
+                            <span class="corner"></span>
+                            <div class="laser-line"></div>
+                        </div>
+                    </div>
                 </div>
-                <div class="flex-grow-1">
-                    <span class="fs-7 text-slate-400 d-block">Ảnh thiết bị / Tem mã</span>
-                    <span class="fs-7 text-slate-500" id="img-status-text">Ảnh sẽ tự động chụp khi quét Camera</span>
+
+                <label class="form-label-custom"><i class="fa-solid fa-barcode" style="color:var(--accent);"></i> Mã Seri (Serial Number)</label>
+                <div class="input-group">
+                    <input type="text" id="serial_number_input" class="form-control glass-input fw-bold fs-7"
+                           style="color:var(--accent2) !important; font-family:'Sora',monospace;"
+                           placeholder="Quét mã vạch hoặc nhập tay..." autocomplete="off"
+                           onkeypress="handleManualEnter(event)">
+                    <button class="btn btn-action-main btn-primary-accent px-4" type="button" onclick="submitManualSerial()">
+                        <i class="fa-solid fa-plus"></i> Nạp
+                    </button>
                 </div>
             </div>
-        </form>
-
-        <div id="alert-status" class="mt-2.5"></div>
-    </div>
-
-    <!-- DANH SÁCH / LỊCH SỬ QUÉT -->
-    <div class="sheet-card">
-        <div class="p-2.5 bg-slate-800/80 border-bottom border-slate-700/50 d-flex justify-content-between align-items-center">
-            <span class="text-slate-300 fw-bold fs-7" id="table-title">
-                <i class="fa-solid fa-clock-rotate-left me-1"></i> Lịch Sử Quét (Đã Lưu)
-            </span>
-            <span class="badge bg-emerald-500/20 text-emerald-400 border border-emerald-500/30">
-                Mục: <strong id="total-count">0</strong>
-            </span>
         </div>
 
-        <div class="table-responsive">
-            <table class="sheet-table">
-                <thead>
-                    <tr>
-                        <th style="width: 35px;">#</th>
-                        <th style="width: 45px;">Ảnh</th>
-                        <th>Số Seri</th>
-                        <th>Model</th>
-                        <th style="width: 80px;" class="text-center" id="th-action">Thao Tác</th>
-                    </tr>
-                </thead>
-                <tbody id="sheet-tbody">
-                    <tr id="empty-row">
-                        <td colspan="5" class="text-center text-slate-500 py-3">Chưa có dữ liệu trong danh sách</td>
-                    </tr>
-                </tbody>
-            </table>
+        <!-- BATCH LIST -->
+        <div class="glass-card overflow-hidden">
+            <div class="card-header">
+                <h3 class="card-title">
+                    <span class="title-icon" style="background:var(--amber-soft);color:var(--amber);">
+                        <i class="fa-solid fa-list-check"></i>
+                    </span>
+                    Danh Sách Phiên Này
+                </h3>
+                <div class="d-flex gap-1">
+                    <button class="btn btn-sm btn-excel py-1 px-2" style="font-size:0.72rem;" onclick="exportBatchToExcel()" title="Xuất Excel danh sách phiên">
+                        <i class="fa-solid fa-file-excel me-1"></i> Excel
+                    </button>
+                    <button class="btn btn-sm btn-outline-danger py-1 px-2" style="font-size:0.72rem;" onclick="clearLocalBatch()" title="Xóa toàn bộ">
+                        <i class="fa-solid fa-trash-can"></i>
+                    </button>
+                </div>
+            </div>
+            <div class="table-responsive" style="max-height: 38vh; overflow-y: auto;">
+                <table class="table table-custom table-hover mb-0 align-middle">
+                    <thead class="sticky-top">
+                        <tr>
+                            <th style="width:32px;" class="text-center px-1">#</th>
+                            <th>Mã Seri</th>
+                            <th>Model</th>
+                            <th style="width:85px;" class="text-center">Trạng Thái</th>
+                            <th style="width:36px;" class="text-center"></th>
+                        </tr>
+                    </thead>
+                    <tbody id="scan-tbody">
+                        <tr>
+                            <td colspan="5">
+                                <div class="empty-state">
+                                    <div class="empty-icon"><i class="fa-solid fa-inbox"></i></div>
+                                    <p>Chưa có dữ liệu quét trong phiên hiện tại</p>
+                                </div>
+                            </td>
+                        </tr>
+                    </tbody>
+                </table>
+            </div>
         </div>
-    </div>
+    </section>
 
-    <!-- BANNER NÚT LƯU TOÀN BỘ -->
-    <div class="fab-container">
-        <button type="button" class="fab-btn btn-reset" onclick="resetForm()" title="Làm mới form">
-            <i class="fa-solid fa-rotate-left"></i>
+    <!-- ============ TAB 2: LỊCH SỬ ============ -->
+    <section id="tab-history" class="tab-pane-section">
+        <div class="glass-card overflow-hidden">
+            <div class="card-header">
+                <h3 class="card-title">
+                    <span class="title-icon" style="background:var(--accent2-soft);color:var(--accent2);">
+                        <i class="fa-solid fa-clock-rotate-left"></i>
+                    </span>
+                    Lịch Sử Kiểm Kê
+                </h3>
+                <div class="d-flex gap-1">
+                    <button class="btn btn-sm btn-soft py-1 px-2" style="font-size:0.72rem;" onclick="loadHistory(1)" title="Làm mới">
+                        <i class="fa-solid fa-rotate"></i>
+                    </button>
+                    <button class="btn btn-sm btn-excel py-1 px-2" style="font-size:0.72rem;" onclick="exportHistoryToExcel()" title="Xuất Excel toàn bộ lịch sử">
+                        <i class="fa-solid fa-file-excel me-1"></i> Xuất Excel
+                    </button>
+                </div>
+            </div>
+            <div class="filter-bar">
+                <select id="history-status-filter" class="filter-select" onchange="loadHistory(1)">
+                    <option value="">Tất cả trạng thái</option>
+                    <option value="pending">Chờ xử lý</option>
+                    <option value="verified">Đã xác minh</option>
+                    <option value="rejected">Từ chối</option>
+                    <option value="completed">Hoàn thành</option>
+                </select>
+                <input type="text" id="history-search" class="filter-input" placeholder="Tìm seri..." oninput="debounceHistorySearch()">
+            </div>
+            <div class="table-responsive" style="max-height: 52vh; overflow-y: auto;">
+                <table class="table table-custom table-hover mb-0 align-middle">
+                    <thead class="sticky-top">
+                        <tr>
+                            <th>Seri</th>
+                            <th>Model</th>
+                            <th class="text-center">Trạng thái</th>
+                            <th>Thời gian</th>
+                        </tr>
+                    </thead>
+                    <tbody id="history-tbody">
+                        <tr>
+                            <td colspan="4">
+                                <div class="empty-state">
+                                    <div class="empty-icon"><i class="fa-solid fa-clock-rotate-left"></i></div>
+                                    <p id="history-empty-text">Chọn tab Lịch Sử để tải dữ liệu</p>
+                                </div>
+                            </td>
+                        </tr>
+                    </tbody>
+                </table>
+            </div>
+            <div class="pagination-custom" id="history-pagination"></div>
+        </div>
+    </section>
+
+    <!-- ============ TAB 3: THỐNG KÊ ============ -->
+    <section id="tab-stats" class="tab-pane-section">
+        <div class="stats-grid mb-3">
+            <div class="stat-big-card stat-total">
+                <div class="stat-icon"><i class="fa-solid fa-boxes-stacked"></i></div>
+                <div class="stat-num" id="stat-total">—</div>
+                <div class="stat-label">Tổng bản ghi</div>
+            </div>
+            <div class="stat-big-card stat-pending">
+                <div class="stat-icon"><i class="fa-solid fa-hourglass-half"></i></div>
+                <div class="stat-num" id="stat-pending">—</div>
+                <div class="stat-label">Chờ xử lý</div>
+            </div>
+            <div class="stat-big-card stat-verified">
+                <div class="stat-icon"><i class="fa-solid fa-circle-check"></i></div>
+                <div class="stat-num" id="stat-verified">—</div>
+                <div class="stat-label">Đã xác minh</div>
+            </div>
+            <div class="stat-big-card stat-rejected">
+                <div class="stat-icon"><i class="fa-solid fa-circle-xmark"></i></div>
+                <div class="stat-num" id="stat-rejected">—</div>
+                <div class="stat-label">Từ chối</div>
+            </div>
+        </div>
+
+        <div class="glass-card p-3">
+            <h3 class="card-title mb-3">
+                <span class="title-icon" style="background:var(--violet);background:rgba(124,58,237,0.1);color:var(--violet);">
+                    <i class="fa-solid fa-chart-simple"></i>
+                </span>
+                Tỷ Lệ Hoàn Thành
+            </h3>
+            <div class="progress-wrap mb-2">
+                <div class="d-flex justify-content-between mb-1">
+                    <span style="font-size:0.75rem;font-weight:600;color:var(--text-muted);">Tiến độ xác minh</span>
+                    <span style="font-size:0.75rem;font-weight:700;color:var(--emerald);" id="progress-percent">0%</span>
+                </div>
+                <div class="progress-track">
+                    <div class="progress-fill" id="progress-fill" style="width:0%;background:linear-gradient(90deg,var(--accent),var(--emerald));"></div>
+                </div>
+            </div>
+            <p style="font-size:0.72rem;color:var(--text-faint);margin:8px 0 0;" id="stats-note">Dữ liệu được làm mới khi mở tab Thống Kê.</p>
+        </div>
+    </section>
+</main>
+
+<!-- ===== BOTTOM ACTION BAR ===== -->
+<div class="bottom-action-bar">
+    <div class="bar-inner">
+        <button type="button" class="btn-action-main btn-soft px-3" onclick="resetForm()">
+            <i class="fa-solid fa-rotate-left"></i> <span class="d-none d-sm-inline">Đặt Lại</span>
         </button>
-
-        <button type="button" class="fab-btn btn-scan" onclick="openCameraModal()" title="Mở Camera quét">
-            <i class="fa-solid fa-camera"></i>
+        <button type="button" class="btn-action-main btn-excel px-3" onclick="exportBatchToExcel()">
+            <i class="fa-solid fa-file-excel"></i> <span class="d-none d-sm-inline">Excel</span>
         </button>
-
-        <button type="button" class="fab-btn btn-save-all" id="btn-save-all" onclick="saveAllBatch()" title="Lưu toàn bộ danh sách">
+        <button type="button" id="btn-sync-all" class="btn-action-main btn-primary-accent flex-grow-1 text-truncate" onclick="syncBatchToDatabase()">
             <i class="fa-solid fa-cloud-arrow-up"></i>
+            <span>Đồng Bộ (<span id="pending-count">0</span>)</span>
         </button>
     </div>
-
 </div>
 
-<!-- MODAL CAMERA QUÉT BARCODE/QR -->
-<div class="modal fade" id="cameraModal" tabindex="-1" aria-hidden="true">
-    <div class="modal-dialog modal-dialog-centered modal-fullscreen-sm-down">
-        <div class="modal-content bg-slate-900 border-0 text-white">
-            <div class="modal-header border-bottom border-slate-800 py-2">
-                <h6 class="modal-title fw-bold"><i class="fa-solid fa-camera text-emerald-400 me-1"></i> Quét Mã Seri Máy In</h6>
-                <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal" onclick="closeCamera()"></button>
-            </div>
-            <div class="modal-body p-2 d-flex align-items-center justify-content-center">
-                <div id="reader-modal-body" style="width:100%; background:#000; border-radius:12px; overflow:hidden;"></div>
-            </div>
-        </div>
-    </div>
-</div>
-
-<!-- Bootstrap 5.3 Bundle JS -->
-<script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/js/bootstrap.bundle.min.js"></script>
-
+<!-- ===== AUDIO & HAPTIC ===== -->
 <script>
-    let html5QrcodeScanner = null;
-    let localList = [];
-    let searchTimeout = null;
+(function(){
+    const AudioEngine = {
+        ctx: null,
+        init() { if (!this.ctx) this.ctx = new (window.AudioContext || window.webkitAudioContext)(); },
+        playSuccessBeep() {
+            try {
+                this.init();
+                const osc = this.ctx.createOscillator(), gain = this.ctx.createGain();
+                osc.type = 'sine';
+                osc.frequency.setValueAtTime(1200, this.ctx.currentTime);
+                osc.frequency.setValueAtTime(1600, this.ctx.currentTime + 0.08);
+                gain.gain.setValueAtTime(0.15, this.ctx.currentTime);
+                gain.gain.exponentialRampToValueAtTime(0.001, this.ctx.currentTime + 0.15);
+                osc.connect(gain); gain.connect(this.ctx.destination);
+                osc.start(); osc.stop(this.ctx.currentTime + 0.15);
+            } catch(e) {}
+        },
+        playErrorBuzz() {
+            try {
+                this.init();
+                const osc = this.ctx.createOscillator(), gain = this.ctx.createGain();
+                osc.type = 'sawtooth';
+                osc.frequency.setValueAtTime(180, this.ctx.currentTime);
+                gain.gain.setValueAtTime(0.18, this.ctx.currentTime);
+                gain.gain.exponentialRampToValueAtTime(0.001, this.ctx.currentTime + 0.28);
+                osc.connect(gain); gain.connect(this.ctx.destination);
+                osc.start(); osc.stop(this.ctx.currentTime + 0.28);
+            } catch(e) {}
+        }
+    };
+    window.AudioEngine = AudioEngine;
+    window.triggerHaptic = function(type) {
+        if ("vibrate" in navigator) {
+            if (type === 'success') navigator.vibrate(60);
+            else navigator.vibrate([100, 50, 100]);
+        }
+    };
+})();
+</script>
 
+<!-- ===== CORE LOGIC ===== -->
+<script>
+(function(){
+    // ===== STATE =====
+    let html5QrCode = null;
+    let isCameraActive = false;
+    let isTorchOn = false;
+    let scanList = [];
+    let searchTimeout = null;
+    let historySearchTimeout = null;
+    let lastScannedCode = "";
+    let lastScannedTime = 0;
+    let currentHistoryPage = 1;
+    let historyTotalPages = 1;
+    let historyCache = []; // cache for excel export
+
+    const STORAGE_KEY = 'wms_scan_batch_v2';
+
+    // ===== INIT =====
     document.addEventListener("DOMContentLoaded", function() {
-        onAutoSaveToggle();
+        loadLocalBatch();
+        checkOnlineStatus();
+        window.addEventListener('online', checkOnlineStatus);
+        window.addEventListener('offline', checkOnlineStatus);
+        updateKPI();
     });
 
-    /* ==========================================
-     * 1. XỬ LÝ LIVE-SEARCH / AUTOCOMPLETE MODEL
-     * ========================================== */
+    // ===== TAB SWITCHING =====
+    window.switchTab = function(tabName) {
+        document.querySelectorAll('.tab-pane-section').forEach(s => s.classList.remove('active'));
+        document.querySelectorAll('.tab-btn').forEach(b => {
+            b.classList.remove('active');
+            b.style.color = '#94a3b8';
+        });
+        document.getElementById('tab-' + tabName).classList.add('active');
+        const activeBtn = document.querySelector(`.tab-btn[data-tab="${tabName}"]`);
+        activeBtn.classList.add('active');
+        activeBtn.style.color = '#fff';
 
-    // Bắt sự kiện gõ phím ở input search
-    function onModelInput(inputElem) {
+        if (tabName === 'history') loadHistory(1);
+        if (tabName === 'stats') loadStats();
+    };
+
+    // ===== NETWORK =====
+    function checkOnlineStatus() {
+        const badge = document.getElementById('network-status');
+        if (navigator.onLine) {
+            badge.className = 'network-badge network-online';
+            badge.innerHTML = '<i class="fa-solid fa-wifi"></i> Online';
+        } else {
+            badge.className = 'network-badge network-offline';
+            badge.innerHTML = '<i class="fa-solid fa-plane"></i> Offline';
+        }
+    }
+
+    // ===== KPI UPDATE =====
+    function updateKPI() {
+        const total = scanList.length;
+        const pending = scanList.filter(i => i.status === 'pending').length;
+        const saved = total - pending;
+        document.getElementById('kpi-total').textContent = total;
+        document.getElementById('kpi-pending').textContent = pending;
+        document.getElementById('kpi-saved').textContent = saved;
+        document.getElementById('pending-count').textContent = pending;
+        document.getElementById('tab-scan-count').textContent = total;
+    }
+
+    // ===== MODEL SEARCH =====
+    window.onModelInput = function(inputElem) {
         const keyword = inputElem.value.trim();
         const dropdown = document.getElementById('printer-dropdown');
-        document.getElementById('printer_id').value = ''; // Reset ID nếu user thay đổi từ khóa
-
+        document.getElementById('printer_id').value = '';
+        document.getElementById('selected-model-info').classList.add('d-none');
         if (!keyword) {
             dropdown.innerHTML = '';
             dropdown.classList.add('d-none');
             return;
         }
-
-        // Debounce 300ms tránh spam API
         clearTimeout(searchTimeout);
-        searchTimeout = setTimeout(() => {
-            fetchPrinterSuggestions(keyword);
-        }, 300);
-    }
+        searchTimeout = setTimeout(() => fetchPrinterSuggestions(keyword), 250);
+    };
 
-    // Gọi API lấy kết quả khớp từ backend
     async function fetchPrinterSuggestions(keyword) {
+        const dropdown = document.getElementById('printer-dropdown');
         try {
-            const response = await fetch(`/api/inventory/printers?q=${encodeURIComponent(keyword)}`);
+            const response = await fetch(`/api/inventory/printers?q=${encodeURIComponent(keyword)}&page_size=20`);
             const result = await response.json();
-            const items = result.data || [];
-
-            renderDropdownResults(items);
+            renderDropdownResults(result.data || []);
         } catch (err) {
-            console.error("Lỗi live search printer:", err);
+            console.error('Lỗi tải danh sách model:', err);
+            dropdown.innerHTML = '<div class="dropdown-item-custom text-muted fst-italic">Lỗi kết nối server</div>';
+            dropdown.classList.remove('d-none');
         }
     }
 
-    // Render danh sách gợi ý ra UI Custom Dropdown
     function renderDropdownResults(items) {
         const dropdown = document.getElementById('printer-dropdown');
         dropdown.innerHTML = '';
-
         if (!items || items.length === 0) {
-            dropdown.innerHTML = `<div class="dropdown-item-custom text-slate-400 italic">Không tìm thấy model phù hợp</div>`;
+            dropdown.innerHTML = '<div class="dropdown-item-custom text-muted fst-italic">Không tìm thấy model khớp</div>';
             dropdown.classList.remove('d-none');
             return;
         }
-
         items.forEach(item => {
             const div = document.createElement('div');
-            div.className = 'dropdown-item-custom d-flex justify-content-between align-items-center';
+            div.className = 'dropdown-item-custom';
             div.innerHTML = `
-                <span><strong class="text-emerald-400">${item.brand_name}</strong> - ${item.model_code}</span>
-                <small class="text-slate-500">ID: ${item.id}</small>
+                <span><span class="brand-tag">${escapeHtml(item.brand_name)}</span> <span class="model-code">${escapeHtml(item.model_code)}</span></span>
+                <span class="model-id">#${item.id}</span>
             `;
-            
-            // Lắng nghe sự kiện click chọn Item
             div.onclick = function() {
                 document.getElementById('model_search').value = `${item.brand_name} - ${item.model_code}`;
                 document.getElementById('printer_id').value = item.id;
+                document.getElementById('selected-model-text').textContent = `${item.brand_name} ${item.model_code}`;
+                document.getElementById('selected-model-info').classList.remove('d-none');
                 dropdown.classList.add('d-none');
             };
-
             dropdown.appendChild(div);
         });
-
         dropdown.classList.remove('d-none');
     }
 
-    // Tự động ẩn Dropdown khi nhấp ra ngoài
+    // Close dropdown when clicking outside
     document.addEventListener('click', function(e) {
-        const dropdown = document.getElementById('printer-dropdown');
-        const input = document.getElementById('model_search');
-        if (dropdown && !dropdown.contains(e.target) && e.target !== input) {
-            dropdown.classList.add('d-none');
+        if (!e.target.closest('#model_search') && !e.target.closest('#printer-dropdown')) {
+            document.getElementById('printer-dropdown').classList.add('d-none');
         }
     });
 
-    /* ==========================================
-     * 2. XỬ LÝ SCAN, LƯU TRỮ VÀ GIAO DIỆN Kho
-     * ========================================== */
-
-    function onAutoSaveToggle() {
-        const isAuto = document.getElementById('toggle-auto-save').checked;
-        const textLabel = document.getElementById('auto-save-text');
-        const btnSaveAll = document.getElementById('btn-save-all');
-        const tableTitle = document.getElementById('table-title');
-
-        if (isAuto) {
-            textLabel.innerText = "Tự động lưu: ON";
-            textLabel.className = "fs-7 fw-bold text-emerald-400";
-            btnSaveAll.style.display = "none";
-            tableTitle.innerHTML = `<i class="fa-solid fa-clock-rotate-left me-1"></i> Lịch Sử Quét (Đã Lưu)`;
-            showStatus("BẬT tự động lưu: Mỗi khi quét thành công sẽ tự lưu xuống DB", "info");
+    // ===== LOCK MODEL =====
+    window.toggleLockModel = function() {
+        const isLocked = document.getElementById('lock-model-switch').checked;
+        const input = document.getElementById('model_search');
+        const label = document.getElementById('lock-model-label');
+        if (isLocked) {
+            if (!document.getElementById('printer_id').value) {
+                showFlashFeedback("Vui lòng chọn 1 Model hợp lệ trước khi khóa!", "warning");
+                document.getElementById('lock-model-switch').checked = false;
+                return;
+            }
+            input.disabled = true;
+            label.textContent = "Đã Khóa";
+            label.style.color = "var(--accent-dark)";
+            showFlashFeedback("Đã khóa Model máy in!", "success");
         } else {
-            textLabel.innerText = "Tự động lưu: OFF";
-            textLabel.className = "fs-7 fw-bold text-amber-400";
-            btnSaveAll.style.display = "flex";
-            tableTitle.innerHTML = `<i class="fa-solid fa-list-check me-1"></i> Danh Sách Quét Tạm (Chờ Lưu)`;
-            showStatus("TẮT tự động lưu: Mã sẽ đưa vào danh sách chờ bên dưới", "warning");
+            input.disabled = false;
+            label.textContent = "Khóa Model";
+            label.style.color = "var(--text-muted)";
         }
-        
-        localList = [];
-        renderTable();
-    }
+    };
 
-    function captureCameraFrame() {
-        try {
-            const videoElem = document.querySelector("#reader-modal-body video");
-            if (!videoElem) return null;
-
-            const canvas = document.createElement("canvas");
-            canvas.width = videoElem.videoWidth || 640;
-            canvas.height = videoElem.videoHeight || 480;
-            const ctx = canvas.getContext("2d");
-            ctx.drawImage(videoElem, 0, 0, canvas.width, canvas.height);
-            
-            return canvas.toDataURL("image/jpeg", 0.7);
-        } catch (e) {
-            return null;
+    // ===== CAMERA =====
+    window.toggleCameraStream = async function() {
+        const wrapper = document.getElementById('scanner-wrapper');
+        const btn = document.getElementById('btn-toggle-camera');
+        if (isCameraActive) {
+            stopCamera();
+            return;
         }
-    }
-
-    function setPreviewImage(base64) {
-        document.getElementById('image_base64').value = base64 || '';
-        const img = document.getElementById('img-preview');
-        const icon = document.getElementById('img-placeholder');
-        const statusText = document.getElementById('img-status-text');
-
-        if (base64) {
-            img.src = base64;
-            img.classList.remove('d-none');
-            icon.classList.add('d-none');
-            statusText.innerText = "Đã chụp ảnh tem quét thành công";
-            statusText.className = "fs-7 text-emerald-400";
-        } else {
-            img.src = '';
-            img.classList.add('d-none');
-            icon.classList.remove('d-none');
-            statusText.innerText = "Ảnh sẽ tự động chụp khi quét Camera";
-            statusText.className = "fs-7 text-slate-500";
-        }
-    }
-
-    function handleScanCompleted(serialNumber) {
         const printerId = document.getElementById('printer_id').value;
-        const modelDisplay = document.getElementById('model_search').value.trim();
-        const isAuto = document.getElementById('toggle-auto-save').checked;
-
         if (!printerId) {
-            showStatus("Vui lòng gõ và chọn đúng Model máy in từ danh sách gợi ý!", "danger");
+            showFlashFeedback("Vui lòng chọn Model máy in trước khi bật Camera!", "warning");
             document.getElementById('model_search').focus();
             return;
         }
+        wrapper.classList.remove('d-none');
+        btn.innerHTML = '<i class="fa-solid fa-stop"></i> Tắt Cam';
+        btn.className = 'btn-cam-toggle btn-cam-off';
+        html5QrCode = new Html5Qrcode("interactive-scanner");
+        const config = { fps: 20, qrbox: { width: 250, height: 120 } };
+        try {
+            await html5QrCode.start({ facingMode: "environment" }, config, onBarcodeDetected);
+            isCameraActive = true;
+            checkTorchSupport();
+        } catch (err) {
+            showFlashFeedback("Không thể khởi chạy Camera: " + (err.message || err), "danger");
+            stopCamera();
+        }
+    };
 
-        document.getElementById('serial_number').value = serialNumber;
-        const photoBase64 = captureCameraFrame();
-        setPreviewImage(photoBase64);
+    function stopCamera() {
+        if (html5QrCode && isCameraActive) {
+            html5QrCode.stop().then(() => {
+                html5QrCode = null;
+                isCameraActive = false;
+                document.getElementById('scanner-wrapper').classList.add('d-none');
+                document.getElementById('btn-toggle-torch').classList.add('d-none');
+                const btn = document.getElementById('btn-toggle-camera');
+                btn.innerHTML = '<i class="fa-solid fa-power-off"></i> Bật Cam';
+                btn.className = 'btn-cam-toggle btn-cam-on';
+            }).catch(e => console.error(e));
+        }
+    }
 
-        const itemData = {
-            serial_number: serialNumber,
+    function onBarcodeDetected(decodedText) {
+        const now = Date.now();
+        const cleanCode = decodedText.trim();
+        if (cleanCode === lastScannedCode && (now - lastScannedTime) < 2500) return;
+        lastScannedCode = cleanCode;
+        lastScannedTime = now;
+        processNewSerial(cleanCode);
+    }
+
+    function checkTorchSupport() {
+        try {
+            const capabilities = html5QrCode.getRunningTrackCapabilities();
+            if (capabilities && capabilities.torch) {
+                document.getElementById('btn-toggle-torch').classList.remove('d-none');
+            }
+        } catch (e) {}
+    }
+
+    window.toggleTorch = function() {
+        if (!html5QrCode || !isCameraActive) return;
+        isTorchOn = !isTorchOn;
+        html5QrCode.applyVideoConstraints({ advanced: [{ torch: isTorchOn }] }).then(() => {
+            const btn = document.getElementById('btn-toggle-torch');
+            btn.className = isTorchOn
+                ? 'btn btn-sm btn-warning text-dark py-1 px-2'
+                : 'btn btn-sm btn-outline-secondary py-1 px-2';
+            btn.style.fontSize = '0.75rem';
+        }).catch(() => {});
+    };
+
+    // ===== SERIAL PROCESSING =====
+    window.handleManualEnter = function(e) {
+        if (e.key === 'Enter') {
+            e.preventDefault();
+            submitManualSerial();
+            document.getElementById('serial_number_input').blur();
+        }
+    };
+
+    window.submitManualSerial = function() {
+        const input = document.getElementById('serial_number_input');
+        const val = input.value.trim();
+        if (!val) return;
+        processNewSerial(val);
+        input.value = '';
+        input.focus();
+    };
+
+    function processNewSerial(serialNumber) {
+        const printerId = document.getElementById('printer_id').value;
+        const modelDisplay = document.getElementById('model_search').value.trim();
+        if (!printerId) {
+            AudioEngine.playErrorBuzz();
+            triggerHaptic('error');
+            showFlashFeedback("Chưa chọn Model máy in!", "danger");
+            return;
+        }
+        const normalized = serialNumber.toUpperCase();
+        const isDuplicate = scanList.some(item => item.serial_number === normalized);
+        if (isDuplicate) {
+            AudioEngine.playErrorBuzz();
+            triggerHaptic('error');
+            showFlashFeedback("MÃ TRÙNG: " + normalized + " đã có trong danh sách!", "danger");
+            return;
+        }
+        AudioEngine.playSuccessBeep();
+        triggerHaptic('success');
+        const newItem = {
+            serial_number: normalized,
             printer_id: parseInt(printerId, 10),
             model_display: modelDisplay,
-            image_url: photoBase64
+            status: 'pending',
+            timestamp: new Date().toLocaleTimeString('vi-VN'),
+            created_at: new Date().toISOString()
         };
-
-        if (isAuto) {
-            saveSingleToDatabase(itemData);
-        } else {
-            addToListPending(itemData);
-        }
-    }
-
-    async function saveSingleToDatabase(payload) {
-        try {
-            showStatus(`Đang lưu Seri: ${payload.serial_number}...`, "info");
-            const response = await fetch('/api/inventory/scan-serial', {
-                method: 'POST',
-                headers: { 'Content-Type': 'application/json' },
-                body: JSON.stringify({
-                    serial_number: payload.serial_number,
-                    printer_id: payload.printer_id,
-                    image_url: payload.image_url
-                })
-            });
-
-            const result = await response.json();
-
-            if (response.ok) {
-                showStatus(`Đã lưu thành công: ${payload.serial_number}`, "success");
-                localList.unshift({ ...payload, status: 'saved' });
-                renderTable();
-                document.getElementById('serial_number').value = '';
-            } else {
-                showStatus(result.detail || "Lỗi lưu dữ liệu!", "danger");
-            }
-        } catch (err) {
-            showStatus("Lỗi kết nối máy chủ!", "danger");
-        }
-    }
-
-    function addToListPending(payload) {
-        const isExist = localList.some(item => item.serial_number === payload.serial_number);
-        if (isExist) {
-            showStatus(`Mã Seri ${payload.serial_number} đã có trong danh sách chờ!`, "warning");
-            return;
-        }
-
-        localList.unshift({ ...payload, status: 'pending' });
+        scanList.unshift(newItem);
+        saveLocalBatch();
         renderTable();
-        showStatus(`Đã thêm mã ${payload.serial_number} vào danh sách chờ`, "success");
-        document.getElementById('serial_number').value = '';
+        updateKPI();
+        showFlashFeedback("Đã nạp: " + normalized, "success");
     }
 
-    async function saveRowItem(index) {
-        const item = localList[index];
-        if (!item || item.status === 'saved') return;
+    // ===== REMOVE ITEM =====
+    window.removeBatchItem = function(index) {
+        scanList.splice(index, 1);
+        saveLocalBatch();
+        renderTable();
+        updateKPI();
+        showFlashFeedback("Đã xóa khỏi danh sách", "info");
+    };
 
-        try {
-            showStatus(`Đang lưu Seri ${item.serial_number}...`, "info");
-            const response = await fetch('/api/inventory/scan-serial', {
-                method: 'POST',
-                headers: { 'Content-Type': 'application/json' },
-                body: JSON.stringify({
-                    serial_number: item.serial_number,
-                    printer_id: item.printer_id,
-                    image_url: item.image_url
-                })
-            });
-
-            if (response.ok) {
-                item.status = 'saved';
-                renderTable();
-                showStatus(`Đã lưu thành công Seri: ${item.serial_number}`, "success");
-            } else {
-                showStatus("Lỗi khi lưu dòng này!", "danger");
-            }
-        } catch (err) {
-            showStatus("Lỗi kết nối máy chủ!", "danger");
-        }
-    }
-
-    async function saveAllBatch() {
-        const pendingItems = localList.filter(item => item.status === 'pending');
-        if (pendingItems.length === 0) {
-            showStatus("Không có mã nào đang chờ lưu!", "warning");
+    // ===== RENDER BATCH TABLE =====
+    function renderTable() {
+        const tbody = document.getElementById('scan-tbody');
+        tbody.innerHTML = '';
+        if (scanList.length === 0) {
+            tbody.innerHTML = `
+                <tr><td colspan="5">
+                    <div class="empty-state">
+                        <div class="empty-icon"><i class="fa-solid fa-inbox"></i></div>
+                        <p>Chưa có dữ liệu quét trong phiên hiện tại</p>
+                    </div>
+                </td></tr>`;
             return;
         }
+        scanList.forEach((item, index) => {
+            const tr = document.createElement('tr');
+            const badgeClass = item.status === 'saved' ? 'badge-saved' : 'badge-pending';
+            const statusText = item.status === 'saved' ? 'Đã lưu' : 'Chờ đồng bộ';
+            tr.innerHTML = `
+                <td class="text-center text-muted px-1" style="font-size:0.75rem;">${index + 1}</td>
+                <td class="serial-cell">${escapeHtml(item.serial_number)}</td>
+                <td class="text-truncate-mobile" style="font-size:0.78rem;color:var(--text-muted);" title="${escapeHtml(item.model_display)}">${escapeHtml(item.model_display)}</td>
+                <td class="text-center"><span class="badge-status ${badgeClass}">${statusText}</span></td>
+                <td class="text-center">
+                    <button class="btn btn-sm btn-link p-0 text-danger" style="font-size:0.8rem;" onclick="removeBatchItem(${index})" title="Xóa">
+                        <i class="fa-solid fa-xmark"></i>
+                    </button>
+                </td>
+            `;
+            tbody.appendChild(tr);
+        });
+    }
 
-        showStatus(`Đang lưu ${pendingItems.length} bản ghi...`, "info");
+    // ===== SYNC TO SERVER =====
+    window.syncBatchToDatabase = async function() {
+        const pendingItems = scanList.filter(i => i.status === 'pending');
+        if (pendingItems.length === 0) {
+            showFlashFeedback("Không có mã nào chờ đồng bộ!", "warning");
+            return;
+        }
+        if (!navigator.onLine) {
+            showFlashFeedback("Không có kết nối mạng. Vui lòng kiểm tra lại!", "danger");
+            return;
+        }
+        const btn = document.getElementById('btn-sync-all');
+        btn.disabled = true;
+        btn.innerHTML = '<span class="spinner-inline"></span> Đang đồng bộ...';
+
         let successCount = 0;
+        let failCount = 0;
+        const failMessages = [];
 
         for (let item of pendingItems) {
             try {
@@ -602,128 +1356,315 @@
                     headers: { 'Content-Type': 'application/json' },
                     body: JSON.stringify({
                         serial_number: item.serial_number,
-                        printer_id: item.printer_id,
-                        image_url: item.image_url
+                        printer_id: item.printer_id
                     })
                 });
-
+                const result = await response.json();
                 if (response.ok) {
                     item.status = 'saved';
+                    item.server_id = result.data ? result.data.id : null;
                     successCount++;
+                } else {
+                    failCount++;
+                    failMessages.push(item.serial_number + ': ' + (result.detail || 'Lỗi'));
                 }
-            } catch (err) {}
+            } catch (err) {
+                failCount++;
+                failMessages.push(item.serial_number + ': Lỗi kết nối');
+            }
+            await new Promise(r => setTimeout(r, 200)); // tránh quá tải server
         }
 
+        btn.disabled = false;
+        btn.innerHTML = '<i class="fa-solid fa-cloud-arrow-up"></i> <span>Đồng Bộ (<span id="pending-count">0</span>)</span>';
+        saveLocalBatch();
         renderTable();
-        showStatus(`Hoàn tất! Đã lưu thành công ${successCount}/${pendingItems.length} mã`, "success");
-    }
+        updateKPI();
 
-    function renderTable() {
-        const tbody = document.getElementById('sheet-tbody');
-        const isAuto = document.getElementById('toggle-auto-save').checked;
+        if (failCount === 0) {
+            AudioEngine.playSuccessBeep();
+            showFlashFeedback("Hoàn tất! Đã lưu " + successCount + "/" + pendingItems.length + " mã", "success");
+        } else {
+            AudioEngine.playErrorBuzz();
+            showFlashFeedback("Thành công " + successCount + ", lỗi " + failCount + ". Kiểm tra lại các mã lỗi.", "danger");
+        }
+    };
+
+    // ===== HISTORY =====
+    window.loadHistory = async function(page) {
+        currentHistoryPage = page || 1;
+        const statusFilter = document.getElementById('history-status-filter').value;
+        const search = document.getElementById('history-search').value.trim();
+        const tbody = document.getElementById('history-tbody');
+        tbody.innerHTML = `<tr><td colspan="4"><div class="empty-state"><div class="empty-icon"><span class="spinner-inline" style="border-color:rgba(13,148,136,0.2);border-top-color:var(--accent);width:24px;height:24px;"></span></div><p>Đang tải...</p></div></td></tr>`;
+
+        try {
+            let url = `/api/inventory/history?page=${currentHistoryPage}&page_size=20`;
+            if (statusFilter) url += `&status_filter=${encodeURIComponent(statusFilter)}`;
+            if (search) url += `&serial_search=${encodeURIComponent(search)}`;
+
+            const response = await fetch(url);
+            const result = await response.json();
+            const data = result.data || [];
+            historyCache = data;
+
+            const pagination = result.pagination || { total: 0, total_pages: 1 };
+            historyTotalPages = pagination.total_pages || 1;
+
+            renderHistoryTable(data);
+            renderPagination(pagination);
+        } catch (err) {
+            console.error('Lỗi tải lịch sử:', err);
+            tbody.innerHTML = `<tr><td colspan="4"><div class="empty-state"><div class="empty-icon"><i class="fa-solid fa-triangle-exclamation" style="color:var(--rose);"></i></div><p>Lỗi kết nối server. Vui lòng thử lại.</p></div></td></tr>`;
+        }
+    };
+
+    function renderHistoryTable(data) {
+        const tbody = document.getElementById('history-tbody');
         tbody.innerHTML = '';
-        document.getElementById('total-count').innerText = localList.length;
-
-        if (localList.length === 0) {
-            tbody.innerHTML = `<tr id="empty-row"><td colspan="5" class="text-center text-slate-500 py-3">Chưa có dữ liệu</td></tr>`;
+        if (!data || data.length === 0) {
+            tbody.innerHTML = `<tr><td colspan="4"><div class="empty-state"><div class="empty-icon"><i class="fa-solid fa-inbox"></i></div><p>Không có bản ghi nào</p></div></td></tr>`;
             return;
         }
-
-        localList.forEach((item, index) => {
+        data.forEach(item => {
+            const printer = item.list_printer || {};
+            const status = (item.status || 'pending').toLowerCase();
             const tr = document.createElement('tr');
-
-            const imgThumb = item.image_url 
-                ? `<img src="${item.image_url}" style="width:30px; height:30px; object-fit:cover; border-radius:6px;">` 
-                : `<i class="fa-solid fa-image text-slate-600"></i>`;
-
-            let actionCol = '';
-            if (isAuto || item.status === 'saved') {
-                actionCol = `<span class="badge bg-emerald-500/20 text-emerald-400 border border-emerald-500/30"><i class="fa-solid fa-check me-1"></i>Đã lưu</span>`;
-            } else {
-                actionCol = `<button type="button" class="btn btn-sm btn-primary py-0 px-2 fs-7" onclick="saveRowItem(${index})">Lưu mã này</button>`;
-            }
-
             tr.innerHTML = `
-                <td class="text-slate-500 fs-7">${index + 1}</td>
-                <td class="text-center">${imgThumb}</td>
-                <td class="fw-bold text-cyan-400 text-truncate" style="max-width: 120px;">${item.serial_number}</td>
-                <td class="text-slate-200 text-truncate" style="max-width: 100px;">${item.model_display || item.printer_id}</td>
-                <td class="text-center">${actionCol}</td>
+                <td class="serial-cell">${escapeHtml(item.serial_number)}</td>
+                <td style="font-size:0.78rem;">
+                    <span style="font-weight:700;color:var(--accent-dark);">${escapeHtml(printer.brand_name || '—')}</span><br>
+                    <span style="color:var(--text-muted);">${escapeHtml(printer.model_code || '—')}</span>
+                </td>
+                <td class="text-center"><span class="badge-status badge-${status}">${statusLabel(status)}</span></td>
+                <td style="font-size:0.72rem;color:var(--text-muted);">${formatDate(item.created_at)}</td>
             `;
             tbody.appendChild(tr);
         });
     }
 
-    async function openCameraModal() {
-        const printerId = document.getElementById('printer_id').value;
-        if (!printerId) {
-            showStatus("Vui lòng chọn Model máy in hợp lệ từ gợi ý trước khi quét!", "warning");
-            document.getElementById('model_search').focus();
-            return;
-        }
-
-        if (!window.isSecureContext && window.location.hostname !== "localhost" && window.location.hostname !== "127.0.0.1") {
-            alert("Lỗi: Yêu cầu HTTPS để dùng Camera trên điện thoại!");
-            return;
-        }
-
-        const modal = new bootstrap.Modal(document.getElementById('cameraModal'));
-        modal.show();
-
-        setTimeout(() => {
-            html5QrcodeScanner = new Html5Qrcode("reader-modal-body");
-            html5QrcodeScanner.start(
-                { facingMode: "environment" },
-                { fps: 15, qrbox: { width: 250, height: 140 } },
-                onScanSuccess
-            ).catch(err => {
-                showStatus("Không mở được camera: " + err, "danger");
-                closeCamera();
-                bootstrap.Modal.getInstance(document.getElementById('cameraModal')).hide();
-            });
-        }, 300);
+    function statusLabel(s) {
+        const map = { pending: 'Chờ xử lý', verified: 'Đã xác minh', rejected: 'Từ chối', completed: 'Hoàn thành', saved: 'Đã lưu' };
+        return map[s] || s;
     }
 
-    function closeCamera() {
-        if (html5QrcodeScanner) {
-            html5QrcodeScanner.stop().then(() => html5QrcodeScanner = null).catch(e => {});
-        }
-    }
-
-    function onScanSuccess(decodedText) {
-        playBeep();
-        handleScanCompleted(decodedText.trim());
-        closeCamera();
-        bootstrap.Modal.getInstance(document.getElementById('cameraModal')).hide();
-    }
-
-    function resetForm() {
-        document.getElementById('serial_number').value = '';
-        setPreviewImage('');
-        document.getElementById('serial_number').focus();
-    }
-
-    function showStatus(msg, type) {
-        const alertDiv = document.getElementById('alert-status');
-        const colors = {
-            success: 'color:#34d399; background:rgba(16,185,129,0.15); border:1px solid rgba(16,185,129,0.3)',
-            danger: 'color:#f87171; background:rgba(239,68,68,0.15); border:1px solid rgba(239,68,68,0.3)',
-            warning: 'color:#fbbf24; background:rgba(245,158,11,0.15); border:1px solid rgba(245,158,11,0.3)',
-            info: 'color:#38bdf8; background:rgba(56,189,248,0.15); border:1px solid rgba(56,189,248,0.3)'
-        };
-        alertDiv.innerHTML = `<div class="py-1.5 px-2.5 rounded-2 fs-7 fw-bold" style="${colors[type]}">${msg}</div>`;
-    }
-
-    function playBeep() {
+    function formatDate(iso) {
+        if (!iso) return '—';
         try {
-            const ctx = new (window.AudioContext || window.webkitAudioContext)();
-            const osc = ctx.createOscillator();
-            osc.connect(ctx.destination);
-            osc.frequency.value = 850;
-            osc.start();
-            osc.stop(ctx.currentTime + 0.1);
-        } catch(e) {}
+            const d = new Date(iso);
+            return d.toLocaleDateString('vi-VN') + ' ' + d.toLocaleTimeString('vi-VN', { hour: '2-digit', minute: '2-digit' });
+        } catch { return iso; }
     }
+
+    function renderPagination(pagination) {
+        const container = document.getElementById('history-pagination');
+        const total = pagination.total || 0;
+        const totalPages = pagination.total_pages || 1;
+        const page = currentHistoryPage;
+
+        if (totalPages <= 1) {
+            container.innerHTML = `<span class="page-info">Tổng ${total} bản ghi</span>`;
+            return;
+        }
+
+        let html = `<button class="page-btn" onclick="loadHistory(${page - 1})" ${page <= 1 ? 'disabled' : ''}><i class="fa-solid fa-chevron-left"></i></button>`;
+
+        const start = Math.max(1, page - 2);
+        const end = Math.min(totalPages, page + 2);
+        if (start > 1) html += `<button class="page-btn" onclick="loadHistory(1)">1</button>` + (start > 2 ? '<span class="page-info">…</span>' : '');
+        for (let p = start; p <= end; p++) {
+            html += `<button class="page-btn ${p === page ? 'active' : ''}" onclick="loadHistory(${p})">${p}</button>`;
+        }
+        if (end < totalPages) html += (end < totalPages - 1 ? '<span class="page-info">…</span>' : '') + `<button class="page-btn" onclick="loadHistory(${totalPages})">${totalPages}</button>`;
+
+        html += `<button class="page-btn" onclick="loadHistory(${page + 1})" ${page >= totalPages ? 'disabled' : ''}><i class="fa-solid fa-chevron-right"></i></button>`;
+        html += `<span class="page-info ms-2">${total} bản ghi</span>`;
+        container.innerHTML = html;
+    }
+
+    window.debounceHistorySearch = function() {
+        clearTimeout(historySearchTimeout);
+        historySearchTimeout = setTimeout(() => loadHistory(1), 400);
+    };
+
+    // ===== STATS =====
+    async function loadStats() {
+        try {
+            const response = await fetch('/api/inventory/stats');
+            const result = await response.json();
+            const byStatus = (result.data && result.data.by_status) || {};
+            const total = (result.data && result.data.total) || 0;
+            const pending = byStatus.pending || 0;
+            const verified = byStatus.verified || 0;
+            const rejected = byStatus.rejected || 0;
+            const completed = byStatus.completed || 0;
+            const done = verified + completed;
+
+            document.getElementById('stat-total').textContent = total;
+            document.getElementById('stat-pending').textContent = pending;
+            document.getElementById('stat-verified').textContent = done;
+            document.getElementById('stat-rejected').textContent = rejected;
+
+            const percent = total > 0 ? Math.round((done / total) * 100) : 0;
+            document.getElementById('progress-percent').textContent = percent + '%';
+            document.getElementById('progress-fill').style.width = percent + '%';
+        } catch (err) {
+            console.error('Lỗi tải thống kê:', err);
+        }
+    }
+
+    // ===== EXCEL EXPORT =====
+    function showExportToast(msg) {
+        const toast = document.getElementById('export-toast');
+        document.getElementById('export-toast-text').textContent = msg;
+        toast.style.display = 'block';
+        setTimeout(() => { toast.style.display = 'none'; }, 2500);
+    }
+
+    window.exportBatchToExcel = function() {
+        if (scanList.length === 0) {
+            showFlashFeedback("Danh sách phiên trống, không có gì để xuất!", "warning");
+            return;
+        }
+        const data = scanList.map((item, idx) => ({
+            'STT': idx + 1,
+            'Serial Number': item.serial_number,
+            'Model Máy In': item.model_display,
+            'Trạng Thái': item.status === 'saved' ? 'Đã lưu' : 'Chờ đồng bộ',
+            'Thời Gian Quét': item.timestamp,
+            'Ngày': new Date(item.created_at || Date.now()).toLocaleDateString('vi-VN')
+        }));
+        const ws = XLSX.utils.json_to_sheet(data);
+        // Set column widths
+        ws['!cols'] = [{ wch: 6 }, { wch: 25 }, { wch: 30 }, { wch: 14 }, { wch: 12 }, { wch: 12 }];
+        const wb = XLSX.utils.book_new();
+        XLSX.utils.book_append_sheet(wb, ws, 'KiemKe_Seri');
+        const filename = `KiemKe_Seri_${new Date().toISOString().slice(0,10)}_${Date.now().toString().slice(-4)}.xlsx`;
+        XLSX.writeFile(wb, filename);
+        showExportToast(`Đã xuất ${scanList.length} bản ghi`);
+        AudioEngine.playSuccessBeep();
+    };
+
+    window.exportHistoryToExcel = async function() {
+        showFlashFeedback("Đang tải toàn bộ dữ liệu để xuất Excel...", "info");
+        try {
+            // Fetch all pages (max 500 records to be safe)
+            let allData = [];
+            let page = 1;
+            const statusFilter = document.getElementById('history-status-filter').value;
+            const search = document.getElementById('history-search').value.trim();
+
+            while (page <= 25) { // max 25 pages * 20 = 500 records
+                let url = `/api/inventory/history?page=${page}&page_size=50`;
+                if (statusFilter) url += `&status_filter=${encodeURIComponent(statusFilter)}`;
+                if (search) url += `&serial_search=${encodeURIComponent(search)}`;
+                const response = await fetch(url);
+                const result = await response.json();
+                const data = result.data || [];
+                if (data.length === 0) break;
+                allData = allData.concat(data);
+                const totalPages = (result.pagination && result.pagination.total_pages) || 1;
+                if (page >= totalPages) break;
+                page++;
+            }
+
+            if (allData.length === 0) {
+                showFlashFeedback("Không có dữ liệu để xuất!", "warning");
+                return;
+            }
+
+            const exportData = allData.map((item, idx) => {
+                const printer = item.list_printer || {};
+                return {
+                    'STT': idx + 1,
+                    'ID': item.id,
+                    'Serial Number': item.serial_number,
+                    'Thương Hiệu': printer.brand_name || '',
+                    'Model': printer.model_code || '',
+                    'Trạng Thái': statusLabel((item.status || 'pending').toLowerCase()),
+                    'Người Tạo': item.created_by || '',
+                    'Thời Gian': formatDate(item.created_at)
+                };
+            });
+
+            const ws = XLSX.utils.json_to_sheet(exportData);
+            ws['!cols'] = [{ wch: 6 }, { wch: 6 }, { wch: 25 }, { wch: 15 }, { wch: 15 }, { wch: 14 }, { wch: 12 }, { wch: 18 }];
+            const wb = XLSX.utils.book_new();
+            XLSX.utils.book_append_sheet(wb, ws, 'LichSu_KiemKe');
+            const filename = `LichSu_KiemKe_Seri_${new Date().toISOString().slice(0,10)}.xlsx`;
+            XLSX.writeFile(wb, filename);
+            showExportToast(`Đã xuất ${allData.length} bản ghi`);
+            AudioEngine.playSuccessBeep();
+        } catch (err) {
+            console.error('Lỗi xuất Excel lịch sử:', err);
+            showFlashFeedback("Lỗi khi xuất Excel. Vui lòng thử lại!", "danger");
+        }
+    };
+
+    // ===== LOCAL STORAGE =====
+    function saveLocalBatch() {
+        try { localStorage.setItem(STORAGE_KEY, JSON.stringify(scanList)); } catch(e) {}
+    }
+    function loadLocalBatch() {
+        try {
+            const data = localStorage.getItem(STORAGE_KEY);
+            if (data) { scanList = JSON.parse(data); renderTable(); updateKPI(); }
+        } catch (e) { scanList = []; }
+    }
+    window.clearLocalBatch = function() {
+        if (confirm("Bạn có chắc chắn muốn xóa toàn bộ danh sách vừa quét trong phiên này?")) {
+            scanList = [];
+            localStorage.removeItem(STORAGE_KEY);
+            renderTable();
+            updateKPI();
+            showFlashFeedback("Đã xóa sạch bộ nhớ tạm", "info");
+        }
+    };
+    window.resetForm = function() {
+        document.getElementById('serial_number_input').value = '';
+        if (!document.getElementById('lock-model-switch').checked) {
+            document.getElementById('model_search').value = '';
+            document.getElementById('printer_id').value = '';
+            document.getElementById('selected-model-info').classList.add('d-none');
+        }
+        showFlashFeedback("Đã làm mới form", "info");
+    };
+
+    // ===== UTILS =====
+    function escapeHtml(str) {
+        if (str == null) return '';
+        const div = document.createElement('div');
+        div.textContent = String(str);
+        return div.innerHTML;
+    }
+
+    window.showFlashFeedback = function(msg, type) {
+        type = type || 'success';
+        const box = document.getElementById('flash-feedback');
+        const content = document.getElementById('flash-content');
+        const styles = {
+            success: 'background:#065f46;color:#ecfdf5;border:1px solid #047857;',
+            danger: 'background:#9f1239;color:#fff1f2;border:1px solid #be123c;',
+            warning: 'background:#b45309;color:#fffbeb;border:1px solid #d97706;',
+            info: 'background:#1e40af;color:#eff6ff;border:1px solid #1d4ed8;'
+        };
+        const icons = {
+            success: '<i class="fa-solid fa-circle-check me-2"></i>',
+            danger: '<i class="fa-solid fa-circle-xmark me-2"></i>',
+            warning: '<i class="fa-solid fa-triangle-exclamation me-2"></i>',
+            info: '<i class="fa-solid fa-circle-info me-2"></i>'
+        };
+        content.style.cssText = styles[type] || styles.success;
+        content.innerHTML = (icons[type] || '') + msg;
+        box.style.display = 'block';
+        box.style.opacity = '1';
+        if (window.flashTimeout) clearTimeout(window.flashTimeout);
+        window.flashTimeout = setTimeout(() => {
+            box.style.opacity = '0';
+            setTimeout(() => { box.style.display = 'none'; }, 300);
+        }, 3000);
+    };
+})();
 </script>
 </body>
 </html>
