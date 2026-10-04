@@ -387,7 +387,7 @@ async def detail_cham_cong(
         # 4. Render HTML
         return templates.TemplateResponse(
             request=request,
-            name="cham_cong_detail.html",
+            name="installation/cham_cong_detail.html",
             context={
                 "item": item,
                 "current_user": current_user
@@ -472,7 +472,7 @@ async def get_form_cham_cong(
 
         return templates.TemplateResponse(
             request=request,
-            name="lap_dat.html",
+            name="installation/lap_dat.html",
             context={
                 "request": request,
                 "config": cfg,
@@ -1022,7 +1022,7 @@ async def view_danh_sach_cham_cong(
         # ✅ 10. RENDER TEMPLATE (TRUYỀN RAW_ROLE GỐC ĐỂ KHÔNG LỖI IF/ELSE Ở JINJA2)
         return templates.TemplateResponse(
             request=request,
-            name="danh_sach_cham_cong.html",
+            name="installation/danh_sach_cham_cong.html",
             context={
                 "request": request,
                 "danh_sach": danh_sach,
@@ -1231,7 +1231,7 @@ async def bao_cao_lap_dat(
         # ==========================================
         return templates.TemplateResponse(
             request=request,
-            name="admin_report_cham_cong.html",
+            name="admin/admin_report_cham_cong.html",
             context={
                 "start_date": start_date,
                 "end_date": end_date,

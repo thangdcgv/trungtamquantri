@@ -118,7 +118,7 @@ async def get_current_admin(request: Request) -> Dict[str, Any]:
 async def admin_dashboard(request: Request, admin: dict = Depends(get_current_admin)):
     return templates.TemplateResponse(
         request=request,
-        name="admin.html",
+        name="admin/admin.html",
         context={"current_user": admin}
     )
 
@@ -148,7 +148,7 @@ async def list_users(request: Request, admin: dict = Depends(get_current_admin))
 
     return templates.TemplateResponse(
         request=request,
-        name="admin_users.html",
+        name="admin/admin_users.html",
         context={
             "users": users,
             "current_user": admin,
@@ -297,7 +297,7 @@ async def get_config_cham_cong(request: Request, admin: dict = Depends(get_curre
     except Exception as e:
         logger.error(f"Lỗi cấu hình chấm công: {e}")
     return templates.TemplateResponse(
-        request=request, name="config_cham_cong.html",
+        request=request, name="installation/config_cham_cong.html",
         context={"config": config_dict, "current_user": admin}
     )
 
@@ -344,7 +344,7 @@ async def list_system_logs(
     except Exception as e:
         logger.error(f"LOG ERR: {e}")
     return templates.TemplateResponse(
-        request=request, name="admin_logs.html",
+        request=request, name="admin/admin_logs.html",
         context={"logs": logs, "current_user": admin,
                  "current_level": level or "", "current_status": status_filter or "", "page": page}
     )
@@ -382,7 +382,7 @@ async def get_audit_logs(request: Request, current_user: dict = Depends(require_
     audit_data = res.data if res and res.data else []
     
     return templates.TemplateResponse(
-        request=request, name="audit_logs.html",
+        request=request, name="admin/audit_logs.html",
         context={"current_user": current_user, "logs": audit_data}
     )
 

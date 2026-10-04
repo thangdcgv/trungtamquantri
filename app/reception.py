@@ -11,7 +11,7 @@ from pydantic import BaseModel, Field
 
 from config import supabase
 from app.websocket_manager import manager, VN_TZ
-from app.admin_routes import require_roles
+from app.admin.admin_routes import require_roles
 from app.auth import get_current_user_or_redirect 
 
 BASE_DIR = Path(__file__).resolve().parent

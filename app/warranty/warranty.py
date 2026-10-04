@@ -200,7 +200,7 @@ def get_warranty_list(
 
         return templates.TemplateResponse(
             request=request,
-            name="warranty_list.html",
+            name="warranty/warranty_list.html",
             context={
                 "items": records_res.data or [],
                 "creators": creators_list,
@@ -218,7 +218,7 @@ def get_warranty_list(
 
     except Exception as e:
         return templates.TemplateResponse(
-            "warranty_list.html", 
+            "warranty/warranty_list.html", 
             {
                 "request": request,
                 "items": [],
@@ -324,7 +324,7 @@ def render_warranty_detail(
         policies = get_active_policies()
         return templates.TemplateResponse(
             request=request,
-            name="detail_warranty.html",
+            name="warranty/detail_warranty.html",
             context={
                 "item": res.data[0],
                 "policies": policies,

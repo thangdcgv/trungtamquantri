@@ -167,7 +167,7 @@ async def login_page(request: Request):
         redirect_url = get_redirect_url_by_role(user_role)
         return RedirectResponse(url=redirect_url, status_code=status.HTTP_303_SEE_OTHER)
 
-    return render_template(request, "login.html", {"error": None})
+    return render_template(request, "auth/login.html", {"error": None})
 
 
 @router.post("/login")
@@ -182,7 +182,7 @@ async def login(
     if not email_clean or not password:
         return render_template(
             request,
-            "login.html",
+            "auth/login.html",
             {"error": "Vui lòng nhập đầy đủ email và mật khẩu."},
             status_code=status.HTTP_400_BAD_REQUEST,
         )
@@ -197,7 +197,7 @@ async def login(
         if not response or not response.user:
             return render_template(
                 request,
-                "login.html",
+                "auth/login.html",
                 {"error": "Email hoặc mật khẩu không chính xác."},
                 status_code=status.HTTP_401_UNAUTHORIZED,
             )
@@ -295,7 +295,7 @@ async def login(
 
         return render_template(
             request,
-            "login.html",
+            "auth/login.html",
             {"error": friendly_error},
             status_code=status.HTTP_401_UNAUTHORIZED,
         )
@@ -339,7 +339,7 @@ async def change_password_page(request: Request):
     if not request.session.get("user_id"):
         return RedirectResponse(url="/auth/login", status_code=status.HTTP_303_SEE_OTHER)
 
-    return render_template(request, "change_password.html", {"error": None, "success": None})
+    return render_template(request, "auth/change_password.html", {"error": None, "success": None})
 
 
 @router.post("/change-password")
@@ -358,7 +358,7 @@ async def change_password(
     if not current_password:
         return render_template(
             request,
-            "change_password.html",
+            "auth/change_password.html",
             {"error": "Vui lòng nhập mật khẩu hiện tại.", "success": None},
             status_code=status.HTTP_400_BAD_REQUEST,
         )
@@ -367,7 +367,7 @@ async def change_password(
     if not valid:
         return render_template(
             request,
-            "change_password.html",
+            "auth/change_password.html",
             {"error": password_error, "success": None},
             status_code=status.HTTP_400_BAD_REQUEST,
         )
@@ -375,7 +375,7 @@ async def change_password(
     if current_password == new_password:
         return render_template(
             request,
-            "change_password.html",
+            "auth/change_password.html",
             {"error": "Mật khẩu mới không được giống mật khẩu hiện tại.", "success": None},
             status_code=status.HTTP_400_BAD_REQUEST,
         )
@@ -388,7 +388,7 @@ async def change_password(
         if not test_login or not test_login.user or str(test_login.user.id) != str(user_id):
             return render_template(
                 request,
-                "change_password.html",
+                "auth/change_password.html",
                 {"error": "Mật khẩu hiện tại không chính xác.", "success": None},
                 status_code=status.HTTP_401_UNAUTHORIZED,
             )
@@ -400,7 +400,7 @@ async def change_password(
 
         return render_template(
             request,
-            "change_password.html",
+            "auth/change_password.html",
             {"error": None, "success": "Đổi mật khẩu thành công!"},
         )
 
@@ -408,7 +408,7 @@ async def change_password(
         logger.error(f"CHANGE PASSWORD ERROR: {e}")
         return render_template(
             request,
-            "change_password.html",
+            "auth/change_password.html",
             {"error": "Không thể đổi mật khẩu lúc này. Vui lòng thử lại.", "success": None},
             status_code=status.HTTP_400_BAD_REQUEST,
         )
@@ -416,7 +416,7 @@ async def change_password(
 
 @router.get("/forgot-password", response_class=HTMLResponse)
 async def forgot_password_page(request: Request):
-    return render_template(request, "forgot_password.html", {"message": None, "error": None})
+    return render_template(request, "auth/forgot_password.html", {"message": None, "error": None})
 
 
 @router.post("/forgot-password")
@@ -426,7 +426,7 @@ async def forgot_password(request: Request, email: str = Form(...)):
     if not email_clean:
         return render_template(
             request,
-            "forgot_password.html",
+            "auth/forgot_password.html",
             {"message": None, "error": "Vui lòng nhập email."},
             status_code=status.HTTP_400_BAD_REQUEST,
         )
@@ -448,12 +448,12 @@ async def forgot_password(request: Request, email: str = Form(...)):
     except Exception as e:
         logger.error(f"FORGOT PASSWORD ERROR: {e}")
 
-    return render_template(request, "forgot_password.html", {"message": message, "error": None})
+    return render_template(request, "auth/forgot_password.html", {"message": message, "error": None})
 
 
 @router.get("/update-password", response_class=HTMLResponse)
 async def update_password_page(request: Request):
-    return render_template(request, "update_password.html", {"error": None, "success": None})
+    return render_template(request, "auth/update_password.html", {"error": None, "success": None})
 
 
 @router.post("/update-password")
@@ -466,7 +466,7 @@ async def update_password(
     if new_password != confirm_password:
         return render_template(
             request,
-            "update_password.html",
+            "auth/update_password.html",
             {"error": "Xác nhận mật khẩu không khớp.", "success": None},
             status_code=status.HTTP_400_BAD_REQUEST,
         )
@@ -475,7 +475,7 @@ async def update_password(
     if not valid:
         return render_template(
             request,
-            "update_password.html",
+            "auth/update_password.html",
             {"error": password_error, "success": None},
             status_code=status.HTTP_400_BAD_REQUEST,
         )
@@ -493,7 +493,7 @@ async def update_password(
 
         return render_template(
             request,
-            "update_password.html",
+            "auth/update_password.html",
             {
                 "error": None,
                 "success": "Đặt lại mật khẩu thành công! Bạn có thể đăng nhập bằng mật khẩu mới.",
@@ -504,7 +504,7 @@ async def update_password(
         logger.error(f"UPDATE PASSWORD ERROR: {e}")
         return render_template(
             request,
-            "update_password.html",
+            "auth/update_password.html",
             {
                 "error": "Link khôi phục không hợp lệ hoặc đã hết hạn. Vui lòng yêu cầu lại.",
                 "success": None,

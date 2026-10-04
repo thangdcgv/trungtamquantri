@@ -441,7 +441,7 @@ async def admin_reports_hub(
 ):
     return templates.TemplateResponse(
         request=request,
-        name="admin_reports_hub.html",
+        name="admin/admin_reports_hub.html",
         context={"current_user": user},
     )
 
@@ -491,7 +491,7 @@ async def report_warranty_page(
 
     return templates.TemplateResponse(
         request=request,
-        name="warranty_report.html",
+        name="warranty/warranty_report.html",
         context={
             "request": request,
             "current_user": user,

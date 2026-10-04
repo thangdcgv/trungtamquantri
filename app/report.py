@@ -299,7 +299,7 @@ def _build_excel_report(df_display: pd.DataFrame, month: str) -> io.BytesIO:
 def report_page(request: Request, current_user: dict = Depends(require_login)):
     """Render giao diện HTML trang báo cáo."""
     return templates.TemplateResponse(
-        "admin_report.html",
+        "admin/admin_report.html",
         {"request": request, "current_user": current_user, "admin": current_user}
     )
 

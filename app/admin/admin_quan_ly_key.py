@@ -246,7 +246,7 @@ async def trang_quan_ly_key(
     # 2. BỔ SUNG "current_user": user VÀO CONTEXT
     return templates.TemplateResponse(
         request=request,
-        name="admin_quan_ly_key.html",
+        name="admin/admin_quan_ly_key.html",
         context={
             "request": request,
             "current_user": user,  # 👈 QUAN TRỌNG: Thêm dòng này để Jinja2 hiển thị lại Menu

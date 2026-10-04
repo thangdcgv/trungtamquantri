@@ -13,7 +13,7 @@ from pydantic import BaseModel, Field
 
 from config import supabase, supabase_admin
 from app.websocket_manager import manager, VN_TZ
-from app.auth import get_current_user_or_redirect
+from app.auth import require_login
 
 
 router = APIRouter(tags=["Tickets Queue"])
@@ -57,8 +57,8 @@ def normalize_dept_to_ticket(dept: Optional[str]) -> str:
 
 def normalize_role(raw_role: Optional[str]) -> str:
     r = str(raw_role or "").strip().lower()
-    if r in ("system admin", "super admin", "super_admin", "superadmin"):
-        return "super_admin"
+    if r in ("system admin", "super admin"):
+        return "super admin"
     if r in ("admin", "quản lý", "quan ly"):
         return "admin"
     if r in ("ktv", "ktsc", "kỹ thuật", "ky thuat"):
@@ -193,7 +193,7 @@ async def admin_queue_page(request: Request):
             if raw_dept:
                 d = str(raw_dept).strip().upper()
                 # Nếu là Admin/Super Admin thì có thể xem ALL, ngược lại gán phòng ban tương ứng
-                if role_clean in ["admin", "super_admin", "system_admin"]:
+                if role_clean in ["admin", "super admin", "system admin"]:
                     user_dept = d if d in DEPT_PREFIX_MAP else "ALL"
                 else:
                     user_dept = d if d in DEPT_PREFIX_MAP else "KTSC"
@@ -358,7 +358,29 @@ async def get_queue_list(
     check_supabase()
     try:
         today_start = get_today_utc_start()
-        query = supabase_admin.table("tickets").select("*").gte("created_at", today_start)
+
+        # =========================================================
+        # 1. TỰ ĐỘNG XÓA PHIẾU ĐÃ HOÀN THÀNH/HỦY CỦA CÁC NGÀY TRƯỚC
+        # =========================================================
+        try:
+            supabase_admin.table("tickets") \
+                .delete() \
+                .lt("created_at", today_start) \
+                .in_("status", ["completed", "cancelled", "skipped"]) \
+                .execute()
+        except Exception as clean_err:
+            logger.error(f"Lỗi dọn dẹp phiếu cũ: {clean_err}")
+
+        # =========================================================
+        # 2. TRUY VẤN: LẤY PHIẾU CHƯA XỬ LÝ (BẤT KỂ NGÀY) + PHIẾU HÔM NAY
+        # =========================================================
+        # Điều kiện OR: 
+        # - Phiếu có trạng thái waiting/calling/processing (luôn giữ lại dù tạo từ ngày nào)
+        # - HOẶC phiếu được tạo từ đầu ngày hôm nay (bao gồm cả phiếu vừa xong hôm nay)
+        query = supabase_admin.table("tickets").select("*").or_(
+            f"status.in.(waiting,calling,processing),created_at.gte.{today_start}"
+        )
+
         if department and department != "ALL":
             query = query.eq("department", department)
         if status_filter and status_filter != "all":
@@ -366,18 +388,15 @@ async def get_queue_list(
 
         tickets = query.order("id", desc=False).execute().data or []
 
-        all_today_query = supabase_admin.table("tickets") \
-            .select("status") \
-            .gte("created_at", today_start)
-        if department and department != "ALL":
-            all_today_query = all_today_query.eq("department", department)
-        all_today = all_today_query.execute().data or []
-
+        # =========================================================
+        # 3. THỐNG KÊ CHỈ SỐ (STATS)
+        # =========================================================
         stats = {
-            "waiting": sum(1 for t in all_today if t.get("status") in ["waiting", "calling"]),
-            "processing": sum(1 for t in all_today if t.get("status") == "processing"),
-            "completed": sum(1 for t in all_today if t.get("status") == "completed")
+            "waiting": sum(1 for t in tickets if t.get("status") in ["waiting", "calling"]),
+            "processing": sum(1 for t in tickets if t.get("status") == "processing"),
+            "completed": sum(1 for t in tickets if t.get("status") == "completed")
         }
+
         return {"success": True, "total": len(tickets), "stats": stats, "tickets": tickets}
     except Exception as e:
         logger.error(f"Lỗi hàng chờ: {str(e)}")

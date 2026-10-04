@@ -8,21 +8,23 @@ from fastapi.templating import Jinja2Templates
 from starlette.middleware.sessions import SessionMiddleware
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi.exceptions import RequestValidationError
+from starlette.middleware.trustedhost import TrustedHostMiddleware
+from uvicorn.middleware.proxy_headers import ProxyHeadersMiddleware
 from starlette.concurrency import run_in_threadpool
 
 from config import supabase, SUPABASE_URL, SUPABASE_KEY
 
-# Import các routers
+# Import các routers...
 from app.routes import router as main_router
 from app.auth import router as auth_router
-from app.admin_routes import router as admin_router
-from app.warranty import router as warranty_router
+from app.admin.admin_routes import router as admin_router
+from app.warranty.warranty import router as warranty_router
 from app.cham_cong import router as cham_cong_router
-from app.admin_key import router as kho_key_router, api_router as kho_key_api_router
-from app.admin_quan_ly_key import router as quan_ly_key_router, api_router as quan_ly_key_api_router
+from app.admin.admin_key import router as kho_key_router, api_router as kho_key_api_router
+from app.admin.admin_quan_ly_key import router as quan_ly_key_router, api_router as quan_ly_key_api_router
 from app.report import router as report_router
-from app.warranty_report import router as warranty_report_router
-from app.warranty_policy_routes import router as warranty_policy_router
+from app.warranty.warranty_report import router as warranty_report_router
+from app.warranty.warranty_policy_routes import router as warranty_policy_router
 from app.inventory import router as inventory_router, api_router as inventory_api_router
 from app.tickets import router as tickets_router
 from app.reception import router as reception_router
@@ -33,17 +35,23 @@ app = FastAPI(
     version="1.0.0"
 )
 
-# === 1. Session Middleware (Thêm trước) ===
+# === 0. BẮT BỘC CHO HUGGING FACE: Nhận diện HTTPS đằng sau Proxy ===
+app.add_middleware(ProxyHeadersMiddleware, trusted_hosts=["*"])
+
+# === 1. Session Middleware ===
 SECRET_KEY = os.getenv("SECRET_KEY", "mayindaithanh-centerhub-secret-key-2026")
 app.add_middleware(SessionMiddleware, secret_key=SECRET_KEY)
 
-# === 2. CORS Middleware (Thêm sau để bọc ngoài cùng - LIFO) ===
-raw_origins = os.getenv("ALLOWED_ORIGINS", "http://localhost:8000,http://127.0.0.1:8000,http://localhost:3000")
+# === 2. CORS Middleware (Bổ sung domain Hugging Face) ===
+raw_origins = os.getenv(
+    "ALLOWED_ORIGINS", 
+    "http://localhost:8000,http://127.0.0.1:8000,http://localhost:3000,https://*.hf.space,https://huggingface.co"
+)
 ALLOWED_ORIGINS = [origin.strip() for origin in raw_origins.split(",") if origin.strip()]
 
 app.add_middleware(
     CORSMiddleware,
-    allow_origins=ALLOWED_ORIGINS,
+    allow_origins=["*"],  # Cho phép tất cả origin trên HF để tránh lỗi chặn WebSocket/Fetch
     allow_credentials=True,
     allow_methods=["*"],
     allow_headers=["*"],
@@ -57,7 +65,7 @@ templates.env.globals["SUPABASE_KEY"] = SUPABASE_KEY
 os.makedirs("app/static", exist_ok=True)
 app.mount("/static", StaticFiles(directory="app/static"), name="static")
 
-# === Favicon & Zalo Verify ===
+# === Favicon ===
 @app.get('/favicon.png', include_in_schema=False)
 @app.get('/favicon.ico', include_in_schema=False)
 async def favicon():
@@ -104,7 +112,6 @@ async def log_error_to_db(request: Request, exc: Exception, module: str = "Syste
 async def global_exception_handler(request: Request, exc: Exception):
     await log_error_to_db(request, exc)
     
-    # Bỏ qua trả về HTTP Response nếu kết nối là WebSocket
     if request.scope.get("type") == "websocket":
         raise exc
 
@@ -132,10 +139,10 @@ app.include_router(warranty_report_router)
 app.include_router(warranty_policy_router)
 app.include_router(inventory_router)
 app.include_router(inventory_api_router)
-
-# Lưu ý kiểm tra URL WebSocket trong tickets_router
 app.include_router(tickets_router)
 app.include_router(reception_router)
 
+# === BẮT BỘC: Lấy Cổng Port Tự Động Cho Hugging Face (Mặc định 7860) ===
 if __name__ == "__main__":
-    uvicorn.run("main:app", host="0.0.0.0", port=8000, reload=True)
+    port = int(os.getenv("PORT", 7860))
+    uvicorn.run("main:app", host="0.0.0.0", port=port, reload=False)

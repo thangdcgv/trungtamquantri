@@ -129,7 +129,7 @@ async def list_kho_key(
             return RedirectResponse(url="/auth/login", status_code=303)
         return templates.TemplateResponse(
             request=request,
-            name="admin_kho_key.html",
+            name="admin/admin_kho_key.html",
             context={
                 "raw_keys": raw_keys_data,
                 "raw_keys_json": raw_keys_json,

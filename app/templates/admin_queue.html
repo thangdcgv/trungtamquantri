@@ -121,7 +121,7 @@ function App() {
     localStorage.setItem("audioOn", audioOn);
   }, [audioOn]);
 
-  const canSeeAll = user && (user.role === "super_admin" || user.role === "admin");
+  const canSeeAll = user && (user.role === "super admin" || user.role === "admin" || user.role === "system admin");
   const canTransfer = canSeeAll;
   const effectiveDept = canSeeAll ? deptFilter : (user.department || "KTSC");
 
