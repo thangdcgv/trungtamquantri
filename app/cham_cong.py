@@ -1236,6 +1236,7 @@ async def bao_cao_lap_dat(
                 "start_date": start_date,
                 "end_date": end_date,
                 "selected_user": username,
+                "current_user": user_payload,
                 "all_users": all_users,
                 "total_orders": total_orders,
                 "total_payout": total_payout,

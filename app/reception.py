@@ -164,28 +164,42 @@ async def create_reception_record(
         logger.error(f"Lỗi tiếp nhận: {e}")
         raise HTTPException(status_code=500, detail=str(e))
 
-# --- 2. TRA CỨU ---
+# --- 2. TRA CỨU & TẢI DANH SÁCH MÁY (CÓ PHÂN TRANG) ---
 @router.get("/search")
 async def search_reception_records(
-    query_str: str = Query(..., description="SĐT / Tên / Mã phiếu"),
+    query_str: Optional[str] = Query(None, description="SĐT / Tên / Mã phiếu"),
+    page: int = Query(1, ge=1, description="Số trang (bắt đầu từ 1)"),
+    limit: int = Query(20, ge=1, le=100, description="Số lượng máy trên 1 trang"),
     user: dict = AUTH_DEPENDENCY
 ):
     try:
-        q = query_str.strip()
-        if not q:
-            return {"success": True, "total": 0, "data": []}
+        q = (query_str or "").strip()
+        
+        # Đếm tổng số bản ghi bằng count="exact" trong Supabase
+        db_query = supabase.table("reception_records").select("*", count="exact")
 
-        res = supabase.table("reception_records") \
-            .select("*") \
-            .or_(f"phone.ilike.%{q}%,customer_name.ilike.%{q}%,code.ilike.%{q}%") \
-            .order("created_at", desc=True) \
-            .limit(50) \
-            .execute()
+        # Nếu có từ khóa -> Lọc theo SĐT, Tên hoặc Mã phiếu
+        if q:
+            db_query = db_query.or_(f"phone.ilike.%{q}%,customer_name.ilike.%{q}%,code.ilike.%{q}%")
+
+        # Tính toán offset cho Supabase (.range(start, end))
+        start_index = (page - 1) * limit
+        end_index = start_index + limit - 1
+
+        res = db_query.order("created_at", desc=True).range(start_index, end_index).execute()
+
+        total_records = res.count if res.count is not None else len(res.data or [])
+        total_pages = (total_records + limit - 1) // limit if total_records > 0 else 1
 
         return {
             "success": True,
-            "total": len(res.data or []),
-            "data": res.data or []
+            "data": res.data or [],
+            "pagination": {
+                "page": page,
+                "limit": limit,
+                "total": total_records,
+                "total_pages": total_pages
+            }
         }
     except Exception as e:
         logger.error(f"Lỗi tra cứu: {e}")
