@@ -143,31 +143,40 @@
             z-index: 100;
         }
 
-        .header-brand {
+        /* NÚT TRANG CHỦ MỚI (.home-btn) - ĐỒNG BỘ DARK THEME */
+        .home-btn {
             display: flex;
             align-items: center;
             gap: 0.65rem;
             text-decoration: none;
             min-width: 0;
-        }
-
-        .logo-wrapper {
-            position: relative;
-            display: flex;
-            align-items: center;
-            justify-content: center;
-            width: 32px;
-            height: 32px;
-            flex: 0 0 32px;
-            border-radius: 8px;
-            background: rgba(255, 255, 255, 0.04);
+            padding: 0.3rem 0.65rem;
+            border-radius: var(--radius-btn);
+            background: rgba(255, 255, 255, 0.03);
             border: 1px solid var(--border-color);
+            transition: all 0.25s cubic-bezier(0.4, 0, 0.2, 1);
         }
 
-        .header-logo {
-            height: 20px;
-            width: auto;
-            object-fit: contain;
+        .home-btn svg {
+            flex-shrink: 0;
+            color: var(--primary-light);
+            filter: drop-shadow(0 0 6px var(--primary-glow));
+            transition: transform 0.2s ease, color 0.2s ease;
+        }
+
+        .home-btn:hover {
+            background: rgba(2, 132, 199, 0.12);
+            border-color: rgba(56, 189, 248, 0.35);
+            box-shadow: 0 0 14px var(--primary-glow);
+        }
+
+        .home-btn:hover svg {
+            transform: scale(1.1);
+            color: #ffffff;
+        }
+
+        .home-btn:active {
+            transform: scale(0.97);
         }
 
         .header-title-box {
@@ -186,6 +195,11 @@
             white-space: nowrap;
             overflow: hidden;
             text-overflow: ellipsis;
+            transition: color 0.2s ease;
+        }
+
+        .home-btn:hover .header-title {
+            color: #ffffff;
         }
 
         .header-subtitle {
@@ -247,10 +261,13 @@
             transition: all 0.2s cubic-bezier(0.4, 0, 0.2, 1);
         }
 
-        .logout-btn:active {
+        .logout-btn:hover {
             background-color: rgba(239, 68, 68, 0.15);
             color: var(--accent-red);
             border-color: rgba(239, 68, 68, 0.3);
+        }
+
+        .logout-btn:active {
             transform: scale(0.95);
         }
 
@@ -467,18 +484,19 @@
 
     <!-- Header Trực quan Compact -->
     <header class="app-header">
-        <!-- Nhóm Logo + Tên thương hiệu -->
-        <a href="/" class="header-brand">
-            <div class="logo-wrapper">
-                <img src="https://ejbillnpxxiubbiyyaxn.supabase.co/storage/v1/object/public/publicLogo/LOGO.png" alt="Logo Máy In Đại Thành" class="header-logo">
-            </div>
+        <!-- NÚT TRANG CHỦ (BỔ SUNG) -->
+        <a href="/" class="home-btn" title="Trang chủ">
+            <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                <path d="M3 9l9-7 9 7v11a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2z"></path>
+                <polyline points="9 22 9 12 15 12 15 22"></polyline>
+            </svg>
             <div class="header-title-box">
                 <span class="header-title">Center Hub</span>
                 <span class="header-subtitle">Máy In Đại Thành</span>
             </div>
         </a>
 
-        <!-- Nhóm Chào mừng & Nút Đăng xuất -->
+        <!-- Nhóm Chào mừng, Nút Trang chủ & Đăng xuất -->
         <div class="header-user-actions">
             <div class="header-user-greeting">
                 <span class="greeting-text">
@@ -487,6 +505,7 @@
                 <span class="greeting-hand">👋</span>
             </div>
             
+            <!-- NÚT ĐĂNG XUẤT -->
             <a href="/auth/logout" class="logout-btn" title="Đăng xuất">
                 <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
                     <path d="M9 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h4"></path>
