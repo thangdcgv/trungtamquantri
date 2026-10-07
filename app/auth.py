@@ -11,17 +11,12 @@ from starlette.concurrency import run_in_threadpool
 from config import supabase, supabase_admin
 
 logger = logging.getLogger(__name__)
-
 router = APIRouter(prefix="/auth", tags=["Auth"])
 
 # =========================================================
-# CẤU HÌNH HẰNG SỐ & THƯ MỤC TEMPLATES
+# CẤU HÌNH HẰNG SỐ
 # =========================================================
-
-# Mã định danh cho App Trung tâm trong bảng user_sessions
 APP_CODE = "CENTER"
-
-# Danh sách các Role có quyền Quản trị cấp cao
 SUPER_ADMIN_ROLES = {"super admin", "system admin"}
 
 BASE_DIR = Path(__file__).resolve().parent
@@ -32,29 +27,28 @@ TEMPLATES_DIR = (
 )
 templates = Jinja2Templates(directory=str(TEMPLATES_DIR))
 
+# === PHÂN LOẠI THIẾT BỊ ===
+DEVICE_TYPE_DESKTOP = "desktop"
+DEVICE_TYPE_MOBILE = "mobile"
+# Tối đa 1 session trên mỗi loại thiết bị
+MAX_SESSION_PER_DEVICE_TYPE = 1
 
 # =========================================================
-# HELPER FUNCTIONS & DEPENDENCIES
+# HELPER FUNCTIONS
 # =========================================================
-
 def render_template(
     request: Request,
     name: str,
     context: Optional[dict] = None,
     status_code: int = status.HTTP_200_OK,
 ) -> HTMLResponse:
-    """Helper dùng chung để render Jinja template."""
     context = context or {}
     return templates.TemplateResponse(
-        request=request,
-        name=name,
-        context=context,
-        status_code=status_code,
+        request=request, name=name, context=context, status_code=status_code
     )
 
 
 def is_valid_password(password: str) -> Tuple[bool, Optional[str]]:
-    """Kiểm tra độ dài và tính hợp lệ cơ bản của mật khẩu."""
     if not password:
         return False, "Mật khẩu không được để trống."
     if len(password) < 6:
@@ -62,8 +56,19 @@ def is_valid_password(password: str) -> Tuple[bool, Optional[str]]:
     return True, None
 
 
+def detect_device_type(user_agent: str) -> str:
+    """Phát hiện loại thiết bị từ User-Agent. Mặc định là desktop."""
+    ua = (user_agent or "").lower()
+    mobile_keywords = [
+        "android", "iphone", "ipad", "ipod", "mobile",
+        "webos", "blackberry", "windows phone", "tablet",
+    ]
+    if any(k in ua for k in mobile_keywords):
+        return DEVICE_TYPE_MOBILE
+    return DEVICE_TYPE_DESKTOP
+
+
 def extract_user_from_session(request: Request) -> Optional[Dict[str, Any]]:
-    """Trích xuất và chuẩn hóa thông tin người dùng từ Cookie Session."""
     user_id = request.session.get("user_id")
     session_token = request.session.get("session_token")
     if not user_id or not session_token:
@@ -71,8 +76,6 @@ def extract_user_from_session(request: Request) -> Optional[Dict[str, Any]]:
 
     ho_ten = request.session.get("ho_ten") or "Quản trị viên"
     role = str(request.session.get("role") or "User").strip()
-    
-    # Lấy department từ session, nếu là super/system admin thì luôn là ALL
     dept = request.session.get("department")
     if role.lower() in SUPER_ADMIN_ROLES:
         dept = "ALL"
@@ -90,11 +93,12 @@ def extract_user_from_session(request: Request) -> Optional[Dict[str, Any]]:
         "department": dept,
         "access_token": request.session.get("access_token"),
         "session_token": session_token,
+        "device_type": request.session.get("device_type"),
     }
 
 
 async def verify_active_session(user_id: str, session_token: str) -> bool:
-    """Kiểm tra session_token của App CENTER trong user_sessions bằng supabase_admin."""
+    """Kiểm tra session_token còn tồn tại trong user_sessions không."""
     def _check():
         res = (
             supabase_admin.table("user_sessions")
@@ -111,11 +115,11 @@ async def verify_active_session(user_id: str, session_token: str) -> bool:
         return await run_in_threadpool(_check)
     except Exception as e:
         logger.error(f"VERIFY SESSION ERROR: {e}")
-        return True  # Fallback nếu DB gặp sự cố kết nối tạm thời
+        return True  # Fail-open khi DB tạm thời lỗi
 
 
 async def require_login(request: Request) -> Dict[str, Any]:
-    """Dependency bảo vệ các route API (Trả về JSON Error 401 khi hết session hoặc bị kick)."""
+    """Dependency bảo vệ route API → trả 401 JSON khi hết hạn / bị kick."""
     user = extract_user_from_session(request)
     if not user:
         raise HTTPException(
@@ -128,49 +132,42 @@ async def require_login(request: Request) -> Dict[str, Any]:
         request.session.clear()
         raise HTTPException(
             status_code=status.HTTP_401_UNAUTHORIZED,
-            detail="Tài khoản của bạn đã được đăng nhập từ một thiết bị khác trên ứng dụng này.",
+            detail="Tài khoản của bạn đã được đăng nhập từ một thiết bị khác cùng loại.",
         )
-
     return user
 
 
 async def get_current_user_or_redirect(request: Request) -> Optional[Dict[str, Any]]:
-    """Helper kiểm tra đăng nhập cho các route render giao diện HTML."""
+    """Kiểm tra đăng nhập cho route render HTML → trả None để điều hướng về login."""
     user = extract_user_from_session(request)
     if not user:
         return None
-
     is_valid = await verify_active_session(user["auth_id"], user["session_token"])
     if not is_valid:
         request.session.clear()
         return None
-
     return user
 
 
 def get_redirect_url_by_role(role: str) -> str:
-    """Xác định đường dẫn chuyển hướng theo từng cấp Role"""
     role_clean = str(role or "user").strip().lower()
-    
     if role_clean == "admin":
         return "/cham-cong"
-    elif role_clean in SUPER_ADMIN_ROLES:
+    if role_clean in SUPER_ADMIN_ROLES:
         return "/admin"
     return "/"
 
 
 # =========================================================
-# 1. ĐĂNG NHẬP (SINGLE SESSION PER APP_CODE ENFORCEMENT)
+# 1. ĐĂNG NHẬP (1 desktop + 1 mobile, đá thiết bị cũ cùng loại)
 # =========================================================
-
 @router.get("/login", response_class=HTMLResponse)
 async def login_page(request: Request):
-    """Hiển thị trang đăng nhập."""
     if request.session.get("user_id"):
-        user_role = request.session.get("role")
-        redirect_url = get_redirect_url_by_role(user_role)
-        return RedirectResponse(url=redirect_url, status_code=status.HTTP_303_SEE_OTHER)
-
+        return RedirectResponse(
+            url=get_redirect_url_by_role(request.session.get("role")),
+            status_code=status.HTTP_303_SEE_OTHER,
+        )
     return render_template(request, "auth/login.html", {"error": None})
 
 
@@ -180,36 +177,30 @@ async def login(
     email: str = Form(...),
     password: str = Form(...),
 ):
-    """Xác thực người dùng và bắt buộc chỉ cho phép 1 phiên làm việc duy nhất theo app_code."""
     email_clean = email.strip().lower()
-
     if not email_clean or not password:
         return render_template(
-            request,
-            "auth/login.html",
+            request, "auth/login.html",
             {"error": "Vui lòng nhập đầy đủ email và mật khẩu."},
             status_code=status.HTTP_400_BAD_REQUEST,
         )
 
     try:
-        # 1. Xác thực thông tin qua Supabase Auth
+        # 1. Xác thực qua Supabase Auth
         response = await run_in_threadpool(
             supabase.auth.sign_in_with_password,
-            {"email": email_clean, "password": password}
+            {"email": email_clean, "password": password},
         )
-
         if not response or not response.user:
             return render_template(
-                request,
-                "auth/login.html",
+                request, "auth/login.html",
                 {"error": "Email hoặc mật khẩu không chính xác."},
                 status_code=status.HTTP_401_UNAUTHORIZED,
             )
-
         auth_id = str(response.user.id)
 
-        # 2. Lấy thông tin Profile quản trị viên trước (Tránh lỗi DB làm mồ côi Session)
-        def _fetch_user_profile():
+        # 2. Lấy profile từ bảng quan_tri_vien
+        def _fetch_profile():
             return (
                 supabase_admin.table("quan_tri_vien")
                 .select("*")
@@ -218,47 +209,70 @@ async def login(
                 .execute()
             )
 
-        user_record = await run_in_threadpool(_fetch_user_profile)
-
+        user_record = await run_in_threadpool(_fetch_profile)
         username = email_clean.split("@")[0]
         ho_ten = "Quản trị viên"
         role = "User"
         department = "KTSC"
-
         if user_record and user_record.data:
-            user_info = user_record.data[0]
-            username = user_info.get("username") or username
-            ho_ten = user_info.get("ho_ten") or user_info.get("name") or ho_ten
-            role = str(user_info.get("role") or "User").strip()
-            department = str(user_info.get("department") or "KTSC").strip()
+            info = user_record.data[0]
+            username = info.get("username") or username
+            ho_ten = info.get("ho_ten") or info.get("name") or ho_ten
+            role = str(info.get("role") or "User").strip()
+            department = (
+                "ALL"
+                if role.lower() in SUPER_ADMIN_ROLES
+                else str(info.get("department") or "KTSC").strip()
+            )
 
-        if role.lower() in SUPER_ADMIN_ROLES:
-            department = "ALL"
-
-        # 3. Chuẩn bị thông tin kết nối và Session mới
+        # 3. Thông tin thiết bị & IP
         x_forwarded_for = request.headers.get("x-forwarded-for")
-        if x_forwarded_for:
-            client_ip = x_forwarded_for.split(",")[0].strip()
-        else:
-            client_ip = request.client.host if request.client else "Unknown"
-
-        user_agent = request.headers.get("user-agent", "Unknown")[:255]
+        client_ip = (
+            x_forwarded_for.split(",")[0].strip()
+            if x_forwarded_for
+            else (request.client.host if request.client else "Unknown")
+        )
+        user_agent = (request.headers.get("user-agent") or "Unknown")[:255]
+        device_type = detect_device_type(user_agent)
         new_session_token = str(uuid.uuid4())
 
-        # 4. Cập nhật Session trong DB (Xóa cũ + Thêm mới atomic)
-        def _sync_db_session():
-            supabase_admin.table("user_sessions").delete().eq("user_id", auth_id).eq("app_code", APP_CODE).execute()
-            return supabase_admin.table("user_sessions").insert({
+        # 4. Đồng bộ DB: XÓA toàn bộ session cũ CÙNG LOẠI thiết bị, rồi thêm session mới.
+        #    Chạy gộp trong 1 threadpool để không block event loop.
+        def _sync_db_session() -> int:
+            # Đếm session cũ cùng loại để log (không phụ thuộc created_at)
+            old = (
+                supabase_admin.table("user_sessions")
+                .select("session_token")
+                .eq("user_id", auth_id)
+                .eq("app_code", APP_CODE)
+                .eq("device_type", device_type)
+                .execute()
+            )
+            old_count = len(old.data) if old and old.data else 0
+
+            if old_count:
+                supabase_admin.table("user_sessions").delete() \
+                    .eq("user_id", auth_id) \
+                    .eq("app_code", APP_CODE) \
+                    .eq("device_type", device_type) \
+                    .execute()
+                logger.info(
+                    f"Kick {old_count} session {device_type} cũ của user {auth_id}"
+                )
+
+            supabase_admin.table("user_sessions").insert({
                 "user_id": auth_id,
                 "app_code": APP_CODE,
                 "session_token": new_session_token,
                 "ip_address": client_ip,
                 "user_agent": user_agent,
+                "device_type": device_type,
             }).execute()
+            return old_count
 
-        await run_in_threadpool(_sync_db_session)
+        kicked_count = await run_in_threadpool(_sync_db_session)
 
-        # 5. Cập nhật Cookie Session
+        # 5. Ghi cookie session
         request.session.clear()
         request.session["user_id"] = auth_id
         request.session["session_token"] = new_session_token
@@ -267,43 +281,48 @@ async def login(
         request.session["ho_ten"] = ho_ten
         request.session["role"] = role
         request.session["department"] = department
-
+        request.session["device_type"] = device_type
         if response.session:
             request.session["access_token"] = response.session.access_token
 
-        # Chuyển hướng theo role
-        redirect_url = get_redirect_url_by_role(role)
-        return RedirectResponse(url=redirect_url, status_code=status.HTTP_303_SEE_OTHER)
+        if kicked_count:
+            logger.info(
+                f"User {auth_id} đăng nhập từ {device_type}, "
+                f"{kicked_count} thiết bị cùng loại đã bị đăng xuất."
+            )
+
+        return RedirectResponse(
+            url=get_redirect_url_by_role(role),
+            status_code=status.HTTP_303_SEE_OTHER,
+        )
 
     except Exception as e:
         logger.error(f"LOGIN ERROR: {e}")
         error_msg = str(e).lower()
-
-        if any(k in error_msg for k in ["invalid login credentials", "invalid_credentials", "email not confirmed"]):
+        if any(
+            k in error_msg
+            for k in ["invalid login credentials", "invalid_credentials", "email not confirmed"]
+        ):
             friendly_error = "Email hoặc mật khẩu không chính xác."
         else:
             friendly_error = "Không thể đăng nhập lúc này. Vui lòng thử lại sau."
-
         return render_template(
-            request,
-            "auth/login.html",
+            request, "auth/login.html",
             {"error": friendly_error},
             status_code=status.HTTP_401_UNAUTHORIZED,
         )
 
 
 # =========================================================
-# 2. ĐĂNG XUẤT (LOGOUT)
+# 2. ĐĂNG XUẤT (chỉ xóa session hiện tại, không ảnh hưởng thiết bị kia)
 # =========================================================
-
 @router.get("/logout")
 async def logout(request: Request):
-    """Đăng xuất và xóa phiên làm việc hiện tại của App CENTER khỏi user_sessions."""
     user_id = request.session.get("user_id")
     session_token = request.session.get("session_token")
 
     if user_id and session_token:
-        def _remove_session():
+        def _remove():
             return (
                 supabase_admin.table("user_sessions")
                 .delete()
@@ -313,24 +332,28 @@ async def logout(request: Request):
                 .execute()
             )
         try:
-            await run_in_threadpool(_remove_session)
+            await run_in_threadpool(_remove)
         except Exception as e:
             logger.error(f"LOGOUT DB ERROR: {e}")
 
     request.session.clear()
-    return RedirectResponse(url="/auth/login", status_code=status.HTTP_303_SEE_OTHER)
+    return RedirectResponse(
+        url="/auth/login", status_code=status.HTTP_303_SEE_OTHER
+    )
 
 
 # =========================================================
-# 3. ĐỔI MẬT KHẨU / QUÊN MẬT KHẨU
+# 3. ĐỔI MẬT KHẨU / QUÊN MẬT KHẨU (giữ nguyên logic cũ)
 # =========================================================
-
 @router.get("/change-password", response_class=HTMLResponse)
 async def change_password_page(request: Request):
     if not request.session.get("user_id"):
-        return RedirectResponse(url="/auth/login", status_code=status.HTTP_303_SEE_OTHER)
-
-    return render_template(request, "auth/change_password.html", {"error": None, "success": None})
+        return RedirectResponse(
+            url="/auth/login", status_code=status.HTTP_303_SEE_OTHER
+        )
+    return render_template(
+        request, "auth/change_password.html", {"error": None, "success": None}
+    )
 
 
 @router.post("/change-password")
@@ -341,15 +364,15 @@ async def change_password(
 ):
     user_id = request.session.get("user_id")
     email = request.session.get("user_email")
-
     if not user_id or not email:
         request.session.clear()
-        return RedirectResponse(url="/auth/login", status_code=status.HTTP_303_SEE_OTHER)
+        return RedirectResponse(
+            url="/auth/login", status_code=status.HTTP_303_SEE_OTHER
+        )
 
     if not current_password:
         return render_template(
-            request,
-            "auth/change_password.html",
+            request, "auth/change_password.html",
             {"error": "Vui lòng nhập mật khẩu hiện tại.", "success": None},
             status_code=status.HTTP_400_BAD_REQUEST,
         )
@@ -357,52 +380,47 @@ async def change_password(
     valid, password_error = is_valid_password(new_password)
     if not valid:
         return render_template(
-            request,
-            "auth/change_password.html",
+            request, "auth/change_password.html",
             {"error": password_error, "success": None},
             status_code=status.HTTP_400_BAD_REQUEST,
         )
 
     if current_password == new_password:
         return render_template(
-            request,
-            "auth/change_password.html",
+            request, "auth/change_password.html",
             {"error": "Mật khẩu mới không được giống mật khẩu hiện tại.", "success": None},
             status_code=status.HTTP_400_BAD_REQUEST,
         )
 
     try:
-        # 1. Xác thực mật khẩu cũ
         test_login = await run_in_threadpool(
             supabase.auth.sign_in_with_password,
-            {"email": email, "password": current_password}
+            {"email": email, "password": current_password},
         )
-        if not test_login or not test_login.user or str(test_login.user.id) != str(user_id):
+        if (
+            not test_login
+            or not test_login.user
+            or str(test_login.user.id) != str(user_id)
+        ):
             return render_template(
-                request,
-                "auth/change_password.html",
+                request, "auth/change_password.html",
                 {"error": "Mật khẩu hiện tại không chính xác.", "success": None},
                 status_code=status.HTTP_401_UNAUTHORIZED,
             )
 
-        # 2. Cập nhật mật khẩu bằng supabase_admin (Tránh ảnh hưởng global state của client)
         await run_in_threadpool(
             supabase_admin.auth.admin.update_user_by_id,
             user_id,
-            {"password": new_password}
+            {"password": new_password},
         )
-
         return render_template(
-            request,
-            "auth/change_password.html",
+            request, "auth/change_password.html",
             {"error": None, "success": "Đổi mật khẩu thành công!"},
         )
-
     except Exception as e:
         logger.error(f"CHANGE PASSWORD ERROR: {e}")
         return render_template(
-            request,
-            "auth/change_password.html",
+            request, "auth/change_password.html",
             {"error": "Không thể đổi mật khẩu lúc này. Vui lòng thử lại.", "success": None},
             status_code=status.HTTP_400_BAD_REQUEST,
         )
@@ -410,44 +428,45 @@ async def change_password(
 
 @router.get("/forgot-password", response_class=HTMLResponse)
 async def forgot_password_page(request: Request):
-    return render_template(request, "auth/forgot_password.html", {"message": None, "error": None})
+    return render_template(
+        request, "auth/forgot_password.html", {"message": None, "error": None}
+    )
 
 
 @router.post("/forgot-password")
 async def forgot_password(request: Request, email: str = Form(...)):
     email_clean = email.strip().lower()
-
     if not email_clean:
         return render_template(
-            request,
-            "auth/forgot_password.html",
+            request, "auth/forgot_password.html",
             {"message": None, "error": "Vui lòng nhập email."},
             status_code=status.HTTP_400_BAD_REQUEST,
         )
 
     message = (
-        "Nếu email tồn tại trong hệ thống, hướng dẫn khôi phục "
-        "mật khẩu đã được gửi. Vui lòng kiểm tra hộp thư."
+        "Nếu email tồn tại trong hệ thống, hướng dẫn khôi phục mật khẩu "
+        "đã được gửi. Vui lòng kiểm tra hộp thư."
     )
-
     try:
         base_url = str(request.base_url).rstrip("/")
-        redirect_link = f"{base_url}/auth/update-password"
-
         await run_in_threadpool(
             supabase.auth.reset_password_for_email,
             email_clean,
-            {"redirect_to": redirect_link}
+            {"redirect_to": f"{base_url}/auth/update-password"},
         )
     except Exception as e:
         logger.error(f"FORGOT PASSWORD ERROR: {e}")
 
-    return render_template(request, "auth/forgot_password.html", {"message": message, "error": None})
+    return render_template(
+        request, "auth/forgot_password.html", {"message": message, "error": None}
+    )
 
 
 @router.get("/update-password", response_class=HTMLResponse)
 async def update_password_page(request: Request):
-    return render_template(request, "auth/update_password.html", {"error": None, "success": None})
+    return render_template(
+        request, "auth/update_password.html", {"error": None, "success": None}
+    )
 
 
 @router.post("/update-password")
@@ -459,8 +478,7 @@ async def update_password(
 ):
     if new_password != confirm_password:
         return render_template(
-            request,
-            "auth/update_password.html",
+            request, "auth/update_password.html",
             {"error": "Xác nhận mật khẩu không khớp.", "success": None},
             status_code=status.HTTP_400_BAD_REQUEST,
         )
@@ -468,8 +486,7 @@ async def update_password(
     valid, password_error = is_valid_password(new_password)
     if not valid:
         return render_template(
-            request,
-            "auth/update_password.html",
+            request, "auth/update_password.html",
             {"error": password_error, "success": None},
             status_code=status.HTTP_400_BAD_REQUEST,
         )
@@ -478,34 +495,28 @@ async def update_password(
         if not access_token:
             raise ValueError("Thiếu mã xác thực (access_token).")
 
-        # 1. Trích xuất thông tin người dùng từ Access Token an toàn bằng Admin client
-        user_res = await run_in_threadpool(supabase_admin.auth.get_user, access_token)
+        user_res = await run_in_threadpool(
+            supabase_admin.auth.get_user, access_token
+        )
         if not user_res or not user_res.user:
             raise ValueError("Token không hợp lệ hoặc đã hết hạn.")
 
-        target_user_id = str(user_res.user.id)
-
-        # 2. Cập nhật mật khẩu trực tiếp qua Admin API (Không ghi đè session dùng chung)
         await run_in_threadpool(
             supabase_admin.auth.admin.update_user_by_id,
-            target_user_id,
-            {"password": new_password}
+            str(user_res.user.id),
+            {"password": new_password},
         )
-
         return render_template(
-            request,
-            "auth/update_password.html",
+            request, "auth/update_password.html",
             {
                 "error": None,
                 "success": "Đặt lại mật khẩu thành công! Bạn có thể đăng nhập bằng mật khẩu mới.",
             },
         )
-
     except Exception as e:
         logger.error(f"UPDATE PASSWORD ERROR: {e}")
         return render_template(
-            request,
-            "auth/update_password.html",
+            request, "auth/update_password.html",
             {
                 "error": "Link khôi phục không hợp lệ hoặc đã hết hạn. Vui lòng yêu cầu lại.",
                 "success": None,
