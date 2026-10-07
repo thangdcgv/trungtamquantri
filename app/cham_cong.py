@@ -37,6 +37,23 @@ router = APIRouter(prefix="/cham-cong", tags=["Chấm Công Lắp Đặt"])
 # ZoneInfo cho Việt Nam
 VN_TZ = ZoneInfo("Asia/Ho_Chi_Minh")
 
+
+# ✅ Khai báo tập hợp role Admin chuẩn chữ thường để tái sử dụng
+ADMIN_ROLES = {"admin", "super admin", "system admin"}
+def extract_user_info(user_obj: Any) -> Tuple[str, str, str, bool]:
+    """Helper trích xuất username, ho_ten, role chuẩn hóa và cờ is_admin an toàn."""
+    if isinstance(user_obj, dict):
+        username = str(user_obj.get("username") or "")
+        ho_ten = str(user_obj.get("ho_ten") or user_obj.get("username") or "")
+        raw_role = str(user_obj.get("role") or "user")
+    else:
+        username = str(getattr(user_obj, "username", ""))
+        ho_ten = str(getattr(user_obj, "ho_ten", username))
+        raw_role = str(getattr(user_obj, "role", "user"))
+
+    clean_role = raw_role.strip().lower()
+    is_admin = clean_role in ADMIN_ROLES
+    return username, ho_ten, raw_role, is_admin
 # ==========================================
 # 1. HELPER FUNCTIONS & LOGIC CHẤM CÔNG
 # ==========================================
@@ -103,7 +120,7 @@ def get_config_cham_cong() -> Dict[str, Any]:
 
 
 def process_image(file_bytes: bytes, rotation: int = 0) -> bytes:
-    """Sửa hướng EXIF tự động, xoay ảnh và tối ưu dung lượng."""
+    """Sửa hướng EXIF tự động, xoay ảnh và chuyển đổi chế độ RGB chuẩn JPEG."""
     try:
         img = Image.open(io.BytesIO(file_bytes))
         img = ImageOps.exif_transpose(img)
@@ -111,7 +128,7 @@ def process_image(file_bytes: bytes, rotation: int = 0) -> bytes:
         if rotation != 0:
             img = img.rotate(-rotation, expand=True)
 
-        if img.mode in ("RGBA", "P"):
+        if img.mode != "RGB":
             img = img.convert("RGB")
 
         buffer = io.BytesIO()
@@ -301,7 +318,7 @@ def build_noi_dung(
     gia_thuong_luong: float
 ) -> str:
     """Tạo ghi chú nội dung tổng hợp (Đã fix lỗi trùng lặp khi Edit)"""
-    clean_base = re.sub(r'\s*\[.*?\]$', '', noi_dung_goc.strip())
+    clean_base = re.sub(r'(\s*\[.*?\])+$', '', noi_dung_goc.strip())
 
     details = []
     if is_di_tinh:
@@ -370,7 +387,7 @@ async def detail_cham_cong(
 
         # 2. Kiểm tra quyền xem phiếu (IDOR Protection)
         user_role = str(current_user.get("role", "")).strip().lower()
-        is_admin = user_role in ["admin", "super admin", "system admin"]
+        is_admin = user_role in ADMIN_ROLES
         
         item_owner = str(item.get("username") or "")
         current_username = str(current_user.get("username") or "")
@@ -398,17 +415,6 @@ async def detail_cham_cong(
         logger.error(f"Lỗi chi tiết phiếu {item_id}: {str(e)}")
         request.session["error_message"] = "Đã xảy ra lỗi hệ thống khi tải phiếu."
         return RedirectResponse(url=REDIRECT_URL, status_code=status.HTTP_303_SEE_OTHER)
-
-
-from typing import Optional
-import logging
-from fastapi import APIRouter, Request, Depends
-from fastapi.responses import HTMLResponse
-
-logger = logging.getLogger(__name__)
-
-# ✅ Khai báo tập hợp role Admin chuẩn chữ thường để tái sử dụng
-ADMIN_ROLES = {"admin", "super admin", "system admin"}
 
 
 @router.get("/form", response_class=HTMLResponse)
@@ -491,7 +497,7 @@ async def search_invoice(
     so_hd: str,
     current_user: dict = Depends(require_login)
 ):
-    """API tra cứu hóa đơn theo số HD để chỉnh sửa"""
+    """API tra cứu hóa đơn theo số HD để chỉnh sửa (Đã fix lỗi crash & rò rỉ quyền)."""
     try:
         so_hd_clean = re.sub(r'\s+', '', so_hd.strip().upper())
         if not so_hd_clean:
@@ -500,7 +506,13 @@ async def search_invoice(
                 content={"success": False, "message": "❌ Vui lòng nhập số hóa đơn!"}
             )
 
-        res = supabase.table("cham_cong").select("id, so_hoa_don").ilike("so_hoa_don", f"%{so_hd_clean}%").limit(1).execute()
+        c_username, _, _, is_admin = extract_user_info(current_user)
+        query = supabase.table("cham_cong").select("id, so_hoa_don").ilike("so_hoa_don", f"%{so_hd_clean}%")
+        
+        if not is_admin:
+            query = query.eq("username", c_username)
+
+        res = query.limit(1).execute()
         if res.data and len(res.data) > 0:
             return JSONResponse(status_code=status.HTTP_200_OK, content={"success": True, "data": res.data[0]})
         
@@ -542,6 +554,12 @@ async def submit_cham_cong(
 ):
     try:
         # 1. VALIDATION CÁC TRƯỜNG ĐẦU VÀO
+        if not so_hoa_don or not so_hoa_don.strip():
+            return JSONResponse(
+                status_code=status.HTTP_400_BAD_REQUEST,
+                content={"success": False, "message": "❌ Vui lòng nhập số hóa đơn!"}
+            )
+
         clean_noi_dung = noi_dung.strip()
         if not clean_noi_dung or len(clean_noi_dung) < 8:
             return JSONResponse(
@@ -583,11 +601,16 @@ async def submit_cham_cong(
         
         session_user = current_user.get("username", "system_user")
         session_fullname = current_user.get("ho_ten") or current_user.get("username", "system_user")
-        user_role = str(current_user.get("role") or "User").strip()
+        
+        # Chuẩn hóa role về chữ thường để so sánh chính xác với ADMIN_ROLES
+        user_role = str(current_user.get("role") or "user").strip().lower()
+        is_admin = user_role in ADMIN_ROLES
 
         # 2. KIỂM TRA QUYỀN CHỈNH SỬA
+        existing_record = None
         if parsed_edit_id:
-            existing_res = supabase.table("cham_cong").select("username, trang_thai").eq("id", parsed_edit_id).execute()
+            # Thêm cột 'ten' vào select để lấy tên hiển thị gốc của KTV
+            existing_res = supabase.table("cham_cong").select("username, ten, hinh_anh,trang_thai").eq("id", parsed_edit_id).execute()
             if not existing_res.data:
                 return JSONResponse(
                     status_code=status.HTTP_404_NOT_FOUND,
@@ -602,7 +625,7 @@ async def submit_cham_cong(
                     content={"success": False, "message": "❌ Đơn này đã được duyệt, không thể chỉnh sửa!"}
                 )
                 
-            is_owner = (existing_record.get("username") == session_user) or (user_role in ("admin", "super admin", "system admin"))
+            is_owner = (existing_record.get("username") == session_user) or is_admin
             if not is_owner:
                 return JSONResponse(
                     status_code=status.HTTP_403_FORBIDDEN,
@@ -611,7 +634,7 @@ async def submit_cham_cong(
 
         # 3. XÁC ĐỊNH NGƯỜI ĐƯỢC CHẤM CÔNG
         if target_username and target_username.strip():
-            if user_role in ("admin", "super admin", "system admin"):
+            if is_admin:
                 target_user = target_username.strip()
                 try:
                     emp_res = supabase.table("quan_tri_vien").select("ho_ten").eq("username", target_user).limit(1).execute()
@@ -621,12 +644,16 @@ async def submit_cham_cong(
             else:
                 target_user = session_user
                 ho_ten_target = session_fullname
+        elif parsed_edit_id and existing_record:
+            # Nếu đang sửa đơn và không chọn target_username mới, giữ nguyên KTV sở hữu đơn gốc
+            target_user = existing_record.get("username")
+            ho_ten_target = existing_record.get("ten") or target_user
         else:
             target_user = session_user
             ho_ten_target = session_fullname
         
         # 4. KIỂM TRA TRÙNG SỐ HÓA ĐƠN
-        hop_le, final_hd = check_duplicate_invoice(so_hoa_don, parsed_edit_id)
+        hop_le, final_hd = check_duplicate_invoice(so_hoa_don.strip(), parsed_edit_id)
         if not hop_le:
             return JSONResponse(
                 status_code=status.HTTP_400_BAD_REQUEST,
@@ -739,7 +766,6 @@ async def submit_cham_cong(
             status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
             content={"success": False, "message": f"❌ Lỗi hệ thống: {str(e)}"}
         )
-
 @router.post("/api/duyet/{item_id}")
 async def duyet_phieu(
     request: Request,
@@ -749,8 +775,8 @@ async def duyet_phieu(
 ):
     """Phê duyệt / Từ chối phiếu (Chỉ dành cho Admin)"""
     try:
-        user_role = str(current_user.get("role") or "User").strip()
-        if user_role not in ("admin", "super admin", "system admin"):
+        user_role = str(current_user.get("role") or "User").strip().lower()
+        if user_role not in ADMIN_ROLES:
             return JSONResponse(
                 status_code=status.HTTP_403_FORBIDDEN,
                 content={"success": False, "message": "❌ Từ chối truy cập: Bạn không có quyền quản trị!"}
@@ -795,7 +821,7 @@ async def delete_cham_cong(
     """Xóa phiếu chấm công (Admin xóa mọi phiếu, User chỉ xóa phiếu của chính mình khi chưa duyệt)"""
     try:
         session_user = current_user.get("username", "")
-        user_role = str(current_user.get("role") or "User").strip()
+        user_role = str(current_user.get("role") or "User").strip().lower()
 
         existing_res = supabase.table("cham_cong").select("username, trang_thai").eq("id", item_id).execute()
         if not existing_res.data:
@@ -843,7 +869,7 @@ async def get_config_page(
 ):
     """Trang quản trị giao diện điều chỉnh định mức chấm công cho Admin"""
     user_role = str(current_user.get("role") or "User").strip()
-    if user_role not in ("admin", "super admin", "system admin"):
+    if user_role not in ADMIN_ROLES:
         return HTMLResponse(content="<h3>❌ Bạn không có quyền truy cập trang này!</h3>", status_code=403)
 
     cfg = get_config_cham_cong()
@@ -861,8 +887,8 @@ async def update_config_cham_cong(
 ):
     """API lưu toàn bộ thông số định mức mới vào Supabase (Gom Batch Upsert tối ưu hiệu năng)"""
     try:
-        user_role = str(current_user.get("role") or "User").strip()
-        if user_role not in ("admin", "super admin", "system admin"):
+        user_role = str(current_user.get("role") or "User").strip().lower()
+        if user_role not in ADMIN_ROLES:
             return JSONResponse(
                 status_code=status.HTTP_403_FORBIDDEN,
                 content={"success": False, "message": "❌ Bạn không có quyền thực hiện thao tác này!"}
@@ -1057,6 +1083,9 @@ async def bao_cao_lap_dat(
     user_payload: dict = Depends(require_login)
 ):
     try:
+        user_role = str(user_payload.get("role") or "user").strip().lower()
+        if user_role not in ADMIN_ROLES:
+            username = user_payload.get("username")  # Bắt buộc chỉ xem báo cáo cá nhân
         # ==========================================
         # 1. XỬ LÝ NGÀY MẶC ĐỊNH
         # ==========================================

@@ -1,7 +1,6 @@
 import logging
 import re
 import asyncio
-import requests
 from datetime import datetime, timezone
 from pathlib import Path
 from typing import Optional, Literal
@@ -13,7 +12,6 @@ from pydantic import BaseModel, Field
 
 from config import supabase, supabase_admin
 from app.websocket_manager import manager, VN_TZ
-from app.auth import require_login
 
 
 router = APIRouter(tags=["Tickets Queue"])
@@ -127,7 +125,7 @@ def generate_ticket_code(department: str) -> str:
 
 
 # ==========================================
-# === 🔌 WEBSOCKET ENDPOINT ===
+# === 🔌 WEBSOCKET ENDPOINT (Giữ async def) ===
 # ==========================================
 @router.websocket("/ws/tickets")
 @router.websocket("/api/ws/tickets")
@@ -146,11 +144,11 @@ async def websocket_tickets_endpoint(websocket: WebSocket):
         manager.disconnect(websocket)
 
 # ==========================================
-# === 🖥 GIAO DIỆN HTML ===
+# === 🖥 GIAO DIỆN HTML (Đổi sang def) ===
 # ==========================================
 @router.get("/ticket", response_class=HTMLResponse)
 @router.get("/tickets", response_class=HTMLResponse)
-async def public_ticket_page(request: Request):
+def public_ticket_page(request: Request):
     """Giao diện bốc số điện tử dành cho khách hàng."""
     return templates.TemplateResponse(
         request=request,
@@ -160,21 +158,18 @@ async def public_ticket_page(request: Request):
 
 @router.get("/admin/queue", response_class=HTMLResponse)
 @router.get("/api/admin-queue", response_class=HTMLResponse)
-async def admin_queue_page(request: Request):
-    """Giao diện Quản lý hàng chờ cho nhân viên (Yêu cầu đăng nhập session)."""
+def admin_queue_page(request: Request):
+    """Giao diện Quản lý hàng chờ cho nhân viên."""
     check_supabase()
 
-    # 1. Kiểm tra session đăng nhập
     user_id = request.session.get("user_id")
     if not user_id:
         return RedirectResponse(url="/auth/login", status_code=status.HTTP_303_SEE_OTHER)
 
-    # 2. Lấy role và chuẩn hóa (Cho phép mọi user đã đăng nhập)
     raw_role = request.session.get("role", "user")
     role_clean = normalize_role(raw_role)
 
-    # 3. Tra cứu phòng ban và thông tin từ CSDL
-    user_dept = "KTSC"  # Mặc định phòng KTSC nếu không xác định
+    user_dept = "KTSC"
     user_name = request.session.get("ho_ten") or "Nhân viên"
 
     try:
@@ -192,7 +187,6 @@ async def admin_queue_page(request: Request):
             raw_dept = user_data.get("department")
             if raw_dept:
                 d = str(raw_dept).strip().upper()
-                # Nếu là Admin/Super Admin thì có thể xem ALL, ngược lại gán phòng ban tương ứng
                 if role_clean in ["admin", "super admin", "system admin"]:
                     user_dept = d if d in DEPT_PREFIX_MAP else "ALL"
                 else:
@@ -200,7 +194,6 @@ async def admin_queue_page(request: Request):
     except Exception as e:
         logger.error(f"Lỗi lấy thông tin phòng ban người dùng {user_id}: {e}")
 
-    # 4. Đóng gói context gửi tới Jinja2
     current_user = {
         "name": user_name,
         "ho_ten": user_name,
@@ -208,27 +201,26 @@ async def admin_queue_page(request: Request):
         "department": user_dept
     }
 
-    template_name = "admin_queue.html"
     return templates.TemplateResponse(
         request=request,
-        name=template_name,
+        name="admin_queue.html",
         context={"request": request, "current_user": current_user}
     )
 
 
 # ==========================================
-# === 🎫 API BỐC SỐ & HÀNG CHỜ ===
+# === 🎫 API BỐC SỐ & HÀNG CHỜ (Đổi sang def) ===
 # ==========================================
 @router.post("/api/tickets/create")
 @router.post("/tickets/create")
-async def create_ticket(data: CreateTicketRequest):
+def create_ticket(data: CreateTicketRequest):
     check_supabase()
     try:
         phone_clean = data.phone.strip() if data.phone and data.phone.strip() else None
         customer_name_clean = data.customer_name.strip() if data.customer_name else "Khách hàng"
         device_info_clean = data.device_info.strip() if data.device_info and data.device_info.strip() else None
 
-        if not phone_clean :
+        if not phone_clean:
             raise HTTPException(status_code=400, detail="Vui lòng cung cấp SĐT !")
 
         today_start = get_today_utc_start()
@@ -236,7 +228,6 @@ async def create_ticket(data: CreateTicketRequest):
             .select("*") \
             .gte("created_at", today_start) \
             .in_("status", ["waiting", "calling", "processing"])
-
 
         existing_ticket = query.execute()
         if existing_ticket.data and len(existing_ticket.data) > 0:
@@ -260,20 +251,14 @@ async def create_ticket(data: CreateTicketRequest):
         if insert_res.data and len(insert_res.data) > 0:
             new_ticket = insert_res.data[0]
 
-            await manager.broadcast({
+            # Broadcast WebSocket
+            asyncio.run(manager.broadcast({
                 "type": "new_ticket",
                 "ticket": new_ticket,
                 "department": new_ticket["department"],
                 "timestamp": datetime.now(VN_TZ).isoformat()
-            })
+            }))
             logger.info(f"📢 Đã tạo vé: {ticket_code}")
-
-            if new_ticket.get("phone"):
-                asyncio.create_task(asyncio.to_thread(
-                    new_ticket["phone"],
-                    new_ticket.get("customer_name"),
-                    new_ticket["ticket_code"]
-                ))
 
             return {"success": True, "message": "Bốc số thành công!", "ticket": new_ticket}
 
@@ -287,14 +272,12 @@ async def create_ticket(data: CreateTicketRequest):
 
 @router.get("/api/tickets/my-ticket")
 @router.get("/tickets/my-ticket")
-async def get_my_ticket(
+def get_my_ticket(
     phone: Optional[str] = None,
     ticket_id: Optional[str] = None
 ):
     """Tra cứu phiếu hiện tại của khách hàng."""
     check_supabase()
-    phone_clean = phone.strip() if phone else None
-
     today_start = get_today_utc_start()
 
     if ticket_id:
@@ -312,7 +295,6 @@ async def get_my_ticket(
             .select("*") \
             .gte("created_at", today_start) \
             .in_("status", ["waiting", "calling", "processing"])
-
 
     res = query.order("created_at", desc=True).limit(1).execute()
     if res.data and len(res.data) > 0:
@@ -351,7 +333,7 @@ async def get_my_ticket(
 
 @router.get("/api/tickets/queue")
 @router.get("/tickets/queue")
-async def get_queue_list(
+def get_queue_list(
     department: Optional[str] = Query(None, description="KTSC/KTLD/KD/CSKH/KT/GN/ALL"),
     status_filter: Optional[str] = Query(None, alias="status", description="waiting/calling/processing/completed/cancelled")
 ):
@@ -359,24 +341,8 @@ async def get_queue_list(
     try:
         today_start = get_today_utc_start()
 
-        # =========================================================
-        # 1. TỰ ĐỘNG XÓA PHIẾU ĐÃ HOÀN THÀNH/HỦY CỦA CÁC NGÀY TRƯỚC
-        # =========================================================
-        try:
-            supabase_admin.table("tickets") \
-                .delete() \
-                .lt("created_at", today_start) \
-                .in_("status", ["completed", "cancelled", "skipped"]) \
-                .execute()
-        except Exception as clean_err:
-            logger.error(f"Lỗi dọn dẹp phiếu cũ: {clean_err}")
+        # Đã loại bỏ lệnh DELETE trực tiếp ở đây để tối ưu tốc độ đọc API
 
-        # =========================================================
-        # 2. TRUY VẤN: LẤY PHIẾU CHƯA XỬ LÝ (BẤT KỂ NGÀY) + PHIẾU HÔM NAY
-        # =========================================================
-        # Điều kiện OR: 
-        # - Phiếu có trạng thái waiting/calling/processing (luôn giữ lại dù tạo từ ngày nào)
-        # - HOẶC phiếu được tạo từ đầu ngày hôm nay (bao gồm cả phiếu vừa xong hôm nay)
         query = supabase_admin.table("tickets").select("*").or_(
             f"status.in.(waiting,calling,processing),created_at.gte.{today_start}"
         )
@@ -388,9 +354,6 @@ async def get_queue_list(
 
         tickets = query.order("id", desc=False).execute().data or []
 
-        # =========================================================
-        # 3. THỐNG KÊ CHỈ SỐ (STATS)
-        # =========================================================
         stats = {
             "waiting": sum(1 for t in tickets if t.get("status") in ["waiting", "calling"]),
             "processing": sum(1 for t in tickets if t.get("status") == "processing"),
@@ -404,7 +367,7 @@ async def get_queue_list(
 
 @router.post("/api/tickets/call/{ticket_id}")
 @router.post("/tickets/call/{ticket_id}")
-async def call_ticket_endpoint(ticket_id: int, data: Optional[CallTicketRequest] = None):
+def call_ticket_endpoint(ticket_id: int, data: Optional[CallTicketRequest] = None):
     check_supabase()
     try:
         now_utc = datetime.now(timezone.utc).strftime("%Y-%m-%dT%H:%M:%SZ")
@@ -420,12 +383,12 @@ async def call_ticket_endpoint(ticket_id: int, data: Optional[CallTicketRequest]
         if res.data and len(res.data) > 0:
             updated_ticket = res.data[0]
             
-            await manager.broadcast({
+            asyncio.run(manager.broadcast({
                 "type": "status_update",
                 "ticket": updated_ticket,
                 "status": "processing",
                 "timestamp": datetime.now(VN_TZ).isoformat()
-            })
+            }))
             
             logger.info(f"📢 Đã gọi/tiếp nhận vé ID {ticket_id}")
             return {"success": True, "message": "Đã tiếp nhận vé!", "ticket": updated_ticket}
@@ -439,7 +402,7 @@ async def call_ticket_endpoint(ticket_id: int, data: Optional[CallTicketRequest]
 
 @router.patch("/api/tickets/{ticket_id}/status")
 @router.patch("/tickets/{ticket_id}/status")
-async def update_ticket_status(ticket_id: int, data: UpdateStatusRequest):
+def update_ticket_status(ticket_id: int, data: UpdateStatusRequest):
     check_supabase()
     try:
         now_utc = datetime.now(timezone.utc).strftime("%Y-%m-%dT%H:%M:%SZ")
@@ -456,12 +419,12 @@ async def update_ticket_status(ticket_id: int, data: UpdateStatusRequest):
         res = supabase_admin.table("tickets").update(payload).eq("id", ticket_id).execute()
         if res.data:
             updated_ticket = res.data[0]
-            await manager.broadcast({
+            asyncio.run(manager.broadcast({
                 "type": "status_update",
                 "ticket": updated_ticket,
                 "status": data.status,
                 "timestamp": datetime.now(VN_TZ).isoformat()
-            })
+            }))
             return {"success": True, "message": "Cập nhật thành công!", "ticket": updated_ticket}
         raise HTTPException(status_code=404, detail="Không tìm thấy phiếu.")
     except HTTPException:
@@ -471,10 +434,9 @@ async def update_ticket_status(ticket_id: int, data: UpdateStatusRequest):
 
 @router.patch("/api/tickets/{ticket_id}/transfer")
 @router.patch("/tickets/{ticket_id}/transfer")
-async def transfer_ticket_department(ticket_id: int, data: TransferDepartmentRequest):
+def transfer_ticket_department(ticket_id: int, data: TransferDepartmentRequest):
     check_supabase()
     try:
-        # 1. Kiểm tra sự tồn tại và trạng thái hiện tại của vé
         existing = supabase_admin.table("tickets").select("status, ticket_code").eq("id", ticket_id).limit(1).execute()
         if not existing.data:
             raise HTTPException(status_code=404, detail="Không tìm thấy phiếu yêu cầu.")
@@ -482,7 +444,6 @@ async def transfer_ticket_department(ticket_id: int, data: TransferDepartmentReq
         current_ticket = existing.data[0]
         current_status = current_ticket.get("status")
         
-        # 2. Chặn chuyển phòng nếu vé đã bị hủy hoặc hoàn thành
         if current_status in ["cancelled", "completed"]:
             status_labels = {
                 "cancelled": "đã bị hủy",
@@ -493,7 +454,6 @@ async def transfer_ticket_department(ticket_id: int, data: TransferDepartmentReq
                 detail=f"Phiếu này {status_labels.get(current_status, current_status)}, không thể chuyển phòng!"
             )
 
-        # 3. Tiến hành tạo mã vé mới và cập nhật dữ liệu
         new_code = generate_ticket_code(data.new_department)
         payload = {
             "department": data.new_department,
@@ -511,13 +471,12 @@ async def transfer_ticket_department(ticket_id: int, data: TransferDepartmentReq
         if res.data:
             updated_ticket = res.data[0]
             
-            # 4. Phát sóng thời gian thực qua WebSocket
-            await manager.broadcast({
+            asyncio.run(manager.broadcast({
                 "type": "transfer_ticket",
                 "ticket": updated_ticket,
                 "new_department": data.new_department,
                 "timestamp": datetime.now(VN_TZ).isoformat()
-            })
+            }))
             
             logger.info(f"📢 Chuyển phòng thành công: Vé cũ {current_ticket.get('ticket_code')} → Mã mới {new_code} sang phòng {data.new_department}")
             

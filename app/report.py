@@ -2,9 +2,11 @@ import calendar
 import io
 import logging
 from datetime import datetime
+from pathlib import Path
 from typing import Optional, List, Dict, Any
 from urllib.parse import quote
 
+import numpy as np
 import pandas as pd
 from fastapi import APIRouter, Depends, HTTPException, Query, Request
 from fastapi.responses import HTMLResponse, JSONResponse, StreamingResponse
@@ -15,8 +17,17 @@ from config import supabase
 
 logger = logging.getLogger(__name__)
 
-# Cấu hình Templates & Router
-templates = Jinja2Templates(directory="templates")
+# =========================================================
+# CẤU HÌNH TEMPLATES & ROUTER
+# =========================================================
+BASE_DIR = Path(__file__).resolve().parent
+TEMPLATES_DIR = (
+    BASE_DIR.parent / "templates"
+    if (BASE_DIR.parent / "templates").exists()
+    else BASE_DIR / "templates"
+)
+templates = Jinja2Templates(directory=str(TEMPLATES_DIR))
+
 router = APIRouter(prefix="/admin/report", tags=["Báo cáo & Thống kê"])
 
 ALLOWED_ADMIN_ROLES = {"admin", "super admin", "system admin"}
@@ -28,11 +39,11 @@ NUMERIC_COLS = [
 
 
 # =========================================================
-# HELPER: THỜI GIAN & LỌC D DỮ LIỆU
+# HELPER: THỜI GIAN & LỌC DỮ LIỆU
 # =========================================================
 
 def _parse_month_range(month_str: str) -> tuple[str, str]:
-    """Parse chuỗi tháng (MM/YYYY hoặc YYYY) thành mốc thời gian ISO start/end."""
+    """Parse chuỗi tháng (MM/YYYY hoặc YYYY) thành mốc thời gian ISO start/end có múi giờ +07:00."""
     try:
         clean_str = str(month_str).strip()
         if "/" in clean_str:
@@ -50,8 +61,9 @@ def _parse_month_range(month_str: str) -> tuple[str, str]:
         last_day = calendar.monthrange(now.year, now.month)[1]
         end_d = now.date().replace(day=last_day)
 
-    start_ts = f"{start_d.strftime('%Y-%m-%d')}T00:00:00"
-    end_ts = f"{end_d.strftime('%Y-%m-%d')}T23:59:59"
+    # Thêm offset +07:00 chuẩn múi giờ Việt Nam cho PostgreSQL timestamptz
+    start_ts = f"{start_d.strftime('%Y-%m-%d')}T00:00:00+07:00"
+    end_ts = f"{end_d.strftime('%Y-%m-%d')}T23:59:59+07:00"
     return start_ts, end_ts
 
 
@@ -66,12 +78,13 @@ def get_filtered_report_data(
     """Query dữ liệu từ Supabase theo chuẩn Schema và chuyển đổi sang Pandas DataFrame."""
     start_ts, end_ts = _parse_month_range(month)
 
-    # 1. Query Database
+    # 1. Query Database (Bổ sung .limit(5000) để không bị cắt bớt dữ liệu)
     query = (
         supabase.table("cham_cong")
         .select("*")
         .gte("thoi_gian", start_ts)
         .lte("thoi_gian", end_ts)
+        .limit(5000)
     )
 
     # Phân quyền & Lọc theo Nhân viên
@@ -96,12 +109,12 @@ def get_filtered_report_data(
     df["Tên"] = df["ten"].fillna(df["username"]).fillna("N/A")
 
     if "thoi_gian" in df.columns:
-        df["Thời Gian"] = pd.to_datetime(df["thoi_gian"], utc=True).dt.tz_convert("Asia/Ho_Chi_Minh")
-        df["Thời Gian Str"] = df["Thời Gian"].dt.strftime("%d/%m/%Y %H:%M")
+        df["Thời Gian"] = pd.to_datetime(df["thoi_gian"], utc=True, errors="coerce").dt.tz_convert("Asia/Ho_Chi_Minh")
+        df["Thời Gian Str"] = df["Thời Gian"].dt.strftime("%d/%m/%Y %H:%M").fillna("")
     else:
         df["Thời Gian Str"] = ""
 
-    # Ép kiểu dữ liệu số hàng loạt (Vectorized)
+    # Ép kiểu dữ liệu số hàng loạt
     for col in NUMERIC_COLS:
         if col in df.columns:
             df[col] = pd.to_numeric(df[col], errors="coerce").fillna(0.0)
@@ -126,9 +139,9 @@ def get_filtered_report_data(
     if search and search.strip():
         search_lower = search.lower().strip()
         mask = (
-            df["so_hoa_don"].astype(str).str.lower().str.contains(search_lower) |
-            df["noi_dung"].astype(str).str.lower().str.contains(search_lower) |
-            df["Tên"].astype(str).str.lower().str.contains(search_lower)
+            df["so_hoa_don"].astype(str).str.lower().str.contains(search_lower, regex=False) |
+            df["noi_dung"].astype(str).str.lower().str.contains(search_lower, regex=False) |
+            df["Tên"].astype(str).str.lower().str.contains(search_lower, regex=False)
         )
         df = df[mask]
 
@@ -312,10 +325,7 @@ def get_report_api_data(
     search: Optional[str] = Query(""),
     current_user: dict = Depends(require_login),
 ):
-    """
-    API lấy dữ liệu bảng, chỉ số KPIs & biểu đồ.
-    Đã chuyển sang hàm đồng bộ ('def') để tối ưu ThreadPool cho Pandas.
-    """
+    """API lấy dữ liệu bảng, chỉ số KPIs & biểu đồ."""
     user_role = current_user.get("role", "User")
     username = current_user.get("username", "")
 
@@ -349,10 +359,18 @@ def get_report_api_data(
         )
         chart_data = chart_grouped.to_dict(orient="records")
 
-    # 3. Chuẩn hóa nhanh danh sách bản ghi (Vectorized JSON Mapping)
+    # 3. Chuẩn hóa danh sách bản ghi an toàn cho JSON Serializer
     df_items = df_filtered.copy()
     df_items.insert(0, "stt", range(1, len(df_items) + 1))
     df_items.rename(columns={"Tên": "ten", "Thời Gian Str": "thoi_gian_str"}, inplace=True)
+
+    # Xóa cột Timestamp nguyên bản để tránh lỗi serialize pd.Timestamp
+    if "Thời Gian" in df_items.columns:
+        df_items.drop(columns=["Thời Gian"], inplace=True)
+
+    # Thay thế NaN / NaT / Inf thành None để chuyển thành JSON 'null' chuẩn
+    df_items = df_items.replace({np.nan: None, np.inf: None, -np.inf: None})
+    df_items = df_items.where(pd.notnull(df_items), None)
 
     items = df_items.to_dict(orient="records")
 
@@ -374,7 +392,7 @@ def get_employee_list(
     month: str = Query(...),
     current_user: dict = Depends(require_login)
 ):
-    """API nạp danh sách nhân viên cho Dropdown lọc (Truy vấn tối ưu gọn nhẹ)."""
+    """API nạp danh sách nhân viên cho Dropdown lọc."""
     user_role = current_user.get("role", "User")
     if user_role not in ALLOWED_ADMIN_ROLES:
         return {"employees": []}
@@ -387,6 +405,7 @@ def get_employee_list(
         .select("ten, username")
         .gte("thoi_gian", start_ts)
         .lte("thoi_gian", end_ts)
+        .limit(5000)
         .execute()
     )
     

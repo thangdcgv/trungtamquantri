@@ -1,14 +1,17 @@
+import logging
 from datetime import datetime
+from typing import Any, Dict, List, Optional
 from zoneinfo import ZoneInfo
-from typing import Optional, Dict, Any, List
 
-from fastapi import APIRouter, Request, Query, HTTPException, Depends
-from app.auth import require_login
-from app.auth import require_login, get_current_user_or_redirect  # 👈 Bổ sung get_current_user_or_redirect
+from fastapi import APIRouter, Depends, HTTPException, Query, Request, status
 from fastapi.responses import HTMLResponse, JSONResponse, RedirectResponse
 from fastapi.templating import Jinja2Templates
 from pydantic import BaseModel
+
+from app.auth import get_current_user_or_redirect, require_login
 from config import supabase
+
+logger = logging.getLogger(__name__)
 
 # --- ROUTER DEFINITIONS ---
 router = APIRouter(
@@ -140,6 +143,7 @@ DEVICE_CONFIGS: Dict[str, Dict[str, Any]] = {
 
 # --- HELPER FUNCTIONS ---
 def format_date_vn(dt_str: Optional[str]) -> str:
+    """Format chuỗi datetime ISO sang định dạng dd/mm/YYYY HH:MM (Giờ Việt Nam)."""
     if not dt_str:
         return "-"
     try:
@@ -165,14 +169,18 @@ def resolve_device_name(device_input: str) -> str:
 
 
 def extract_username(user_dict: dict) -> str:
-    """Rút gọn danh tính KTV ưu tiên theo thứ tự."""
+    """Rút gọn danh tính KTV ưu tiên theo thứ tự (An toàn với None / Missing values)."""
     if not isinstance(user_dict, dict):
         return "Kỹ thuật viên"
+    
+    email = user_dict.get("email")
+    email_prefix = email.split("@")[0] if isinstance(email, str) and "@" in email else None
+
     return (
         user_dict.get("username") or 
         user_dict.get("ho_ten") or 
         user_dict.get("name") or 
-        (user_dict.get("email").split("@")[0] if user_dict.get("email") else None) or 
+        email_prefix or 
         "Kỹ thuật viên"
     )
 
@@ -208,10 +216,10 @@ async def trang_quan_ly_key(
     request: Request,
     search: Optional[str] = Query(None)
 ):
-    # 1. Lấy user hiện tại (giống bên kho key)
+    # 1. Lấy user hiện tại
     user = await get_current_user_or_redirect(request)
     if not user:
-        return RedirectResponse(url="/auth/login", status_code=303)
+        return RedirectResponse(url="/auth/login", status_code=status.HTTP_303_SEE_OTHER)
 
     search_keyword = search.strip() if search else ""
     history_logs = []
@@ -241,15 +249,15 @@ async def trang_quan_ly_key(
             h["thoi_gian_fmt"] = format_date_vn(dt_val)
 
     except Exception as e:
-        print(f"❌ Lỗi lấy lịch sử key: {repr(e)}", flush=True)
+        logger.error(f"Lỗi lấy lịch sử key: {repr(e)}")
 
-    # 2. BỔ SUNG "current_user": user VÀO CONTEXT
+    # 2. Render Template cùng Context
     return templates.TemplateResponse(
         request=request,
         name="admin/admin_quan_ly_key.html",
         context={
             "request": request,
-            "current_user": user,  # 👈 QUAN TRỌNG: Thêm dòng này để Jinja2 hiển thị lại Menu
+            "current_user": user,
             "title": "Quản Lý Key - Máy In Đại Thành",
             "history_logs": history_logs,
             "search_keyword": search_keyword
@@ -286,6 +294,7 @@ async def search_live(
 
         return {"status": "success", "items": items}
     except Exception as e:
+        logger.error(f"Lỗi tìm kiếm live key: {e}")
         return {"status": "error", "message": str(e), "items": []}
 
 
@@ -322,7 +331,10 @@ async def get_models(loai_thiet_bi: str = Query(...)):
 
         return {"models": sorted(list(valid_models))}
     except Exception as e:
-        raise HTTPException(status_code=400, detail=f"Lỗi lấy danh sách Model: {str(e)}")
+        raise HTTPException(
+            status_code=status.HTTP_400_BAD_REQUEST, 
+            detail=f"Lỗi lấy danh sách Model: {str(e)}"
+        )
 
 
 @api_router.get("/get-available-key")
@@ -360,7 +372,10 @@ async def get_available_key(loai_thiet_bi: str = Query(...), ten_may: str = Quer
             }
         }
     except Exception as e:
-        raise HTTPException(status_code=400, detail=f"Lỗi truy vấn key: {str(e)}")
+        raise HTTPException(
+            status_code=status.HTTP_400_BAD_REQUEST, 
+            detail=f"Lỗi truy vấn key: {str(e)}"
+        )
 
 
 @api_router.post("/confirm-success")
@@ -372,7 +387,10 @@ async def confirm_success_action(
     try:
         dinh_danh = payload.dinh_danh_may.strip()
         if not dinh_danh:
-            raise HTTPException(status_code=400, detail="Mã định danh hoặc Số Serial không được để trống!")
+            raise HTTPException(
+                status_code=status.HTTP_400_BAD_REQUEST, 
+                detail="Mã định danh hoặc Số Serial không được để trống!"
+            )
 
         real_device_name = resolve_device_name(payload.loai_thiet_bi)
 
@@ -383,14 +401,20 @@ async def confirm_success_action(
         # 2. Kiểm tra lại trạng thái Key từ CSDL kho_key
         res_key = supabase.table("kho_key").select("*").eq("id", payload.key_id).execute()
         if not res_key.data:
-            raise HTTPException(status_code=404, detail="Không tìm thấy thông tin Mã Key!")
+            raise HTTPException(
+                status_code=status.HTTP_404_NOT_FOUND, 
+                detail="Không tìm thấy thông tin Mã Key!"
+            )
             
         key_info = res_key.data[0]
         gioi_han = key_info.get("gioi_han") or 1
         da_dung = key_info.get("da_dung") or 0
 
         if da_dung >= gioi_han or key_info.get("trang_thai") != "Còn lượt":
-            raise HTTPException(status_code=400, detail="Mã Key này đã hết lượt sử dụng hoặc bị báo lỗi!")
+            raise HTTPException(
+                status_code=status.HTTP_400_BAD_REQUEST, 
+                detail="Mã Key này đã hết lượt sử dụng hoặc bị báo lỗi!"
+            )
 
         user_name = extract_username(current_user)
 
@@ -412,7 +436,10 @@ async def confirm_success_action(
         
         insert_res = supabase.table("quan_ly_key").insert(data_history).execute()
         if not insert_res.data:
-            raise HTTPException(status_code=500, detail="Lỗi lưu lịch sử xuất key vào CSDL")
+            raise HTTPException(
+                status_code=status.HTTP_500_INTERNAL_SERVER_ERROR, 
+                detail="Lỗi lưu lịch sử xuất key vào CSDL"
+            )
 
         # 4. TRỪ LƯỢT VÀ CẬP NHẬT TRẠNG THÁI ở `kho_key`
         next_da_dung = da_dung + 1
@@ -435,8 +462,14 @@ async def confirm_success_action(
     except Exception as e:
         err_msg = str(e)
         if "23505" in err_msg or "unique" in err_msg:
-            raise HTTPException(status_code=400, detail="Số Seri/Định danh này đã được lưu trước đó!")
-        raise HTTPException(status_code=500, detail=f"Lỗi hệ thống khi chốt key thành công: {err_msg}")
+            raise HTTPException(
+                status_code=status.HTTP_400_BAD_REQUEST, 
+                detail="Số Seri/Định danh này đã được lưu trước đó!"
+            )
+        raise HTTPException(
+            status_code=status.HTTP_500_INTERNAL_SERVER_ERROR, 
+            detail=f"Lỗi hệ thống khi chốt key thành công: {err_msg}"
+        )
 
 
 @api_router.post("/report-fail-retry")
@@ -453,7 +486,7 @@ async def report_fail_retry_action(
             "trang_thai": "Báo lỗi"
         }).eq("id", payload.key_id).execute()
 
-        print(f"⚠️ [KEY FAILED]: KTV '{username_ktv}' đã đánh dấu Key ID {payload.key_id} là 'Báo lỗi'", flush=True)
+        logger.warning(f"[KEY FAILED]: KTV '{username_ktv}' đã đánh dấu Key ID {payload.key_id} là 'Báo lỗi'")
 
         # 2. Tìm Key thay thế tiếp theo trong kho
         res_next = supabase.table("kho_key").select("*")\
@@ -492,7 +525,10 @@ async def report_fail_retry_action(
         }
 
     except Exception as e:
-        raise HTTPException(status_code=500, detail=f"Lỗi hệ thống khi xử lý báo lỗi đổi key: {str(e)}")
+        raise HTTPException(
+            status_code=status.HTTP_500_INTERNAL_SERVER_ERROR, 
+            detail=f"Lỗi hệ thống khi xử lý báo lỗi đổi key: {str(e)}"
+        )
 
 
 @api_router.post("/nap-key-nhanh")
@@ -502,7 +538,10 @@ async def api_nap_key_nhanh(
 ):
     ma_key = data.ma_key.strip().upper()
     if not ma_key:
-        raise HTTPException(status_code=400, detail="Mã Key không được để trống!")
+        raise HTTPException(
+            status_code=status.HTTP_400_BAD_REQUEST, 
+            detail="Mã Key không được để trống!"
+        )
 
     try:
         username_ktv = extract_username(current_user)
@@ -520,7 +559,7 @@ async def api_nap_key_nhanh(
 
             if da_dung >= gioi_han or trang_thai != "Còn lượt":
                 return JSONResponse(
-                    status_code=400,
+                    status_code=status.HTTP_400_BAD_REQUEST,
                     content={
                         "success": False, 
                         "message": f"❌ Key [{ma_key}] đã HẾT LƯỢT hoặc bị khóa! (Đã dùng {da_dung}/{gioi_han} lượt)."
@@ -541,7 +580,7 @@ async def api_nap_key_nhanh(
         else:
             if not data.confirm_create:
                 return JSONResponse(
-                    status_code=404,
+                    status_code=status.HTTP_404_NOT_FOUND,
                     content={
                         "success": False,
                         "code": "KEY_NOT_FOUND",
@@ -580,5 +619,8 @@ async def api_nap_key_nhanh(
         }
 
     except Exception as e:
-        print(f"❌ Lỗi Nạp Key Nhanh: {repr(e)}")
-        raise HTTPException(status_code=500, detail=f"Lỗi xử lý CSDL: {str(e)}")
+        logger.error(f"Lỗi Nạp Key Nhanh: {repr(e)}")
+        raise HTTPException(
+            status_code=status.HTTP_500_INTERNAL_SERVER_ERROR, 
+            detail=f"Lỗi xử lý CSDL: {str(e)}"
+        )

@@ -1,21 +1,9 @@
-"""
-Module: Quản Lý Kho & Seri Máy In (Inventory Router)
-=====================================================
-Phiên bản cải tiến — Robust & Production-ready
-- Xác thực & phân quyền chặt chẽ
-- Chuẩn hóa dữ liệu đầu vào (serial, URL)
-- Pre-check trước khi ghi DB (tránh phụ thuộc lỗi chậm)
-- Phân trang lịch sử + lọc theo người dùng
-- Xử lý lỗi nhất quán, có logging
-- Hỗ trợ cập nhật trạng thái kiểm kê
-"""
-
 import logging
 import re
-from datetime import datetime
-from typing import Optional, Dict, Any, List
+from pathlib import Path
+from typing import Optional, Dict, Any
 
-from fastapi import APIRouter, Request, Query, HTTPException, Depends, status, Path
+from fastapi import APIRouter, Request, Query, HTTPException, Depends, status, Path as FastAPIPath
 from fastapi.responses import HTMLResponse, JSONResponse
 from fastapi.templating import Jinja2Templates
 from pydantic import BaseModel, Field, HttpUrl, field_validator
@@ -27,7 +15,18 @@ from app.auth import require_login, get_current_user_or_redirect
 # ==========================================
 # CẤU HÌNH LOGGING
 # ==========================================
-logger = logging.getLogger(__name__)
+logger = logging.getLogger("uvicorn.error")
+
+# ==========================================
+# CẤU HÌNH TEMPLATES ĐỘNG LINH HOẠT
+# ==========================================
+BASE_DIR = Path(__file__).resolve().parent
+TEMPLATES_DIR = (
+    BASE_DIR.parent / "templates"
+    if (BASE_DIR.parent / "templates").exists()
+    else BASE_DIR / "templates"
+)
+templates = Jinja2Templates(directory=str(TEMPLATES_DIR))
 
 # ==========================================
 # HẰNG SỐ & THAM SỐ CẤU HÌNH
@@ -36,6 +35,7 @@ DEFAULT_PAGE_SIZE = 20
 MAX_PAGE_SIZE = 100
 MAX_SERIAL_LENGTH = 100
 MIN_SERIAL_LENGTH = 1
+
 # Cho phép chữ cái, số, gạch ngang, gạch dưới, dấu chấm, khoảng trắng, / + # :
 SERIAL_ALLOWED_PATTERN = re.compile(r"^[A-Za-z0-9\-\_\.\/\+\#\:\s]+$")
 # Các trạng thái hợp lệ của bản ghi kiểm kê
@@ -54,7 +54,6 @@ api_router = APIRouter(
     tags=["API Kiểm Kê Seri Máy In"]
 )
 
-templates = Jinja2Templates(directory="app/templates")
 
 # ==========================================
 # PYDANTIC SCHEMAS
@@ -80,13 +79,12 @@ class SerialScanRequest(BaseModel):
     @classmethod
     def validate_and_normalize_serial(cls, v: str) -> str:
         """Chuẩn hóa seri: loại bỏ khoảng trắng thừa, viết hoa, kiểm tra ký tự hợp lệ."""
-        # Gộp nhiều khoảng trắng liên tiếp thành 1, cắt 2 đầu
         normalized = " ".join(v.strip().split()).upper()
         if not normalized:
             raise ValueError("Số seri không được để trống sau khi chuẩn hóa")
         if not SERIAL_ALLOWED_PATTERN.match(normalized):
             raise ValueError(
-                "Số seri chỉ được chứa chữ cái, số, khoảng trắng và các ký tự: - _ ."
+                "Số seri chỉ được chứa chữ cái, số, khoảng trắng và các ký tự: - _ . / + # :"
             )
         return normalized
 
@@ -116,7 +114,6 @@ def extract_user_id(current_user: Any) -> Optional[int]:
         uid = current_user.get("id")
     else:
         uid = getattr(current_user, "id", None)
-    # Ép kiểu về int nếu có thể
     try:
         return int(uid) if uid is not None else None
     except (TypeError, ValueError):
@@ -124,33 +121,21 @@ def extract_user_id(current_user: Any) -> Optional[int]:
 
 
 def is_admin_user(current_user: Any) -> bool:
-    """
-    Kiểm tra người dùng có quyền admin hay không.
-    Điều chỉnh logic này cho phù hợp với hệ thống role của bạn.
-    Ví dụ: current_user.get("role") == "admin" hoặc is_admin == True
-    """
+    """Kiểm tra người dùng có quyền admin hay không."""
     if isinstance(current_user, dict):
         role = current_user.get("role", "") or current_user.get("user_role", "")
         is_admin_flag = current_user.get("is_admin", False)
     else:
         role = getattr(current_user, "role", "") or getattr(current_user, "user_role", "")
         is_admin_flag = getattr(current_user, "is_admin", False)
-    return bool(is_admin_flag) or str(role).lower() in ("admin", "administrator", "manager", "quanly")
-
-
-def build_error_response(status_code: int, detail: str) -> JSONResponse:
-    """Trả về JSON lỗi có cấu trúc nhất quán."""
-    return JSONResponse(
-        status_code=status_code,
-        content={"status": "error", "detail": detail}
-    )
+    return bool(is_admin_flag) or str(role).lower() in ("admin", "administrator", "manager", "quanly", "super admin", "system admin")
 
 
 # ==========================================
 # 1. HTML ROUTER (Giao diện Quét Mã cho User)
 # ==========================================
 @router.get("/scan", response_class=HTMLResponse)
-async def get_scan_page(
+def get_scan_page(
     request: Request,
     user: dict = Depends(get_current_user_or_redirect)
 ):
@@ -171,28 +156,23 @@ async def get_scan_page(
 
 # ---------- 2.1 Danh sách máy in (có phân trang & tìm kiếm) ----------
 @api_router.get("/printers", status_code=status.HTTP_200_OK)
-async def get_printer_list(
+def get_printer_list(
     q: Optional[str] = Query(None, max_length=100, description="Từ khóa tìm kiếm theo Thương hiệu hoặc Model"),
     page: int = Query(1, ge=1, description="Số trang"),
     page_size: int = Query(DEFAULT_PAGE_SIZE, ge=1, le=MAX_PAGE_SIZE, description="Số bản ghi mỗi trang"),
     current_user: dict = Depends(require_login)
 ):
-    """
-    Lấy danh sách Thương hiệu & Model từ bảng list_printer.
-    Hỗ trợ lọc live-search (ILIKE) + phân trang.
-    """
+    """Lấy danh sách Thương hiệu & Model từ bảng list_printer."""
     try:
         query = supabase.table("list_printer").select("id, brand_name, model_code", count="exact")
 
         if q and q.strip():
             search_str = q.strip()
-            # Escape ký tự đặc biệt của ILIKE để tránh injection pattern
             escaped = search_str.replace("%", "\\%").replace("_", "\\_")
             query = query.or_(
                 f"brand_name.ilike.%{escaped}%,model_code.ilike.%{escaped}%"
             )
 
-        # Phân trang: tính offset
         offset = (page - 1) * page_size
         response = (
             query
@@ -202,11 +182,11 @@ async def get_printer_list(
             .execute()
         )
 
-        total = response.count if response.count is not None else len(response.data)
+        total = response.count if response.count is not None else len(response.data or [])
 
         return {
             "status": "success",
-            "data": response.data,
+            "data": response.data or [],
             "pagination": {
                 "page": page,
                 "page_size": page_size,
@@ -226,15 +206,11 @@ async def get_printer_list(
 
 # ---------- 2.2 Tạo bản ghi quét seri ----------
 @api_router.post("/scan-serial", status_code=status.HTTP_201_CREATED)
-async def create_serial_record(
+def create_serial_record(
     payload: SerialScanRequest,
     current_user: dict = Depends(require_login)
 ):
-    """
-    API tiếp nhận dữ liệu quét từ Frontend, gắn ID người dùng thực hiện và lưu vào inventory_serials.
-    Có pre-check: trùng seri & printer_id không tồn tại.
-    """
-    # 1. Xác thực người dùng
+    """API tiếp nhận dữ liệu quét từ Frontend và lưu vào inventory_serials."""
     user_id = extract_user_id(current_user)
     if not user_id:
         logger.warning("Yêu cầu quét seri không xác định được user_id. current_user=%s", current_user)
@@ -243,10 +219,10 @@ async def create_serial_record(
             detail="Không xác định được thông tin người dùng. Vui lòng đăng nhập lại."
         )
 
-    serial = payload.serial_number  # Đã được chuẩn hóa bởi Pydantic validator
+    serial = payload.serial_number
 
     try:
-        # 2. Pre-check: seri đã tồn tại chưa? (tránh phụ thuộc lỗi DB chậm)
+        # Pre-check trùng seri
         existing = (
             supabase.table("inventory_serials")
             .select("id, serial_number")
@@ -261,7 +237,7 @@ async def create_serial_record(
                 detail=f"Mã Seri '{serial}' đã tồn tại trong hệ thống!"
             )
 
-        # 3. Pre-check: printer_id có tồn tại không?
+        # Pre-check printer_id hợp lệ
         printer = (
             supabase.table("list_printer")
             .select("id, brand_name, model_code")
@@ -276,16 +252,14 @@ async def create_serial_record(
                 detail=f"Model máy in chọn không hợp lệ (printer_id: {payload.printer_id} không tồn tại)!"
             )
 
-        # 4. Chuẩn bị dữ liệu insert
         data_to_insert = {
             "serial_number": serial,
             "printer_id": payload.printer_id,
             "image_url": str(payload.image_url) if payload.image_url else None,
             "created_by": user_id,
-            "status": "pending"  # Giá trị mặc định khi tạo mới
+            "status": "pending"
         }
 
-        # 5. Thực thi Insert
         response = supabase.table("inventory_serials").insert(data_to_insert).execute()
 
         if not response.data:
@@ -310,7 +284,6 @@ async def create_serial_record(
         error_msg = str(e)
         logger.exception("Lỗi không mong đợi khi lưu seri %s: %s", serial, error_msg)
 
-        # Fallback: bắt lỗi ràng buộc DB nếu pre-check bị bỏ sót (race condition)
         if "duplicate key value violates unique constraint" in error_msg or "23505" in error_msg:
             raise HTTPException(
                 status_code=status.HTTP_409_CONFLICT,
@@ -328,21 +301,16 @@ async def create_serial_record(
         )
 
 
-# ---------- 2.3 Lịch sử quét (phân quyền + phân trang + lọc) ----------
+# ---------- 2.3 Lịch sử quét ----------
 @api_router.get("/history", status_code=status.HTTP_200_OK)
-async def get_scan_history(
+def get_scan_history(
     page: int = Query(1, ge=1, description="Số trang"),
     page_size: int = Query(DEFAULT_PAGE_SIZE, ge=1, le=MAX_PAGE_SIZE, description="Số bản ghi mỗi trang"),
     status_filter: Optional[str] = Query(None, description="Lọc theo trạng thái: pending/verified/rejected/completed"),
     serial_search: Optional[str] = Query(None, max_length=100, description="Tìm kiếm theo số seri"),
     current_user: dict = Depends(require_login)
 ):
-    """
-    API lấy lịch sử quét kèm thông tin Thương hiệu & Model (JOIN 2 bảng).
-    - Người dùng thường: chỉ xem bản ghi của chính mình.
-    - Admin/Quản lý: xem toàn bộ hệ thống.
-    Hỗ trợ phân trang, lọc trạng thái, tìm kiếm seri.
-    """
+    """API lấy lịch sử quét kèm thông tin Thương hiệu & Model."""
     user_id = extract_user_id(current_user)
     if not user_id:
         raise HTTPException(
@@ -362,11 +330,9 @@ async def get_scan_history(
             )
         )
 
-        # Phân quyền: user thường chỉ xem của mình
         if not admin_mode:
             query = query.eq("created_by", user_id)
 
-        # Lọc theo trạng thái
         if status_filter:
             status_clean = status_filter.strip().lower()
             if status_clean in VALID_STATUSES:
@@ -377,12 +343,10 @@ async def get_scan_history(
                     detail=f"Trạng thái lọc không hợp lệ. Chấp nhận: {', '.join(VALID_STATUSES)}"
                 )
 
-        # Tìm kiếm theo seri
         if serial_search and serial_search.strip():
             escaped = serial_search.strip().replace("%", "\\%").replace("_", "\\_")
             query = query.ilike("serial_number", f"%{escaped}%")
 
-        # Phân trang
         offset = (page - 1) * page_size
         response = (
             query
@@ -391,11 +355,11 @@ async def get_scan_history(
             .execute()
         )
 
-        total = response.count if response.count is not None else len(response.data)
+        total = response.count if response.count is not None else len(response.data or [])
 
         return {
             "status": "success",
-            "data": response.data,
+            "data": response.data or [],
             "is_admin": admin_mode,
             "pagination": {
                 "page": page,
@@ -417,11 +381,11 @@ async def get_scan_history(
 
 # ---------- 2.4 Chi tiết 1 bản ghi ----------
 @api_router.get("/records/{record_id}", status_code=status.HTTP_200_OK)
-async def get_serial_record_detail(
-    record_id: int = Path(..., gt=0),
+def get_serial_record_detail(
+    record_id: int = FastAPIPath(..., gt=0),
     current_user: dict = Depends(require_login)
 ):
-    """Lấy chi tiết một bản ghi kiểm kê theo ID (chỉ chủ sở hữu hoặc admin)."""
+    """Lấy chi tiết một bản ghi kiểm kê theo ID."""
     user_id = extract_user_id(current_user)
     if not user_id:
         raise HTTPException(status_code=401, detail="Không xác định được người dùng.")
@@ -445,7 +409,6 @@ async def get_serial_record_detail(
             )
 
         record = response.data[0]
-        # Phân quyền: chỉ chủ sở hữu hoặc admin mới xem được
         if not is_admin_user(current_user) and record.get("created_by") != user_id:
             raise HTTPException(
                 status_code=status.HTTP_403_FORBIDDEN,
@@ -463,12 +426,12 @@ async def get_serial_record_detail(
 
 # ---------- 2.5 Cập nhật trạng thái bản ghi (chỉ admin) ----------
 @api_router.patch("/records/{record_id}/status", status_code=status.HTTP_200_OK)
-async def update_record_status(
+def update_record_status(
     record_id: int,
     payload: StatusUpdateRequest,
     current_user: dict = Depends(require_login)
 ):
-    """Cập nhật trạng thái bản ghi kiểm kê. Chỉ admin/quản lý được thực hiện."""
+    """Cập nhật trạng thái bản ghi kiểm kê."""
     if not is_admin_user(current_user):
         logger.warning("Người dùng không phải admin thử cập nhật trạng thái bản ghi %s", record_id)
         raise HTTPException(
@@ -477,7 +440,6 @@ async def update_record_status(
         )
 
     try:
-        # Kiểm tra bản ghi tồn tại
         exist = supabase.table("inventory_serials").select("id").eq("id", record_id).limit(1).execute()
         if not exist.data:
             raise HTTPException(
@@ -496,9 +458,7 @@ async def update_record_status(
             .execute()
         )
 
-        logger.info(
-            "Admin cập nhật trạng thái bản ghi %s -> %s", record_id, payload.status
-        )
+        logger.info("Admin cập nhật trạng thái bản ghi %s -> %s", record_id, payload.status)
 
         return {
             "status": "success",
@@ -515,11 +475,11 @@ async def update_record_status(
 
 # ---------- 2.6 Xóa bản ghi (chỉ admin) ----------
 @api_router.delete("/records/{record_id}", status_code=status.HTTP_200_OK)
-async def delete_record(
+def delete_record(
     record_id: int,
     current_user: dict = Depends(require_login)
 ):
-    """Xóa một bản ghi kiểm kê. Chỉ admin/quản lý được thực hiện."""
+    """Xóa một bản ghi kiểm kê."""
     if not is_admin_user(current_user):
         logger.warning("Người dùng không phải admin thử xóa bản ghi %s", record_id)
         raise HTTPException(
@@ -552,7 +512,7 @@ async def delete_record(
 
 # ---------- 2.7 Thống kê nhanh (dashboard) ----------
 @api_router.get("/stats", status_code=status.HTTP_200_OK)
-async def get_inventory_stats(
+def get_inventory_stats(
     current_user: dict = Depends(require_login)
 ):
     """Trả về số liệu thống kê nhanh: tổng bản ghi, theo trạng thái."""
@@ -568,9 +528,8 @@ async def get_inventory_stats(
             query = query.eq("created_by", user_id)
 
         response = query.execute()
-        total = response.count if response.count is not None else len(response.data)
+        total = response.count if response.count is not None else len(response.data or [])
 
-        # Đếm theo trạng thái
         counts: Dict[str, int] = {s: 0 for s in VALID_STATUSES}
         for row in (response.data or []):
             st = (row.get("status") or "pending").lower()

@@ -1,13 +1,17 @@
 import json
-import os
+import logging
 import traceback
-from typing import Optional, List
-from fastapi import APIRouter, Request, Form, Query, HTTPException, status, Depends
+from typing import List, Optional
+
+from fastapi import APIRouter, Depends, Form, HTTPException, Query, Request, status
 from fastapi.responses import HTMLResponse, RedirectResponse
-from app.auth import require_login, get_current_user_or_redirect
 from fastapi.templating import Jinja2Templates
 from pydantic import BaseModel, Field
+
+from app.auth import get_current_user_or_redirect, require_login
 from config import supabase
+
+logger = logging.getLogger(__name__)
 
 # =========================================================================
 # HELPER AUTH DEPENDENCY DÀNH CHO API (TRẢ VỀ JSON CHI TIẾT LỖI 401/403)
@@ -30,7 +34,7 @@ async def verify_admin_user(request: Request):
 
 router = APIRouter(prefix="/admin/kho-key", tags=["Admin - Quản Lý Kho Key"])
 
-# 🔒 ĐÃ SỬA: Bổ sung dependencies=[Depends(verify_admin_user)] cho toàn bộ API Kho Key
+# Bổ sung dependency bảo mật cho toàn bộ API Kho Key
 api_router = APIRouter(
     prefix="/admin/api/kho-key", 
     tags=["Admin API - Kho Key"],
@@ -42,7 +46,7 @@ DANH_SACH_LOAI_TB = ["Máy in", "Máy cắt bế", "Thiết bị khác"]
 
 
 # =========================================================================
-# SCHEMAS (ĐÃ BỔ SUNG VALIDATE FIELD)
+# SCHEMAS PYDANTIC
 # =========================================================================
 class CheckImportReq(BaseModel):
     loai_thiet_bi: str
@@ -83,10 +87,10 @@ class KeyItemRow(BaseModel):
 async def list_kho_key(
     request: Request,
     search: Optional[str] = Query(None),
-    current_user: dict = Depends(require_login),
     loai_thiet_bi: Optional[str] = Query(None),
     trang_thai: Optional[str] = Query(None)
 ):
+    # 1. Kiểm tra xác thực & quyền Admin
     user = await get_current_user_or_redirect(request)
     if not user:
         return RedirectResponse(url="/auth/login", status_code=303)
@@ -95,12 +99,14 @@ async def list_kho_key(
     if user_role not in ["admin", "super admin", "system admin"]:
         return RedirectResponse(url="/admin/quan-ly-key", status_code=303)
 
+    # 2. Truy vấn dữ liệu từ Supabase
     try:
         query = supabase.table("kho_key").select("*").order("id", desc=True)
 
         if search and search.strip():
             s = search.strip()
-            query = query.or_(f"ten_may.ilike.*{s}*,ma_key.ilike.*{s}*")
+            # 💡 ĐÃ SỬA: Thay '*' bằng '%' để đúng cú pháp PostgREST ilike
+            query = query.or_(f"ten_may.ilike.%{s}%,ma_key.ilike.%{s}%")
 
         if loai_thiet_bi and loai_thiet_bi.strip():
             query = query.eq("loai_thiet_bi", loai_thiet_bi.strip())
@@ -112,20 +118,18 @@ async def list_kho_key(
         raw_keys_data = response.data or []
 
     except Exception as db_err:
-        print(f"\n❌ [SUPABASE DATABASE ERROR]: {str(db_err)}\n")
+        logger.error(f"❌ [SUPABASE DATABASE ERROR]: {str(db_err)}")
         traceback.print_exc()
         raise HTTPException(
             status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
             detail=f"Lỗi truy vấn CSDL Supabase: {str(db_err)}"
         )
 
+    # 3. Render Jinja2 Template
     try:
         raw_keys_json = json.dumps(raw_keys_data, default=str, ensure_ascii=False)
         danh_sach_loai_tb_json = json.dumps(DANH_SACH_LOAI_TB, ensure_ascii=False)
-        # 1. Lấy user hiện tại (giống bên kho key)
-        user = await get_current_user_or_redirect(request)
-        if not user:
-            return RedirectResponse(url="/auth/login", status_code=303)
+
         return templates.TemplateResponse(
             request=request,
             name="admin/admin_kho_key.html",
@@ -141,7 +145,7 @@ async def list_kho_key(
             }
         )
     except Exception as tpl_err:
-        print(f"\n❌ [JINJA2 TEMPLATE ERROR]: {str(tpl_err)}\n")
+        logger.error(f"❌ [JINJA2 TEMPLATE ERROR]: {str(tpl_err)}")
         traceback.print_exc()
         raise HTTPException(
             status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
@@ -150,7 +154,7 @@ async def list_kho_key(
 
 
 # =========================================================================
-# 2. CÁC ENDPOINT API TRẢ VỀ JSON (ĐÃ BẢO MẬT & TỐI ƯU TRUY VẤN)
+# 2. CÁC ENDPOINT API TRẢ VỀ JSON
 # =========================================================================
 
 @api_router.post("/check-import")
@@ -187,9 +191,15 @@ async def confirm_import_keys(payload: ConfirmImportReq):
         if not clean_keys:
             raise HTTPException(status_code=400, detail="Danh sách key hợp lệ rỗng.")
 
-        # 🔒 ĐÃ SỬA: Lọc bỏ key đã tồn tại trong DB ngay thời điểm Insert để chống race condition
-        res = supabase.table("kho_key").select("ma_key").in_("ma_key", clean_keys).execute()
-        existing_keys = set(item["ma_key"] for item in res.data) if res.data else set()
+        # 💡 ĐÃ SỬA: Lọc trùng theo Chunking an toàn cho danh sách lớn
+        existing_keys = set()
+        chunk_size = 500
+        for i in range(0, len(clean_keys), chunk_size):
+            chunk = clean_keys[i:i + chunk_size]
+            res = supabase.table("kho_key").select("ma_key").in_("ma_key", chunk).execute()
+            if res.data:
+                existing_keys.update(item["ma_key"] for item in res.data)
+
         valid_keys = [k for k in clean_keys if k not in existing_keys]
 
         if not valid_keys:
@@ -207,8 +217,15 @@ async def confirm_import_keys(payload: ConfirmImportReq):
             for k in valid_keys
         ]
 
-        supabase.table("kho_key").insert(records).execute()
-        return {"status": "success", "inserted_count": len(records), "skipped_count": len(clean_keys) - len(valid_keys)}
+        # Batch insert theo chunk 500 bản ghi
+        for i in range(0, len(records), chunk_size):
+            supabase.table("kho_key").insert(records[i:i + chunk_size]).execute()
+
+        return {
+            "status": "success", 
+            "inserted_count": len(records), 
+            "skipped_count": len(clean_keys) - len(valid_keys)
+        }
     except HTTPException:
         raise
     except Exception as e:
@@ -218,7 +235,6 @@ async def confirm_import_keys(payload: ConfirmImportReq):
 @api_router.post("/bulk-update-limit")
 async def bulk_update_limit(payload: BulkUpdateLimitReq):
     try:
-        # 🔒 ĐÃ SỬA: Đồng bộ giới hạn và trạng thái an toàn
         loai_tb = payload.loai_thiet_bi.strip()
         ten_may = payload.ten_may.strip()
         new_limit = payload.new_limit
@@ -277,7 +293,8 @@ async def save_batch_details(items: List[KeyItemRow]):
         to_update = []
 
         for item in items:
-            data = item.dict(exclude={"id"})
+            # Tương thích cả Pydantic v1 và v2
+            data = item.model_dump(exclude={"id"}) if hasattr(item, "model_dump") else item.dict(exclude={"id"})
             data["ten_may"] = data["ten_may"].strip()
             data["ma_key"] = data["ma_key"].strip()
             data["loai_thiet_bi"] = data["loai_thiet_bi"].strip()
@@ -288,7 +305,6 @@ async def save_batch_details(items: List[KeyItemRow]):
             else:
                 to_insert.append(data)
 
-        # 🔒 ĐÃ SỬA: Xử lý Bulk Insert & Upsert để loại bỏ N+1 Query
         if to_insert:
             supabase.table("kho_key").insert(to_insert).execute()
 
@@ -301,7 +317,7 @@ async def save_batch_details(items: List[KeyItemRow]):
 
 
 # =========================================================================
-# 3. CÁC ROUTE FORM POST (ĐÃ VALIDATE INPUT FORM)
+# 3. CÁC ROUTE FORM POST
 # =========================================================================
 
 @router.post("/add")

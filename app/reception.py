@@ -1,9 +1,11 @@
-from datetime import datetime, timezone
-from typing import Optional
-from pathlib import Path
+import asyncio
 import logging
+from datetime import datetime, timezone
+from pathlib import Path
+from typing import Optional
 import re
 import urllib.parse
+
 from fastapi import APIRouter, HTTPException, Query, Depends, Request
 from fastapi.responses import HTMLResponse
 from fastapi.templating import Jinja2Templates
@@ -12,15 +14,24 @@ from pydantic import BaseModel, Field
 from config import supabase
 from app.websocket_manager import manager, VN_TZ
 from app.admin.admin_routes import require_roles
-from app.auth import get_current_user_or_redirect 
+from app.auth import get_current_user_or_redirect
 
-BASE_DIR = Path(__file__).resolve().parent
-templates = Jinja2Templates(directory=str(BASE_DIR / "templates"))
-router = APIRouter(prefix="/api/reception", tags=["Reception"])
 logger = logging.getLogger("uvicorn.error")
 
-# Khai báo dependency dùng chung cho toàn bộ Router Reception để bảo mật
+# === CẤU HÌNH TEMPLATES ĐỘNG LINH HOẠT ===
+BASE_DIR = Path(__file__).resolve().parent
+TEMPLATES_DIR = (
+    BASE_DIR.parent / "templates"
+    if (BASE_DIR.parent / "templates").exists()
+    else BASE_DIR / "templates"
+)
+templates = Jinja2Templates(directory=str(TEMPLATES_DIR))
+
+router = APIRouter(prefix="/api/reception", tags=["Reception"])
+
+# Phân quyền truy cập dùng chung
 AUTH_DEPENDENCY = Depends(require_roles(["cskh", "user", "admin", "super admin", "system admin"]))
+
 
 # --- SCHEMAS ---
 class ReceiveItemRequest(BaseModel):
@@ -28,9 +39,11 @@ class ReceiveItemRequest(BaseModel):
     phone: str = Field(..., min_length=8)
     received_note: Optional[str] = None
 
+
 class ReturnItemRequest(BaseModel):
     returned_note: Optional[str] = None
     returned_method: Optional[str] = Field(None, description="Hình thức hoàn trả: Tại cửa hàng, Gửi Ship, ...")
+
 
 # --- HELPER TẠO NỘI DUNG VÀ DEEP LINK SMS ---
 def generate_sms_info(phone: str, customer_name: str, code: str, note: Optional[str], msg_type: str) -> dict:
@@ -62,7 +75,7 @@ def generate_sms_info(phone: str, customer_name: str, code: str, note: Optional[
     # 3. Mã hóa URL cho nội dung SMS
     encoded_text = urllib.parse.quote(sms_text)
 
-    # 4. Tạo deep link chuẩn (Android/Standard dùng '?', iOS đôi khi cần '&')
+    # 4. Tạo deep link chuẩn
     sms_link_android = f"sms:{phone_clean}?body={encoded_text}"
     sms_link_ios = f"sms:{phone_clean}&body={encoded_text}"
 
@@ -73,9 +86,10 @@ def generate_sms_info(phone: str, customer_name: str, code: str, note: Optional[
         "sms_link_ios": sms_link_ios
     }
 
+
 # --- TRANG GIAO DIỆN ---
 @router.get("/delivery", response_class=HTMLResponse)
-async def reception_page(
+def reception_page(
     request: Request,
     user: dict = Depends(get_current_user_or_redirect)
 ):
@@ -84,6 +98,7 @@ async def reception_page(
         name="reception.html",
         context={"current_user": user}
     )
+
 
 # --- 1. TIẾP NHẬN MÁY ---
 @router.post("/receive")
@@ -95,19 +110,22 @@ async def create_reception_record(
         phone_clean = data.phone.strip()
         name_clean = data.customer_name.strip()
 
-        today_str = datetime.now(VN_TZ).strftime("%Y%m%d")
+        now_vn = datetime.now(VN_TZ)
+        today_str = now_vn.strftime("%Y%m%d")
         prefix = f"NT-{today_str[-4:]}-"
 
-        today_start = datetime.now(VN_TZ).replace(
-            hour=0, minute=0, second=0, microsecond=0
-        ).astimezone(timezone.utc).strftime("%Y-%m-%dT%H:%M:%SZ")
+        # Đặt mốc đầu ngày hôm nay theo UTC ISO format
+        today_start = now_vn.replace(hour=0, minute=0, second=0, microsecond=0).astimezone(timezone.utc).isoformat()
 
-        res = supabase.table("reception_records") \
-            .select("code") \
-            .gte("received_date", today_start) \
-            .order("created_at", desc=True) \
-            .limit(1) \
-            .execute()
+        # Dùng asyncio.to_thread để không làm block Event Loop chính
+        query_last_code = (
+            supabase.table("reception_records")
+            .select("code")
+            .gte("received_date", today_start)
+            .order("created_at", desc=True)
+            .limit(1)
+        )
+        res = await asyncio.to_thread(query_last_code.execute)
 
         next_num = 1
         if res.data and len(res.data) > 0:
@@ -130,7 +148,9 @@ async def create_reception_record(
             "received_date": datetime.now(timezone.utc).isoformat()
         }
 
-        insert_res = supabase.table("reception_records").insert(payload).execute()
+        query_insert = supabase.table("reception_records").insert(payload)
+        insert_res = await asyncio.to_thread(query_insert.execute)
+
         if not insert_res.data or len(insert_res.data) == 0:
             raise HTTPException(status_code=500, detail="Không thể lưu phiếu vào CSDL")
 
@@ -161,12 +181,13 @@ async def create_reception_record(
     except HTTPException:
         raise
     except Exception as e:
-        logger.error(f"Lỗi tiếp nhận: {e}")
+        logger.error(f"Lỗi tiếp nhận: {e}", exc_info=True)
         raise HTTPException(status_code=500, detail=str(e))
+
 
 # --- 2. TRA CỨU & TẢI DANH SÁCH MÁY (CÓ PHÂN TRANG) ---
 @router.get("/search")
-async def search_reception_records(
+def search_reception_records(  # ✅ Chuyển sang synchronous `def` do chỉ gọi Supabase
     query_str: Optional[str] = Query(None, description="SĐT / Tên / Mã phiếu"),
     page: int = Query(1, ge=1, description="Số trang (bắt đầu từ 1)"),
     limit: int = Query(20, ge=1, le=100, description="Số lượng máy trên 1 trang"),
@@ -175,14 +196,11 @@ async def search_reception_records(
     try:
         q = (query_str or "").strip()
         
-        # Đếm tổng số bản ghi bằng count="exact" trong Supabase
         db_query = supabase.table("reception_records").select("*", count="exact")
 
-        # Nếu có từ khóa -> Lọc theo SĐT, Tên hoặc Mã phiếu
         if q:
             db_query = db_query.or_(f"phone.ilike.%{q}%,customer_name.ilike.%{q}%,code.ilike.%{q}%")
 
-        # Tính toán offset cho Supabase (.range(start, end))
         start_index = (page - 1) * limit
         end_index = start_index + limit - 1
 
@@ -202,8 +220,9 @@ async def search_reception_records(
             }
         }
     except Exception as e:
-        logger.error(f"Lỗi tra cứu: {e}")
+        logger.error(f"Lỗi tra cứu: {e}", exc_info=True)
         raise HTTPException(status_code=500, detail=str(e))
+
 
 # --- 3. TRẢ MÁY ---
 @router.post("/return/{record_id}")
@@ -223,16 +242,19 @@ async def return_item_to_customer(
             "updated_at": now_utc
         }
 
-        res = supabase.table("reception_records") \
-            .update(payload) \
-            .eq("id", record_id) \
-            .execute()
+        query_update = (
+            supabase.table("reception_records")
+            .update(payload)
+            .eq("id", record_id)
+        )
+        res = await asyncio.to_thread(query_update.execute)
 
         if not res.data or len(res.data) == 0:
             raise HTTPException(status_code=404, detail="Không tìm thấy phiếu nhận hàng")
 
         record = res.data[0]
 
+        # Broadcast thông báo cho các máy khác qua WebSocket
         await manager.broadcast({
             "type": "reception_returned",
             "record": record
@@ -257,5 +279,5 @@ async def return_item_to_customer(
     except HTTPException:
         raise
     except Exception as e:
-        logger.error(f"Lỗi trả máy: {e}")
+        logger.error(f"Lỗi trả máy: {e}", exc_info=True)
         raise HTTPException(status_code=500, detail=str(e))

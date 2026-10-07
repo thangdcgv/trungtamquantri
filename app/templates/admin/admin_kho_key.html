@@ -68,12 +68,34 @@
     <div id="tab-content-manage" class="hidden space-y-6">
         
         <!-- Bộ lọc loại thiết bị -->
-        <div class="bg-slate-800/40 p-4 rounded-lg border border-slate-800">
-            <h3 class="text-sm font-bold text-slate-300 mb-2">🔍 Bộ lọc loại thiết bị</h3>
-            <div class="flex flex-wrap gap-4">
+        <!-- DỮ LIỆU JSON NHÚNG AN TOÀN (Loại bỏ hoàn toàn lỗi đỏ trong VS Code) -->
+        <script type="application/json" id="raw-keys-json-data">{{ raw_keys_json | safe }}</script>
+        <script type="application/json" id="danh-sach-loai-tb-json-data">{{ danh_sach_loai_tb_json | safe }}</script>
+
+        <!-- BỘ LỌC LOẠI THIẾT BỊ (ĐÃ TỐI ƯU GIAO DIỆN KHÔNG BỊ BỂ) -->
+        <div class="bg-slate-800/60 p-4 rounded-xl border border-slate-700/60 shadow-inner">
+            <div class="flex items-center justify-between mb-3 flex-wrap gap-2">
+                <h3 class="text-sm font-bold text-slate-200 flex items-center gap-2">
+                    <i class="fa-solid fa-filter text-blue-400"></i> Bộ lọc loại thiết bị
+                </h3>
+                <!-- Nút thao tác nhanh bộ lọc -->
+                <div class="flex items-center gap-2 text-xs">
+                    <button type="button" onclick="selectAllFilters(true)" class="text-blue-400 hover:text-blue-300 font-medium hover:underline">
+                        Chọn tất cả
+                    </button>
+                    <span class="text-slate-600">|</span>
+                    <button type="button" onclick="selectAllFilters(false)" class="text-slate-400 hover:text-slate-300 font-medium hover:underline">
+                        Bỏ chọn
+                    </button>
+                </div>
+            </div>
+
+            <!-- Danh sách Checkbox dạng thẻ Chip / Pill co giãn mượt mà -->
+            <div class="flex flex-wrap gap-2.5">
                 {% for item in danh_sach_loai_tb %}
-                <label class="inline-flex items-center gap-2 text-sm cursor-pointer text-slate-300">
-                    <input type="checkbox" value="{{ item }}" checked onchange="applyFilters()" class="filter-tb rounded bg-slate-900 border-slate-700 text-blue-500 focus:ring-blue-500">
+                <label class="inline-flex items-center gap-2 px-3.5 py-2 rounded-lg bg-slate-900/80 border border-slate-700/80 text-sm font-medium text-slate-300 hover:border-slate-500 cursor-pointer transition-all has-[:checked]:border-blue-500 has-[:checked]:bg-blue-950/40 has-[:checked]:text-blue-300 select-none">
+                    <input type="checkbox" value="{{ item }}" checked onchange="applyFilters()" 
+                        class="filter-tb rounded bg-slate-900 border-slate-700 text-blue-500 focus:ring-blue-500 focus:ring-offset-slate-900 w-4 h-4 cursor-pointer">
                     <span>{{ item }}</span>
                 </label>
                 {% endfor %}

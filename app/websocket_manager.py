@@ -4,9 +4,7 @@ from typing import Set
 from fastapi import WebSocket
 from datetime import timezone, timedelta
 
-# Khai báo múi giờ Việt Nam (UTC+7)
 VN_TZ = timezone(timedelta(hours=7))
-# Khởi tạo logger tiêu chuẩn
 logger = logging.getLogger("websocket_manager")
 
 
@@ -23,11 +21,15 @@ class ConnectionManager:
             f"🔌 [WebSocket] Kết nối mới. Tổng: {len(self.active_connections)}"
         )
 
-    def disconnect(self, websocket: WebSocket):
-        """Ngắt kết nối an toàn"""
-        self.active_connections.discard(
-            websocket
-        )  # discard không bắn lỗi nếu item không tồn tại
+    async def disconnect(self, websocket: WebSocket):
+        """Ngắt kết nối an toàn và giải phóng tài nguyên socket"""
+        self.active_connections.discard(websocket)
+        try:
+            # Thử đóng kết nối nếu socket vẫn còn mở
+            await websocket.close()
+        except Exception:
+            pass  # Nếu client đã tự đóng trước đó thì bỏ qua
+            
         logger.info(
             f"🔌 [WebSocket] Ngắt kết nối. Còn: {len(self.active_connections)}"
         )
@@ -45,7 +47,6 @@ class ConnectionManager:
         if not self.active_connections:
             return
 
-        # Tạo danh sách các tác vụ gửi song song
         targets = list(self.active_connections)
         results = await asyncio.gather(
             *(self._send_safe(ws, message) for ws in targets),
@@ -55,8 +56,7 @@ class ConnectionManager:
         # Thu gom các socket bị lỗi kết nối để tiến hành dọn dẹp
         for result in results:
             if isinstance(result, WebSocket):
-                self.disconnect(result)
+                await self.disconnect(result)
 
 
-# Đối tượng dùng chung toàn cục
 manager = ConnectionManager()

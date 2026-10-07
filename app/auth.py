@@ -14,10 +14,16 @@ logger = logging.getLogger(__name__)
 
 router = APIRouter(prefix="/auth", tags=["Auth"])
 
+# =========================================================
+# CẤU HÌNH HẰNG SỐ & THƯ MỤC TEMPLATES
+# =========================================================
+
 # Mã định danh cho App Trung tâm trong bảng user_sessions
 APP_CODE = "CENTER"
 
-# --- CẤU HÌNH THƯ MỤC TEMPLATES DÙNG CHUNG ---
+# Danh sách các Role có quyền Quản trị cấp cao
+SUPER_ADMIN_ROLES = {"super admin", "system admin"}
+
 BASE_DIR = Path(__file__).resolve().parent
 TEMPLATES_DIR = (
     BASE_DIR.parent / "templates"
@@ -81,7 +87,7 @@ def extract_user_from_session(request: Request) -> Optional[Dict[str, Any]]:
         "ho_ten": ho_ten,
         "name": ho_ten,
         "role": role,
-        "department": dept,  # ✅ ĐÃ BỔ SUNG
+        "department": dept,
         "access_token": request.session.get("access_token"),
         "session_token": session_token,
     }
@@ -142,12 +148,6 @@ async def get_current_user_or_redirect(request: Request) -> Optional[Dict[str, A
     return user
 
 
-# =========================================================
-# 1. ĐĂNG NHẬP (SINGLE SESSION PER APP_CODE ENFORCEMENT)
-# =========================================================
-
-SUPER_ADMIN_ROLES = {"super admin", "system admin"}
-
 def get_redirect_url_by_role(role: str) -> str:
     """Xác định đường dẫn chuyển hướng theo từng cấp Role"""
     role_clean = str(role or "user").strip().lower()
@@ -158,6 +158,10 @@ def get_redirect_url_by_role(role: str) -> str:
         return "/admin"
     return "/"
 
+
+# =========================================================
+# 1. ĐĂNG NHẬP (SINGLE SESSION PER APP_CODE ENFORCEMENT)
+# =========================================================
 
 @router.get("/login", response_class=HTMLResponse)
 async def login_page(request: Request):
@@ -204,42 +208,7 @@ async def login(
 
         auth_id = str(response.user.id)
 
-        # 2. XÓA TẤT CẢ PHIÊN CŨ CỦA CÙNG (user_id, app_code)
-        # Chỉ xóa phiên thuộc ứng dụng hiện tại (APP_CODE), giữ nguyên các app_code khác
-        def _clear_same_app_sessions():
-            return (
-                supabase_admin.table("user_sessions")
-                .delete()
-                .eq("user_id", auth_id)
-                .eq("app_code", APP_CODE)
-                .execute()
-            )
-
-        await run_in_threadpool(_clear_same_app_sessions)
-
-        # 3. Lấy IP và User Agent để tạo phiên mới
-        x_forwarded_for = request.headers.get("x-forwarded-for")
-        if x_forwarded_for:
-            client_ip = x_forwarded_for.split(",")[0].strip()
-        else:
-            client_ip = request.client.host if request.client else "Unknown"
-
-        user_agent = request.headers.get("user-agent", "Unknown")[:255]
-        new_session_token = str(uuid.uuid4())
-
-        # 4. Ghi nhận phiên làm việc mới cho APP_CODE này
-        def _insert_new_session():
-            return supabase_admin.table("user_sessions").insert({
-                "user_id": auth_id,
-                "app_code": APP_CODE,
-                "session_token": new_session_token,
-                "ip_address": client_ip,
-                "user_agent": user_agent,
-            }).execute()
-
-        await run_in_threadpool(_insert_new_session)
-
-        # 5. Lấy profile quản trị viên từ DB
+        # 2. Lấy thông tin Profile quản trị viên trước (Tránh lỗi DB làm mồ côi Session)
         def _fetch_user_profile():
             return (
                 supabase_admin.table("quan_tri_vien")
@@ -254,7 +223,7 @@ async def login(
         username = email_clean.split("@")[0]
         ho_ten = "Quản trị viên"
         role = "User"
-        department = "KTSC"  # Mặc định
+        department = "KTSC"
 
         if user_record and user_record.data:
             user_info = user_record.data[0]
@@ -263,11 +232,33 @@ async def login(
             role = str(user_info.get("role") or "User").strip()
             department = str(user_info.get("department") or "KTSC").strip()
 
-        # 🔥 Ép department thành 'ALL' nếu là tài khoản quản trị cấp cao
         if role.lower() in SUPER_ADMIN_ROLES:
             department = "ALL"
 
-        # 6. Cập nhật Session Cookie
+        # 3. Chuẩn bị thông tin kết nối và Session mới
+        x_forwarded_for = request.headers.get("x-forwarded-for")
+        if x_forwarded_for:
+            client_ip = x_forwarded_for.split(",")[0].strip()
+        else:
+            client_ip = request.client.host if request.client else "Unknown"
+
+        user_agent = request.headers.get("user-agent", "Unknown")[:255]
+        new_session_token = str(uuid.uuid4())
+
+        # 4. Cập nhật Session trong DB (Xóa cũ + Thêm mới atomic)
+        def _sync_db_session():
+            supabase_admin.table("user_sessions").delete().eq("user_id", auth_id).eq("app_code", APP_CODE).execute()
+            return supabase_admin.table("user_sessions").insert({
+                "user_id": auth_id,
+                "app_code": APP_CODE,
+                "session_token": new_session_token,
+                "ip_address": client_ip,
+                "user_agent": user_agent,
+            }).execute()
+
+        await run_in_threadpool(_sync_db_session)
+
+        # 5. Cập nhật Cookie Session
         request.session.clear()
         request.session["user_id"] = auth_id
         request.session["session_token"] = new_session_token
@@ -275,7 +266,7 @@ async def login(
         request.session["username"] = username
         request.session["ho_ten"] = ho_ten
         request.session["role"] = role
-        request.session["department"] = department  # ✅ LƯU PHÒNG BAN VÀO SESSION
+        request.session["department"] = department
 
         if response.session:
             request.session["access_token"] = response.session.access_token
@@ -381,6 +372,7 @@ async def change_password(
         )
 
     try:
+        # 1. Xác thực mật khẩu cũ
         test_login = await run_in_threadpool(
             supabase.auth.sign_in_with_password,
             {"email": email, "password": current_password}
@@ -393,8 +385,10 @@ async def change_password(
                 status_code=status.HTTP_401_UNAUTHORIZED,
             )
 
+        # 2. Cập nhật mật khẩu bằng supabase_admin (Tránh ảnh hưởng global state của client)
         await run_in_threadpool(
-            supabase.auth.update_user,
+            supabase_admin.auth.admin.update_user_by_id,
+            user_id,
             {"password": new_password}
         )
 
@@ -481,15 +475,22 @@ async def update_password(
         )
 
     try:
-        def _perform_update():
-            if access_token:
-                supabase.auth.set_session(access_token, "")
-            return supabase.auth.update_user({"password": new_password})
+        if not access_token:
+            raise ValueError("Thiếu mã xác thực (access_token).")
 
-        res = await run_in_threadpool(_perform_update)
+        # 1. Trích xuất thông tin người dùng từ Access Token an toàn bằng Admin client
+        user_res = await run_in_threadpool(supabase_admin.auth.get_user, access_token)
+        if not user_res or not user_res.user:
+            raise ValueError("Token không hợp lệ hoặc đã hết hạn.")
 
-        if not res or not res.user:
-            raise ValueError("Cập nhật thất bại hoặc phiên làm việc đã hết hạn.")
+        target_user_id = str(user_res.user.id)
+
+        # 2. Cập nhật mật khẩu trực tiếp qua Admin API (Không ghi đè session dùng chung)
+        await run_in_threadpool(
+            supabase_admin.auth.admin.update_user_by_id,
+            target_user_id,
+            {"password": new_password}
+        )
 
         return render_template(
             request,
