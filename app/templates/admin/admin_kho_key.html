@@ -55,8 +55,8 @@
                     <textarea id="list_keys" rows="7" placeholder="KEY123-ABC...&#10;KEY456-DEF..." required
                               class="w-full border border-slate-700 rounded-lg p-2 font-mono text-sm bg-slate-900 text-slate-100 placeholder-slate-600 focus:ring-2 focus:ring-blue-500 outline-none"></textarea>
                 </div>
-                <button type="submit" class="w-full mt-4 bg-blue-600 hover:bg-blue-500 text-white font-semibold py-2.5 rounded-lg shadow transition">
-                    📥 Kiểm tra & Nhập kho
+                <button type="submit" id="btn-submit-import" class="w-full mt-4 bg-blue-600 hover:bg-blue-500 text-white font-semibold py-2.5 rounded-lg shadow transition flex items-center justify-center gap-2">
+                    <span>📥 Kiểm tra & Nhập kho</span>
                 </button>
             </div>
         </form>
@@ -262,7 +262,14 @@
         const limit = parseInt(document.getElementById('limit').value) || 1;
         const keysText = document.getElementById('list_keys').value;
 
-        const keysArr = keysText.split('\n').map(k => k.trim()).filter(k => k);
+        const keysArr = Array.from(new Set(keysText.split('\n').map(k => k.trim()).filter(k => k !== '')));
+
+        if (keysArr.length === 0) {
+            return alert("Vui lòng nhập ít nhất một mã Key!");
+        }
+
+        btnSubmit.disabled = true;
+        btnSubmit.innerHTML = `<span>⏳ Đang kiểm tra...</span>`;
 
         try {
             const res = await fetch('/admin/api/kho-key/check-import', {
