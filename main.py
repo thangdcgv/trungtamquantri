@@ -26,8 +26,7 @@ from app.report import router as report_router
 from app.warranty.warranty_report import router as warranty_report_router
 from app.warranty.warranty_policy_routes import router as warranty_policy_router
 from app.inventory import router as inventory_router, api_router as inventory_api_router
-from app.tickets import router as tickets_router
-from app.reception import router as reception_router
+
 
 app = FastAPI(
     title="Máy In Đại Thành Center Hub",
@@ -111,9 +110,6 @@ async def log_error_to_db(request: Request, exc: Exception, module: str = "Syste
 @app.exception_handler(Exception)
 async def global_exception_handler(request: Request, exc: Exception):
     await log_error_to_db(request, exc)
-    
-    if request.scope.get("type") == "websocket":
-        raise exc
 
     if request.url.path.startswith("/api/"):
         return JSONResponse(
@@ -139,8 +135,7 @@ app.include_router(warranty_report_router)
 app.include_router(warranty_policy_router)
 app.include_router(inventory_router)
 app.include_router(inventory_api_router)
-app.include_router(tickets_router)
-app.include_router(reception_router)
+
 
 # === BẮT BỘC: Lấy Cổng Port Tự Động Cho Hugging Face (Mặc định 7860) ===
 if __name__ == "__main__":
