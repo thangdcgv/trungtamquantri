@@ -11,7 +11,9 @@ except ImportError:
 
 # Khai báo thư mục chứa file HTML (thay đổi "app/templates" nếu cấu trúc thư mục của bạn khác)
 templates = Jinja2Templates(directory="app/templates")
-router = APIRouter(prefix="/admin/chinh-sach-bao-hanh", tags=["Warranty Policy"])
+router = APIRouter(prefix="/warranty", tags=["Warranty"])
+
+
 
 class PolicySchema(BaseModel):
     id: Optional[str] = None
@@ -34,7 +36,7 @@ async def list_policies(request: Request):
     
     return templates.TemplateResponse(
         request=request,
-        name="admin/warranty_policy.html",
+        name="warranty/warranty_policy.html",
         context={"policies": policies}
     )
 
