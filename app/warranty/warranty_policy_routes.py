@@ -31,9 +31,16 @@ class PolicySchema(BaseModel):
 @router.get("", response_class=HTMLResponse)
 async def list_policies(request: Request):
     """Hiển thị danh sách chính sách bảo hành"""
+    
+    # 1. Lấy thông tin user hiện tại (giống các route khác của bạn)
+    user = await get_current_user_or_redirect(request)
+    if not user:
+        return RedirectResponse(url="/auth/login", status_code=status.HTTP_303_SEE_OTHER)
+
     res = supabase.table("warranty_policy").select("*").order("created_at", desc=True).execute()
     policies = res.data if res.data else []
     
+    # 2. Truyền đúng cú pháp TemplateResponse của FastAPI
     return templates.TemplateResponse(
         request,  # Tham số vị trí (phải đặt lên đầu tiên)
         "warranty/warranty_policy.html",  # Tên file template (tham số vị trí thứ 2)
