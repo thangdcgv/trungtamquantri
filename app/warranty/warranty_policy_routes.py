@@ -11,7 +11,7 @@ except ImportError:
 
 # Khai báo thư mục chứa file HTML (thay đổi "app/templates" nếu cấu trúc thư mục của bạn khác)
 templates = Jinja2Templates(directory="app/templates")
-router = APIRouter(prefix="/warranty", tags=["Warranty"])
+router = APIRouter(prefix="/admin/chinh-sach-bao-hanh", tags=["Warranty Policy"])
 
 
 
