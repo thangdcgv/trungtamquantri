@@ -35,10 +35,13 @@ async def list_policies(request: Request):
     policies = res.data if res.data else []
     
     return templates.TemplateResponse(
-        request=request,
-        name="warranty/warranty_policy.html",
-        "current_user": user,
-        context={"policies": policies}
+        request,  # Tham số vị trí (phải đặt lên đầu tiên)
+        "warranty/warranty_policy.html",  # Tên file template (tham số vị trí thứ 2)
+        {
+            "request": request,
+            "current_user": user,
+            "policies": policies
+        }
     )
 
 @router.post("/save")
