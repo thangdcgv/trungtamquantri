@@ -37,6 +37,7 @@ async def list_policies(request: Request):
     return templates.TemplateResponse(
         request=request,
         name="warranty/warranty_policy.html",
+        "current_user": user,
         context={"policies": policies}
     )
 
