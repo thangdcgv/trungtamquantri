@@ -3,6 +3,7 @@ from fastapi.responses import HTMLResponse, JSONResponse
 from pydantic import BaseModel
 from typing import Optional
 from fastapi.templating import Jinja2Templates
+from app.auth import get_current_user_or_redirect, require_login
 
 try:
     from config import supabase
