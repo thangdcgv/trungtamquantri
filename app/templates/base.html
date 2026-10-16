@@ -619,5 +619,19 @@ document.addEventListener("DOMContentLoaded", function () {
     });
 });
 </script>
+<script>
+// Bọc fetch gốc: tự động redirect khi 401/503
+const _originalFetch = window.fetch;
+window.fetch = async function(...args) {
+  const res = await _originalFetch.apply(this, args);
+  if (res.status === 401 || res.status === 503) {
+    // Tránh loop nếu đang ở trang login
+    if (!window.location.pathname.startsWith('/login')) {
+      window.location.href = '/login?error=session_expired';
+    }
+  }
+  return res;
+};
+</script>
 </body>
 </html>
