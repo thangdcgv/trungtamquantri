@@ -310,7 +310,7 @@ def batch_create_warranty_records(
 
 # ==================== 3. ROUTE CHI TIẾT PHIẾU BẢO HÀNH ====================
 
-@router.get("/{warranty_id}", response_class=HTMLResponse)
+@router.get("/chi-tiet/{warranty_id}", response_class=HTMLResponse)
 def render_warranty_detail(
     request: Request, 
     warranty_id: str,

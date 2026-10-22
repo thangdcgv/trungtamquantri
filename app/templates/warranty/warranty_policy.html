@@ -14,7 +14,7 @@
                     <span>Cấu Hình Chính Sách Bảo Hành</span>
                 </h1>
                 <p class="text-xs sm:text-sm text-slate-400 mt-1">
-                    Thiết lập thời hạn bảo hành thân máy, đầu phun, hộp mực và giới hạn trang in cho từng dòng máy
+                    Thiết lập thời hạn bảo hành thân máy, đầu phun, hộp mực và giới hạn trang in / số mét cho từng dòng máy
                 </p>
             </div>
             <div class="flex items-center gap-2 shrink-0">
@@ -39,7 +39,7 @@
                         <th class="p-3">Tên Chính Sách / Phân Loại</th>
                         <th class="p-3">Tình Trạng</th>
                         <th class="p-3">Thời Hạn Bảo Hành</th>
-                        <th class="p-3">Giới Hạn Trang In</th>
+                        <th class="p-3">Giới Hạn Trang In / Số Mét</th>
                         <th class="p-3 text-center">Trạng Thái</th>
                         <th class="p-3 text-right">Thao Tác</th>
                     </tr>
@@ -69,14 +69,28 @@
                             <div class="text-slate-300"><span class="text-slate-500">Hộp mực:</span> <strong class="text-emerald-300">{{ p.cartridge_warranty_months }}</strong> tháng</div>
                         </td>
 
-                        <!-- Giới hạn trang -->
-                        <td class="p-3 space-y-1">
-                            {% if p.no_page_limit %}
-                                <span class="px-2 py-0.5 rounded text-[10px] font-semibold bg-emerald-500/10 text-emerald-400 border border-emerald-500/20">∞ Không giới hạn</span>
-                            {% else %}
-                                <div class="text-slate-300"><span class="text-slate-500">Thân máy:</span> {{ "{:,}".format(p.page_limit_body or 0) }} trang</div>
-                                <div class="text-slate-300"><span class="text-slate-500">Đầu phun:</span> {{ "{:,}".format(p.page_limit_head or 0) }} trang</div>
-                            {% endif %}
+                        <!-- Giới hạn trang & số mét -->
+                        <td class="p-3 space-y-1.5">
+                            <!-- Trang in -->
+                            <div class="text-[11px]">
+                                <span class="text-slate-500">📄 Trang in:</span>
+                                {% if p.no_page_limit %}
+                                    <span class="text-emerald-400 font-semibold ml-1">∞ Không GH</span>
+                                {% else %}
+                                    <span class="text-slate-200 font-mono ml-1">{{ "{:,}".format(p.page_limit_body or 0) }}</span> <span class="text-slate-500 text-[10px]">(Thân)</span> /
+                                    <span class="text-cyan-300 font-mono">{{ "{:,}".format(p.page_limit_head or 0) }}</span> <span class="text-slate-500 text-[10px]">(Đầu)</span>
+                                {% endif %}
+                            </div>
+                            <!-- Số mét -->
+                            <div class="text-[11px] pt-1 border-t border-slate-800/80">
+                                <span class="text-slate-500">📏 Số mét vuông:</span>
+                                {% if p.no_meter_limit %}
+                                    <span class="text-emerald-400 font-semibold ml-1">∞ Không GH</span>
+                                {% else %}
+                                    <span class="text-slate-200 font-mono ml-1">{{ "{:,}".format(p.meter_limit_body or 0) }}m²</span> <span class="text-slate-500 text-[10px]">(Thân)</span> /
+                                    <span class="text-cyan-300 font-mono">{{ "{:,}".format(p.meter_limit_head or 0) }}m²</span> <span class="text-slate-500 text-[10px]">(Đầu)</span>
+                                {% endif %}
+                            </div>
                         </td>
 
                         <!-- Trạng thái Kích hoạt -->
@@ -94,7 +108,6 @@
                         <!-- Thao tác -->
                         <td class="p-3 text-right">
                             <div class="flex items-center justify-end gap-1.5">
-                                <!-- Lưu JSON vào data-policy -->
                                 <button type="button" 
                                         data-policy='{{ p | tojson | safe }}'
                                         onclick="handleEditClick(this)" 
@@ -124,8 +137,9 @@
 
     <!-- MODAL THÊM / SỬA CHÍNH SÁCH -->
     <div id="policyModal" class="fixed inset-0 z-50 hidden bg-slate-950/80 backdrop-blur-sm flex items-center justify-center p-4">
-        <div class="bg-slate-900 border border-slate-800 rounded-xl w-full max-w-2xl overflow-hidden shadow-2xl">
-            <div class="p-4 sm:p-5 border-b border-slate-800 flex items-center justify-between">
+        <div class="bg-slate-900 border border-slate-800 rounded-xl w-full max-w-2xl overflow-hidden shadow-2xl max-h-[90vh] flex flex-col">
+            
+            <div class="p-4 sm:p-5 border-b border-slate-800 flex items-center justify-between shrink-0">
                 <h3 id="modalTitle" class="text-base font-bold text-white flex items-center gap-2">
                     <i class="fa-solid fa-sliders text-cyan-400"></i> Thêm Chính Sách Bảo Hành
                 </h3>
@@ -134,13 +148,14 @@
                 </button>
             </div>
 
-            <form id="policyForm" onsubmit="savePolicy(event)" class="p-4 sm:p-6 space-y-4">
+            <form id="policyForm" onsubmit="savePolicy(event)" class="p-4 sm:p-6 space-y-5 overflow-y-auto">
                 <input type="hidden" id="policy_id" name="id">
 
+                <!-- 1. THÔNG TIN CHUNG -->
                 <div class="grid grid-cols-1 sm:grid-cols-2 gap-4">
                     <div class="sm:col-span-2">
                         <label class="block text-xs font-semibold text-slate-300 mb-1">Tên chính sách <span class="text-rose-400">*</span></label>
-                        <input type="text" id="policy_name" name="policy_name" required placeholder="VD: Nhập tên chính sách mới" class="w-full bg-slate-800 border border-slate-700 text-white text-xs rounded-lg p-2.5 focus:ring-1 focus:ring-cyan-500 outline-none">
+                        <input type="text" id="policy_name" name="policy_name" required placeholder="VD: Bảo hành Epson C5290 / Cuộn Khổ Lớn" class="w-full bg-slate-800 border border-slate-700 text-white text-xs rounded-lg p-2.5 focus:ring-1 focus:ring-cyan-500 outline-none">
                     </div>
 
                     <div>
@@ -155,46 +170,76 @@
                             <option value="Đã qua sử dụng">Nội địa / Cũ</option>
                         </select>
                     </div>
+                </div>
 
-                    <!-- Thời hạn bảo hành (Tháng) -->
-                    <div>
-                        <label class="block text-xs font-semibold text-slate-300 mb-1">Bảo hành Thân máy (tháng)</label>
-                        <input type="number" min="0" id="warranty_months" name="warranty_months" value="12" class="w-full bg-slate-800 border border-slate-700 text-white text-xs rounded-lg p-2.5 focus:ring-1 focus:ring-cyan-500 outline-none">
-                    </div>
-
-                    <div>
-                        <label class="block text-xs font-semibold text-slate-300 mb-1">Bảo hành Đầu phun (tháng)</label>
-                        <input type="number" min="0" id="head_warranty_months" name="head_warranty_months" value="1" class="w-full bg-slate-800 border border-slate-700 text-white text-xs rounded-lg p-2.5 focus:ring-1 focus:ring-cyan-500 outline-none">
-                    </div>
-
-                    <div>
-                        <label class="block text-xs font-semibold text-slate-300 mb-1">Bảo hành Hộp mực (tháng)</label>
-                        <input type="number" min="0" id="cartridge_warranty_months" name="cartridge_warranty_months" value="0" class="w-full bg-slate-800 border border-slate-700 text-white text-xs rounded-lg p-2.5 focus:ring-1 focus:ring-cyan-500 outline-none">
-                    </div>
-
-                    <!-- Giới hạn trang in -->
-                    <div class="flex items-center gap-2 sm:mt-6">
-                        <input type="checkbox" id="no_page_limit" name="no_page_limit" onchange="togglePageLimitInputs()" class="w-4 h-4 rounded bg-slate-800 border-slate-700 text-cyan-500 focus:ring-0">
-                        <label for="no_page_limit" class="text-xs font-medium text-slate-200 cursor-pointer">Không giới hạn trang in</label>
-                    </div>
-
-                    <div class="page-limit-field">
-                        <label class="block text-xs font-semibold text-slate-300 mb-1">Giới hạn trang in Thân máy</label>
-                        <input type="number" min="0" id="page_limit_body" name="page_limit_body" value="30000" class="w-full bg-slate-800 border border-slate-700 text-white text-xs rounded-lg p-2.5 focus:ring-1 focus:ring-cyan-500 outline-none">
-                    </div>
-
-                    <div class="page-limit-field">
-                        <label class="block text-xs font-semibold text-slate-300 mb-1">Giới hạn trang in Đầu phun</label>
-                        <input type="number" min="0" id="page_limit_head" name="page_limit_head" value="3000" class="w-full bg-slate-800 border border-slate-700 text-white text-xs rounded-lg p-2.5 focus:ring-1 focus:ring-cyan-500 outline-none">
-                    </div>
-
-                    <div class="flex items-center gap-2">
-                        <input type="checkbox" id="is_active" name="is_active" checked class="w-4 h-4 rounded bg-slate-800 border-slate-700 text-cyan-500 focus:ring-0">
-                        <label for="is_active" class="text-xs font-medium text-slate-200 cursor-pointer">Kích hoạt chính sách này</label>
+                <!-- 2. THỜI HẠN BẢO HÀNH (THÁNG) -->
+                <div class="border-t border-slate-800/80 pt-4 space-y-3">
+                    <h4 class="text-xs font-bold text-cyan-400 uppercase tracking-wider"><i class="fa-solid fa-clock mr-1"></i> Thời hạn bảo hành (Tháng)</h4>
+                    <div class="grid grid-cols-1 sm:grid-cols-3 gap-4">
+                        <div>
+                            <label class="block text-[11px] font-medium text-slate-300 mb-1">Thân máy (tháng)</label>
+                            <input type="number" min="0" id="warranty_months" name="warranty_months" value="12" class="w-full bg-slate-800 border border-slate-700 text-white text-xs rounded-lg p-2.5 focus:ring-1 focus:ring-cyan-500 outline-none">
+                        </div>
+                        <div>
+                            <label class="block text-[11px] font-medium text-slate-300 mb-1">Đầu phun (tháng)</label>
+                            <input type="number" min="0" id="head_warranty_months" name="head_warranty_months" value="1" class="w-full bg-slate-800 border border-slate-700 text-white text-xs rounded-lg p-2.5 focus:ring-1 focus:ring-cyan-500 outline-none">
+                        </div>
+                        <div>
+                            <label class="block text-[11px] font-medium text-slate-300 mb-1">Hộp mực (tháng)</label>
+                            <input type="number" min="0" id="cartridge_warranty_months" name="cartridge_warranty_months" value="0" class="w-full bg-slate-800 border border-slate-700 text-white text-xs rounded-lg p-2.5 focus:ring-1 focus:ring-cyan-500 outline-none">
+                        </div>
                     </div>
                 </div>
 
-                <div class="pt-4 border-t border-slate-800 flex justify-end gap-2">
+                <!-- 3. GIỚI HẠN TRANG IN -->
+                <div class="border-t border-slate-800/80 pt-4 space-y-3">
+                    <div class="flex items-center justify-between">
+                        <h4 class="text-xs font-bold text-cyan-400 uppercase tracking-wider"><i class="fa-solid fa-file-lines mr-1"></i> Giới hạn Trang in</h4>
+                        <label class="flex items-center gap-2 cursor-pointer">
+                            <input type="checkbox" id="no_page_limit" name="no_page_limit" onchange="toggleLimitInputs()" class="w-4 h-4 rounded bg-slate-800 border-slate-700 text-cyan-500 focus:ring-0">
+                            <span class="text-xs font-medium text-slate-300">Không giới hạn trang in</span>
+                        </label>
+                    </div>
+                    <div class="grid grid-cols-1 sm:grid-cols-2 gap-4">
+                        <div class="page-limit-field">
+                            <label class="block text-[11px] font-medium text-slate-300 mb-1">GH Trang - Thân máy</label>
+                            <input type="number" min="0" id="page_limit_body" name="page_limit_body" value="30000" class="w-full bg-slate-800 border border-slate-700 text-white text-xs rounded-lg p-2.5 focus:ring-1 focus:ring-cyan-500 outline-none">
+                        </div>
+                        <div class="page-limit-field">
+                            <label class="block text-[11px] font-medium text-slate-300 mb-1">GH Trang - Đầu phun</label>
+                            <input type="number" min="0" id="page_limit_head" name="page_limit_head" value="3000" class="w-full bg-slate-800 border border-slate-700 text-white text-xs rounded-lg p-2.5 focus:ring-1 focus:ring-cyan-500 outline-none">
+                        </div>
+                    </div>
+                </div>
+
+                <!-- 4. GIỚI HẠN SỐ MÉT VUÔNG (M²) - MỚI BỔ SUNG -->
+                <div class="border-t border-slate-800/80 pt-4 space-y-3">
+                    <div class="flex items-center justify-between">
+                        <h4 class="text-xs font-bold text-cyan-400 uppercase tracking-wider"><i class="fa-solid fa-ruler-horizontal mr-1"></i> Giới hạn Số mét vuông (m²)</h4>
+                        <label class="flex items-center gap-2 cursor-pointer">
+                            <input type="checkbox" id="no_meter_limit" name="no_meter_limit" onchange="toggleLimitInputs()" class="w-4 h-4 rounded bg-slate-800 border-slate-700 text-cyan-500 focus:ring-0">
+                            <span class="text-xs font-medium text-slate-300">Không giới hạn số mét</span>
+                        </label>
+                    </div>
+                    <div class="grid grid-cols-1 sm:grid-cols-2 gap-4">
+                        <div class="meter-limit-field">
+                            <label class="block text-[11px] font-medium text-slate-300 mb-1">GH Mét vuông (m²) - Thân máy</label>
+                            <input type="number" min="0" id="meter_limit_body" name="meter_limit_body" value="0" class="w-full bg-slate-800 border border-slate-700 text-white text-xs rounded-lg p-2.5 focus:ring-1 focus:ring-cyan-500 outline-none">
+                        </div>
+                        <div class="meter-limit-field">
+                            <label class="block text-[11px] font-medium text-slate-300 mb-1">GH Mét vuông (m²) - Đầu phun</label>
+                            <input type="number" min="0" id="meter_limit_head" name="meter_limit_head" value="0" class="w-full bg-slate-800 border border-slate-700 text-white text-xs rounded-lg p-2.5 focus:ring-1 focus:ring-cyan-500 outline-none">
+                        </div>
+                    </div>
+                </div>
+
+                <!-- KÍCH HOẠT -->
+                <div class="border-t border-slate-800/80 pt-3 flex items-center gap-2">
+                    <input type="checkbox" id="is_active" name="is_active" checked class="w-4 h-4 rounded bg-slate-800 border-slate-700 text-cyan-500 focus:ring-0">
+                    <label for="is_active" class="text-xs font-medium text-slate-200 cursor-pointer">Kích hoạt chính sách này</label>
+                </div>
+
+                <div class="pt-4 border-t border-slate-800 flex justify-end gap-2 shrink-0">
                     <button type="button" onclick="closePolicyModal()" class="px-4 py-2 rounded-lg bg-slate-800 hover:bg-slate-700 text-slate-300 text-xs font-medium transition-all">Hủy</button>
                     <button type="submit" class="px-4 py-2 rounded-lg bg-cyan-600 hover:bg-cyan-500 text-white text-xs font-medium transition-all">Lưu Chính Sách</button>
                 </div>
@@ -210,7 +255,7 @@
         document.getElementById('policyForm').reset();
         document.getElementById('policy_id').value = '';
         document.getElementById('modalTitle').innerHTML = '<i class="fa-solid fa-plus text-cyan-400"></i> Thêm Chính Sách Bảo Hành';
-        togglePageLimitInputs();
+        toggleLimitInputs();
         document.getElementById('policyModal').classList.remove('hidden');
     }
 
@@ -226,22 +271,41 @@
         document.getElementById('warranty_months').value = p.warranty_months || 0;
         document.getElementById('head_warranty_months').value = p.head_warranty_months || 0;
         document.getElementById('cartridge_warranty_months').value = p.cartridge_warranty_months || 0;
+        
+        // Trang in
         document.getElementById('page_limit_body').value = p.page_limit_body || 0;
         document.getElementById('page_limit_head').value = p.page_limit_head || 0;
         document.getElementById('no_page_limit').checked = p.no_page_limit || false;
+        
+        // Số mét (Bổ sung mới)
+        document.getElementById('meter_limit_body').value = p.meter_limit_body || 0;
+        document.getElementById('meter_limit_head').value = p.meter_limit_head || 0;
+        document.getElementById('no_meter_limit').checked = p.no_meter_limit || false;
+
         document.getElementById('is_active').checked = p.is_active !== false;
 
         document.getElementById('modalTitle').innerHTML = '<i class="fa-solid fa-pen-to-square text-cyan-400"></i> Chỉnh Sửa Chính Sách';
-        togglePageLimitInputs();
+        toggleLimitInputs();
         document.getElementById('policyModal').classList.remove('hidden');
     }
 
-    function togglePageLimitInputs() {
-        const noLimit = document.getElementById('no_page_limit').checked;
-        const fields = document.querySelectorAll('.page-limit-field input');
-        fields.forEach(el => {
-            el.disabled = noLimit;
-            if (noLimit) el.classList.add('opacity-40', 'cursor-not-allowed');
+    // Bật/tắt các ô input tương ứng khi chọn "Không giới hạn"
+    function toggleLimitInputs() {
+        // Xử lý Trang in
+        const noPageLimit = document.getElementById('no_page_limit').checked;
+        const pageFields = document.querySelectorAll('.page-limit-field input');
+        pageFields.forEach(el => {
+            el.disabled = noPageLimit;
+            if (noPageLimit) el.classList.add('opacity-40', 'cursor-not-allowed');
+            else el.classList.remove('opacity-40', 'cursor-not-allowed');
+        });
+
+        // Xử lý Số mét
+        const noMeterLimit = document.getElementById('no_meter_limit').checked;
+        const meterFields = document.querySelectorAll('.meter-limit-field input');
+        meterFields.forEach(el => {
+            el.disabled = noMeterLimit;
+            if (noMeterLimit) el.classList.add('opacity-40', 'cursor-not-allowed');
             else el.classList.remove('opacity-40', 'cursor-not-allowed');
         });
     }
@@ -257,9 +321,17 @@
             warranty_months: parseInt(form.warranty_months.value) || 0,
             head_warranty_months: parseInt(form.head_warranty_months.value) || 0,
             cartridge_warranty_months: parseInt(form.cartridge_warranty_months.value) || 0,
+            
+            // Trang in
             page_limit_body: parseInt(form.page_limit_body.value) || 0,
             page_limit_head: parseInt(form.page_limit_head.value) || 0,
             no_page_limit: form.no_page_limit.checked,
+
+            // Số mét (Bổ sung mới)
+            meter_limit_body: parseInt(form.meter_limit_body.value) || 0,
+            meter_limit_head: parseInt(form.meter_limit_head.value) || 0,
+            no_meter_limit: form.no_meter_limit.checked,
+
             is_active: form.is_active.checked
         };
 
@@ -277,19 +349,6 @@
         }
     }
 
-    async function toggleStatus(id, newStatus) {
-        const res = await fetch(`/admin/chinh-sach-bao-hanh/toggle-status/${id}?status=${newStatus}`, { method: 'POST' });
-        const data = await res.json();
-        if (data.success) window.location.reload();
-    }
-
-    async function deletePolicy(id) {
-        if (!confirm('Bạn có chắc chắn muốn xóa chính sách này?')) return;
-        const res = await fetch(`/admin/chinh-sach-bao-hanh/delete/${id}`, { method: 'POST' });
-        const data = await res.json();
-        if (data.success) window.location.reload();
-        else alert('❌ Lỗi: ' + data.message);
-    }
     // Xử lý bật/tắt trạng thái
     async function handleToggleStatus(btn) {
         const id = btn.getAttribute('data-id');

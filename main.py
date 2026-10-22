@@ -26,6 +26,7 @@ from app.report import router as report_router
 from app.warranty.warranty_report import router as warranty_report_router
 from app.warranty.warranty_policy_routes import router as warranty_policy_router
 from app.inventory import router as inventory_router, api_router as inventory_api_router
+from app.warranty.list_printers import router as list_printers_router, api_router as list_printers_api_router
 
 
 app = FastAPI(
@@ -125,11 +126,15 @@ async def global_exception_handler(request: Request, exc: Exception):
 app.include_router(main_router)
 app.include_router(auth_router)
 app.include_router(admin_router)
-app.include_router(warranty_router)
+
 app.include_router(cham_cong_router)
 app.include_router(kho_key_router)
 app.include_router(quan_ly_key_router)
+app.include_router(list_printers_router)
+app.include_router(list_printers_api_router)
+app.include_router(warranty_router)
 app.include_router(quan_ly_key_api_router, prefix="/admin")
+app.include_router(kho_key_api_router)
 app.include_router(report_router)
 app.include_router(warranty_report_router)
 app.include_router(warranty_policy_router)

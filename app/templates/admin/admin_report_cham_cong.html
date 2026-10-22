@@ -6,21 +6,34 @@ Báo cáo chấm công & lắp đặt
 
 {% block content %}
 <div class="p-4 space-y-6">
-
+    <div class="shrink-0">
+        <a href="/admin/bao-cao" class="inline-flex items-center gap-2 px-3.5 py-2 rounded-lg bg-slate-800 hover:bg-slate-700/80 border border-slate-700 text-slate-200 text-xs sm:text-sm font-medium transition-all shadow-sm group">
+            <i class="fa-solid fa-arrow-left text-xs transition-transform group-hover:-translate-x-1 text-slate-400 group-hover:text-cyan-400"></i>
+            <span>Quay lại Dashboard</span>
+        </a>
+    </div>
     <!-- BỘ LỌC -->
     <div class="p-4 rounded-xl bg-slate-900/80 border border-slate-800">
         <form id="filterForm" method="GET" action="/cham-cong/bao-cao-lap-dat" class="flex flex-wrap items-end gap-4">
+            <div class="flex items-end gap-3">
             <div>
                 <label for="start_date" class="block text-xs font-medium text-slate-400 mb-1">Từ ngày</label>
                 <input type="date" id="start_date" name="start_date" value="{{ start_date }}" 
-                       class="bg-slate-800 border border-slate-700 text-slate-200 text-xs rounded-lg p-2.5 focus:ring-cyan-500 focus:border-cyan-500">
+                    class="bg-slate-800 border border-slate-700 text-slate-200 text-xs rounded-lg p-2.5 focus:ring-cyan-500 focus:border-cyan-500">
             </div>
 
             <div>
                 <label for="end_date" class="block text-xs font-medium text-slate-400 mb-1">Đến ngày</label>
                 <input type="date" id="end_date" name="end_date" value="{{ end_date }}" 
-                       class="bg-slate-800 border border-slate-700 text-slate-200 text-xs rounded-lg p-2.5 focus:ring-cyan-500 focus:border-cyan-500">
+                    class="bg-slate-800 border border-slate-700 text-slate-200 text-xs rounded-lg p-2.5 focus:ring-cyan-500 focus:border-cyan-500">
             </div>
+
+            <!-- Nút bấm gọi hàm setCurrentMonthRange() -->
+            <button type="button" onclick="setCurrentMonthRange()" 
+                    class="bg-cyan-600 hover:bg-cyan-500 text-white font-medium text-xs rounded-lg px-3 py-2.5 transition flex items-center gap-1.5 cursor-pointer">
+                <span>📅 Tháng hiện tại</span>
+            </button>
+        </div>
 
             <div>
                 <label for="username" class="block text-xs font-medium text-slate-400 mb-1">Nhân viên</label>
@@ -241,5 +254,49 @@ function setQuickRange(days) {
     document.getElementById("start_date").value = formatDate(start);
     document.getElementById("filterForm").submit();
 }
+function setCurrentMonthRange() {
+        const now = new Date();
+        
+        // Ngày 1 của tháng hiện tại
+        const start = new Date(now.getFullYear(), now.getMonth(), 1);
+        
+        // Ngày cuối cùng của tháng hiện tại
+        const end = new Date(now.getFullYear(), now.getMonth() + 1, 0);
+
+        function formatDate(date) {
+            const year = date.getFullYear();
+            const month = String(date.getMonth() + 1).padStart(2, "0");
+            const day = String(date.getDate()).padStart(2, "0");
+            return `${year}-${month}-${day}`;
+        }
+
+        document.getElementById("start_date").value = formatDate(start);
+        document.getElementById("end_date").value = formatDate(end);
+        
+        // Submit form để lọc dữ liệu
+        document.getElementById("filterForm").submit();
+    }
+
+    // Tự động gán mặc định nếu người dùng mở trang mà chưa có tham số ngày
+    document.addEventListener("DOMContentLoaded", () => {
+        const startInput = document.getElementById("start_date");
+        const endInput = document.getElementById("end_date");
+
+        if (!startInput.value || !endInput.value) {
+            const now = new Date();
+            const start = new Date(now.getFullYear(), now.getMonth(), 1);
+            const end = new Date(now.getFullYear(), now.getMonth() + 1, 0);
+
+            function formatDate(date) {
+                const year = date.getFullYear();
+                const month = String(date.getMonth() + 1).padStart(2, "0");
+                const day = String(date.getDate()).padStart(2, "0");
+                return `${year}-${month}-${day}`;
+            }
+
+            if (!startInput.value) startInput.value = formatDate(start);
+            if (!endInput.value) endInput.value = formatDate(end);
+        }
+    });
 </script>
 {% endblock %}

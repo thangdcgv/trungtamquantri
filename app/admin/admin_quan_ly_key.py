@@ -6,7 +6,7 @@ from zoneinfo import ZoneInfo
 from fastapi import APIRouter, Depends, HTTPException, Query, Request, status
 from fastapi.responses import HTMLResponse, JSONResponse, RedirectResponse
 from fastapi.templating import Jinja2Templates
-from pydantic import BaseModel
+from pydantic import BaseModel, Field
 
 from app.auth import get_current_user_or_redirect, require_login
 from config import supabase
@@ -156,7 +156,7 @@ def format_date_vn(dt_str: Optional[str]) -> str:
 
 
 def resolve_device_name(device_input: str) -> str:
-    """Ánh xạ ID/Slug thiết bị (VD: 'may_in') thành Tên chuẩn CSDL (VD: 'Máy in')."""
+    """Ánh xạ ID/Slug thiết bị (VD: 'may_in') thành Tên chuẩn CSDL ('Máy in' hoặc 'Máy cắt bế')."""
     if not device_input:
         return "Máy in"
     clean_input = device_input.strip()
@@ -165,7 +165,9 @@ def resolve_device_name(device_input: str) -> str:
     for config in DEVICE_CONFIGS.values():
         if config["name"] == clean_input:
             return config["name"]
-    return clean_input
+    if "cắt" in clean_input.lower() or "cat" in clean_input.lower():
+        return "Máy cắt bế"
+    return "Máy in"
 
 
 def extract_username(user_dict: dict) -> str:
@@ -194,10 +196,11 @@ class ConfirmSuccessReq(BaseModel):
     sdt_khach_hang: Optional[str] = None
     ghi_chu: Optional[str] = ""
 
+# ĐÃ ĐIỀU CHỈNH SCHEMA NẠP KEY NHANH THEO YÊU CẦU MỚI
 class NapKeyNhanhSchema(BaseModel):
     ma_key: str
-    loai_thiet_bi: Optional[str] = "may_in"
-    dinh_danh: Optional[str] = ""
+    loai_thiet_bi: str  # "Máy in" hoặc "Máy cắt bế"
+    ten_may: str        # Tên máy (Bắt buộc)
     ghi_chu: Optional[str] = ""
     confirm_create: Optional[bool] = False
 
@@ -216,7 +219,6 @@ async def trang_quan_ly_key(
     request: Request,
     search: Optional[str] = Query(None)
 ):
-    # 1. Lấy user hiện tại
     user = await get_current_user_or_redirect(request)
     if not user:
         return RedirectResponse(url="/auth/login", status_code=status.HTTP_303_SEE_OTHER)
@@ -251,7 +253,6 @@ async def trang_quan_ly_key(
     except Exception as e:
         logger.error(f"Lỗi lấy lịch sử key: {repr(e)}")
 
-    # 2. Render Template cùng Context
     return templates.TemplateResponse(
         request=request,
         name="admin/admin_quan_ly_key.html",
@@ -321,7 +322,6 @@ async def get_models(loai_thiet_bi: str = Query(...)):
         if not res.data:
             return {"models": []}
 
-        # Lọc các model thực sự còn dư lượt dùng
         valid_models = set()
         for r in res.data:
             gioi_han = r.get("gioi_han") or 1
@@ -461,11 +461,7 @@ async def confirm_success_action(
         raise http_ex
     except Exception as e:
         err_msg = str(e)
-        if "23505" in err_msg or "unique" in err_msg:
-            raise HTTPException(
-                status_code=status.HTTP_400_BAD_REQUEST, 
-                detail="Số Seri/Định danh này đã được lưu trước đó!"
-            )
+        logger.error(f"❌ Lỗi confirm-success: {err_msg}")
         raise HTTPException(
             status_code=status.HTTP_500_INTERNAL_SERVER_ERROR, 
             detail=f"Lỗi hệ thống khi chốt key thành công: {err_msg}"
@@ -531,23 +527,33 @@ async def report_fail_retry_action(
         )
 
 
+# API NẠP KEY NHANH ĐÃ CẬP NHẬT THEO 3 YÊU CẦU MỚI
 @api_router.post("/nap-key-nhanh")
 async def api_nap_key_nhanh(
     data: NapKeyNhanhSchema,
     current_user: dict = Depends(require_login)
 ):
     ma_key = data.ma_key.strip().upper()
+    ten_may = data.ten_may.strip().upper()
+
     if not ma_key:
         raise HTTPException(
             status_code=status.HTTP_400_BAD_REQUEST, 
             detail="Mã Key không được để trống!"
         )
 
+    if not ten_may:
+        raise HTTPException(
+            status_code=status.HTTP_400_BAD_REQUEST, 
+            detail="Tên máy không được để trống!"
+        )
+
     try:
         username_ktv = extract_username(current_user)
-        real_device_name = resolve_device_name(data.loai_thiet_bi or "may_in")
+        # 1. Loại thiết bị lưu chính xác "Máy in" hoặc "Máy cắt bế"
+        real_device_name = resolve_device_name(data.loai_thiet_bi)
 
-        # 1. Truy vấn kiểm tra key trong kho_key
+        # 2. Truy vấn kiểm tra key trong kho_key
         res_key = supabase.table("kho_key").select("*").eq("ma_key", ma_key).execute()
         existing_keys = res_key.data or []
 
@@ -574,7 +580,6 @@ async def api_nap_key_nhanh(
                 "trang_thai": trang_thai_moi
             }).eq("id", key_item["id"]).execute()
 
-            ten_may = key_item.get("ten_may") or real_device_name
             luot_con_lai = gioi_han - da_dung_moi
 
         else:
@@ -589,8 +594,9 @@ async def api_nap_key_nhanh(
                     }
                 )
 
+            # Tự động tạo mới key trong kho (Khởi tạo 2 lượt, dùng 1 lượt)
             new_key_data = {
-                "ten_may": real_device_name,
+                "ten_may": ten_may,
                 "ma_key": ma_key,
                 "gioi_han": 2,
                 "da_dung": 1,
@@ -598,24 +604,22 @@ async def api_nap_key_nhanh(
                 "loai_thiet_bi": real_device_name
             }
             supabase.table("kho_key").insert(new_key_data).execute()
-            
-            ten_may = real_device_name
             luot_con_lai = 1
 
-        # 2. Ghi nhật ký vào bảng quan_ly_key
+        # 3. Ghi nhật ký chuẩn xác vào bảng `quan_ly_key`
         log_entry = {
-            "loai_thiet_bi": real_device_name,
-            "ten_may": ten_may,
+            "loai_thiet_bi": real_device_name, # "Máy in" hoặc "Máy cắt bế"
+            "ten_may": ten_may,                 # Tên máy tương ứng cột ten_may
             "username": username_ktv,
-            "so_seri": data.dinh_danh.strip() if data.dinh_danh else "-",
+            "so_seri": "-",
             "key_chipless": ma_key,
-            "ghi_chu": data.ghi_chu or f"Nạp nhanh bởi KTV {username_ktv}"
+            "ghi_chu": data.ghi_chu or f"Nạp nhanh bởi KTV {username_ktv}" # Ghi chú tương ứng cột ghi_chu
         }
         supabase.table("quan_ly_key").insert(log_entry).execute()
 
         return {
             "success": True,
-            "message": f"✅ Xác nhận sử dụng Key [{ma_key}] thành công! (Còn lại: {luot_con_lai} lượt)"
+            "message": f"✅ Xác nhận sử dụng Key [{ma_key}] cho máy [{ten_may}] thành công! (Còn lại: {luot_con_lai} lượt)"
         }
 
     except Exception as e:

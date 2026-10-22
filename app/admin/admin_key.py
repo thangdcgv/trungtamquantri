@@ -293,7 +293,7 @@ async def save_batch_details(items: List[KeyItemRow]):
         to_update = []
 
         for item in items:
-            # Tương thích cả Pydantic v1 và v2
+            # Tương thích Pydantic v1 và v2 (bỏ sẵn id ra khỏi payload)
             data = item.model_dump(exclude={"id"}) if hasattr(item, "model_dump") else item.dict(exclude={"id"})
             data["ten_may"] = data["ten_may"].strip()
             data["ma_key"] = data["ma_key"].strip()
@@ -301,15 +301,19 @@ async def save_batch_details(items: List[KeyItemRow]):
             data["trang_thai"] = "Hết lượt" if data["da_dung"] >= data["gioi_han"] else "Còn lượt"
 
             if item.id:
-                to_update.append({"id": item.id, **data})
+                # Lưu dưới dạng Tuple: (id_cần_update, dict_dữ_liệu_mới)
+                to_update.append((item.id, data))
             else:
                 to_insert.append(data)
 
+        # 1. Batch Insert (1 request duy nhất cho toàn bộ dòng mới)
         if to_insert:
             supabase.table("kho_key").insert(to_insert).execute()
 
+        # 2. Update từng dòng (Payload sạch, không chứa cột id)
         if to_update:
-            supabase.table("kho_key").upsert(to_update).execute()
+            for item_id, update_payload in to_update:
+                supabase.table("kho_key").update(update_payload).eq("id", item_id).execute()
 
         return {"status": "success", "inserted": len(to_insert), "updated": len(to_update)}
     except Exception as e:

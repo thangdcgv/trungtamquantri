@@ -64,13 +64,21 @@
                     <option value="Đã qua sử dụng" {% if selected_condition == 'Đã qua sử dụng' %}selected{% endif %}>🇯🇵 Máy nội địa / Cũ</option>
                 </select>
             </div>
-            <div>
-                <label class="block text-[11px] text-slate-400 mb-1">Từ ngày</label>
-                <input type="date" id="start_date" name="start_date" value="{{ start_date }}" onchange="this.form.submit()" class="w-full bg-slate-800 border border-slate-700 text-slate-200 text-xs rounded-lg p-2 focus:ring-1 focus:ring-cyan-500 outline-none">
-            </div>
-            <div>
-                <label class="block text-[11px] text-slate-400 mb-1">Đến ngày</label>
-                <input type="date" id="end_date" name="end_date" value="{{ end_date }}" onchange="this.form.submit()" class="w-full bg-slate-800 border border-slate-700 text-slate-200 text-xs rounded-lg p-2 focus:ring-1 focus:ring-cyan-500 outline-none">
+            <div class="flex items-end gap-2">
+                <div>
+                    <label class="block text-[11px] text-slate-400 mb-1">Từ ngày</label>
+                    <input type="date" id="start_date" name="start_date" value="{{ start_date }}" onchange="this.form.submit()" class="w-full bg-slate-800 border border-slate-700 text-slate-200 text-xs rounded-lg p-2 focus:ring-1 focus:ring-cyan-500 outline-none">
+                </div>
+                <div>
+                    <label class="block text-[11px] text-slate-400 mb-1">Đến ngày</label>
+                    <input type="date" id="end_date" name="end_date" value="{{ end_date }}" onchange="this.form.submit()" class="w-full bg-slate-800 border border-slate-700 text-slate-200 text-xs rounded-lg p-2 focus:ring-1 focus:ring-cyan-500 outline-none">
+                </div>
+
+                <!-- Nút chọn nhanh Tháng Hiện Tại -->
+                <button type="button" onclick="setCurrentMonthWarranty(this.form)" 
+                        class="bg-cyan-600 hover:bg-cyan-500 text-white font-medium text-xs rounded-lg px-3 py-2 transition flex items-center gap-1 shrink-0 cursor-pointer">
+                    <span>📅 Tháng này</span>
+                </button>
             </div>
         </form>
     </section>
@@ -402,5 +410,55 @@
         // Thực hiện tải file về
         window.location.href = exportUrl;
     }
+    // Hàm chọn nhanh ngày đầu tháng & ngày cuối tháng hiện tại
+    function setCurrentMonthWarranty(formEl) {
+        const now = new Date();
+        const start = new Date(now.getFullYear(), now.getMonth(), 1);
+        const end = new Date(now.getFullYear(), now.getMonth() + 1, 0);
+
+        function formatDate(date) {
+            const year = date.getFullYear();
+            const month = String(date.getMonth() + 1).padStart(2, "0");
+            const day = String(date.getDate()).padStart(2, "0");
+            return `${year}-${month}-${day}`;
+        }
+
+        const startInput = document.getElementById("start_date");
+        const endInput = document.getElementById("end_date");
+
+        if (startInput && endInput) {
+            startInput.value = formatDate(start);
+            endInput.value = formatDate(end);
+
+            // Submit form ngay sau khi gán
+            if (formEl) {
+                formEl.submit();
+            } else if (startInput.form) {
+                startInput.form.submit();
+            }
+        }
+    }
+
+    // Tự động gán mặc định tháng hiện tại nếu người dùng vừa mở trang (chưa chọn ngày)
+    document.addEventListener("DOMContentLoaded", () => {
+        const startInput = document.getElementById("start_date");
+        const endInput = document.getElementById("end_date");
+
+        if (startInput && endInput && (!startInput.value || !endInput.value)) {
+            const now = new Date();
+            const start = new Date(now.getFullYear(), now.getMonth(), 1);
+            const end = new Date(now.getFullYear(), now.getMonth() + 1, 0);
+
+            function formatDate(date) {
+                const year = date.getFullYear();
+                const month = String(date.getMonth() + 1).padStart(2, "0");
+                const day = String(date.getDate()).padStart(2, "0");
+                return `${year}-${month}-${day}`;
+            }
+
+            if (!startInput.value) startInput.value = formatDate(start);
+            if (!endInput.value) endInput.value = formatDate(end);
+        }
+    });
 </script>
 {% endblock %}

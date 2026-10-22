@@ -63,19 +63,50 @@ def _is_auth_error(e: Exception) -> bool:
     ]
     return any(k in msg for k in auth_keywords)
 
+async def refresh_supabase_token_if_needed(request: Request) -> Optional[str]:
+    """Kiểm tra và tự động gia hạn Access Token bằng Refresh Token nếu đã hết hạn."""
+    access_token = request.session.get("access_token")
+    refresh_token = request.session.get("refresh_token")
+
+    if not access_token or not refresh_token:
+        return access_token
+
+    def _check_and_refresh():
+        try:
+            # 1. Thử xác thực access_token hiện tại với Supabase
+            user_res = supabase.auth.get_user(access_token)
+            if user_res and user_res.user:
+                return access_token
+        except Exception:
+            # 2. Nếu access_token hết hạn, thử dùng refresh_token để lấy cặp token mới
+            try:
+                res = supabase.auth.refresh_session(refresh_token)
+                if res and res.session:
+                    # Cập nhật token mới vào session cookie
+                    request.session["access_token"] = res.session.access_token
+                    request.session["refresh_token"] = res.session.refresh_token
+                    logger.info("✅ Auto-refreshed Supabase Access Token successfully!")
+                    return res.session.access_token
+            except Exception as refresh_err:
+                logger.error(f"❌ Refresh Token failed/expired: {refresh_err}")
+        return None
+
+    return await run_in_threadpool(_check_and_refresh)
 
 def extract_user_from_session(request: Request) -> Optional[Dict[str, Any]]:
     user_id = request.session.get("user_id")
     session_token = request.session.get("session_token")
     if not user_id or not session_token:
         return None
+
     ho_ten = request.session.get("ho_ten") or "Quản trị viên"
-    role = str(request.session.get("role") or "user").strip().lower()  # ✅ Chuẩn hóa lower
+    role = str(request.session.get("role") or "user").strip().lower()
     dept = request.session.get("department")
     if role in SUPER_ADMIN_ROLES:
         dept = "ALL"
     else:
         dept = dept or "KTSC"
+
     return {
         "auth_id": str(user_id),
         "id": str(user_id),
@@ -86,6 +117,7 @@ def extract_user_from_session(request: Request) -> Optional[Dict[str, Any]]:
         "role": role,
         "department": dept,
         "access_token": request.session.get("access_token"),
+        "refresh_token": request.session.get("refresh_token"), # 👈 Thêm vào dictionary trả về
         "session_token": session_token,
         "device_type": request.session.get("device_type"),
     }
@@ -116,6 +148,10 @@ async def require_login(request: Request) -> Dict[str, Any]:
     user = extract_user_from_session(request)
     if not user:
         raise HTTPException(status_code=401, detail="Chưa đăng nhập hoặc phiên đã hết hạn.")
+    
+    # 💡 Kiểm tra & Tự động gia hạn Supabase Access Token ngầm
+    await refresh_supabase_token_if_needed(request)
+
     if not await verify_active_session(user["auth_id"], user["session_token"]):
         request.session.clear()
         raise HTTPException(status_code=401, detail="Tài khoản đã được đăng nhập từ thiết bị khác cùng loại.")
@@ -242,7 +278,7 @@ async def login(request: Request, email: str = Form(...), password: str = Form(.
         logger.error(f"LOGIN SYSTEM ERROR (profile/session): {e}", exc_info=True)
         return render_template(request, "auth/login.html", {"error": "Hệ thống tạm thời gián đoạn, vui lòng thử lại sau."}, status_code=503)
 
-    # BƯỚC 3: Lưu session
+    # BƯỚC 3: Lưu session (Đã bổ sung refresh_token)
     request.session.clear()
     request.session.update({
         "user_id": auth_id,
@@ -254,6 +290,7 @@ async def login(request: Request, email: str = Form(...), password: str = Form(.
         "department": department,
         "device_type": device_type,
         "access_token": response.session.access_token if response.session else None,
+        "refresh_token": response.session.refresh_token if response.session else None,  # 👈 BỔ SUNG DÒNG NÀY
     })
 
     if kicked_count:

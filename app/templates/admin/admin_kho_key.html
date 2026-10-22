@@ -229,8 +229,9 @@
 
 <!-- CLIENT SCRIPT LOGIC -->
 <script>
-    let rawKeysData = JSON.parse('{{ raw_keys | tojson | safe }}');
-    let listLoaiTB = JSON.parse('{{ danh_sach_loai_tb | tojson | safe }}');
+    // Cách 2: Parse từ DOM
+    let rawKeysData = JSON.parse(document.getElementById('raw-keys-json-data').textContent);
+    let listLoaiTB = JSON.parse(document.getElementById('danh-sach-loai-tb-json-data').textContent);
     let pendingImportData = null;
 
     // --- TAB SWITCHING ---
@@ -257,6 +258,7 @@
     // --- CHECK IMPORT & MODAL LOGIC ---
     async function handleCheckImport(e) {
         e.preventDefault();
+        const btnSubmit = document.getElementById('btn-submit-import');
         const loai_tb = document.getElementById('loai_tb').value;
         const ten_may = document.getElementById('ten_may').value;
         const limit = parseInt(document.getElementById('limit').value) || 1;
@@ -410,7 +412,7 @@
         const currentLoai = row.loai_thiet_bi || defaultLoai;
         const loaiOptions = listLoaiTB.map(t => `<option value="${t}" ${t === currentLoai ? 'selected' : ''}>${t}</option>`).join('');
         return `
-            <tr class="border-b border-slate-800 detail-row hover:bg-slate-800/30 transition-colors" data-id="${row.id || ''}">
+            <tr class="border-b border-slate-800 detail-row hover:bg-slate-800/30 transition-colors" data-id="${row.id !== null ? row.id : ''}">
                 <td class="p-1.5"><select class="row-loai border border-slate-700 bg-slate-900 text-slate-100 rounded p-1 w-full text-xs outline-none focus:border-blue-500">${loaiOptions}</select></td>
                 <td class="p-1.5"><input type="text" class="row-model border border-slate-700 bg-slate-900 text-slate-100 rounded p-1 w-full text-xs font-semibold uppercase outline-none focus:border-blue-500" value="${row.ten_may || ''}"></td>
                 <td class="p-1.5"><input type="text" class="row-key border border-slate-700 bg-slate-900 text-slate-100 rounded p-1 w-full text-xs font-mono outline-none focus:border-blue-500" value="${row.ma_key || ''}"></td>

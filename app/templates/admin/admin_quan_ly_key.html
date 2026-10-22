@@ -134,24 +134,23 @@
 
                 <form id="formNapKeyNhanh" onsubmit="handleNapKeyNhanh(event)" class="space-y-3">
                     <div>
-                        <label class="block text-xs text-slate-400 mb-1">Mã Key (*)</label>
+                        <label class="block text-xs text-slate-400 mb-1">Mã Key <span class="text-rose-400">*</span></label>
                         <input type="text" id="nap_ma_key" required placeholder="Dán mã key tại đây..." 
                             class="w-full bg-slate-950 border border-slate-800 rounded-xl px-3 py-2 text-xs text-amber-300 font-mono placeholder:text-slate-600 focus:border-amber-500 outline-none uppercase">
                     </div>
 
                     <div class="grid grid-cols-2 gap-2">
                         <div>
-                            <label class="block text-xs text-slate-400 mb-1">Loại Thiết Bị</label>
-                            <select id="nap_loai_tb" class="w-full bg-slate-950 border border-slate-800 rounded-xl px-2.5 py-2 text-xs text-slate-200 focus:border-indigo-500 outline-none cursor-pointer">
-                                <option value="Máy in">Key Máy in KH</option>
-                                <option value="Máy cắt bế">Key Máy cắt bế KH</option>
-                                <option value="Thiết bị khác">Thiết bị khác</option>
+                            <label class="block text-xs text-slate-400 mb-1">Loại Thiết Bị <span class="text-rose-400">*</span></label>
+                            <select id="nap_loai_tb" required class="w-full bg-slate-950 border border-slate-800 rounded-xl px-2.5 py-2 text-xs text-slate-200 focus:border-indigo-500 outline-none cursor-pointer">
+                                <option value="Máy in">Máy in</option>
+                                <option value="Máy cắt bế">Máy cắt bế</option>
                             </select>
                         </div>
                         <div>
-                            <label class="block text-xs text-slate-400 mb-1">Seri / SĐT</label>
-                            <input type="text" id="nap_dinh_danh" placeholder="VD: S6298... / 090..." 
-                                class="w-full bg-slate-950 border border-slate-800 rounded-xl px-3 py-2 text-xs text-slate-200 placeholder:text-slate-600 focus:border-indigo-500 outline-none font-mono">
+                            <label class="block text-xs text-slate-400 mb-1">Tên Máy <span class="text-rose-400">*</span></label>
+                            <input type="text" id="nap_ten_may" required placeholder="VD: C5290, L18050..." 
+                                class="w-full bg-slate-950 border border-slate-800 rounded-xl px-3 py-2 text-xs text-slate-200 placeholder:text-slate-600 focus:border-indigo-500 outline-none uppercase font-semibold">
                         </div>
                     </div>
 
@@ -704,8 +703,8 @@
             const btnSuccess = document.getElementById('btn_confirm_success');
             if (btnSuccess.disabled) return;
 
-            btnSuccess.disabled = true;
             const originalText = btnSuccess.innerHTML;
+            btnSuccess.disabled = true;
             btnSuccess.innerHTML = `<i class="fa-solid fa-spinner fa-spin"></i> Đang lưu CSDL...`;
 
             try {
@@ -721,11 +720,11 @@
                     showSuccessModal(result.key_issued || currentKeyData.ma_key);
                 } else {
                     showToast("🚫 LỖI: " + (result.detail || "Không thể nạp key"), "error");
-                    btnSuccess.disabled = false;
-                    btnSuccess.innerHTML = originalText;
                 }
             } catch (err) {
                 showToast("❌ Lỗi gửi dữ liệu: " + err, "error");
+            } finally {
+                // KHÔI PHỤC NÚT BẤM TRONG MỌI TRƯỜNG HỢP (KỂ CẢ THÀNH CÔNG VÀ THẤT BẠI)
                 btnSuccess.disabled = false;
                 btnSuccess.innerHTML = originalText;
             }
@@ -781,11 +780,16 @@
             const btn = document.getElementById('btnNapKey');
             const maKey = document.getElementById('nap_ma_key').value.trim().toUpperCase();
             const loaiTB = document.getElementById('nap_loai_tb').value;
-            const dinhDanh = document.getElementById('nap_dinh_danh').value.trim();
+            const tenMay = document.getElementById('nap_ten_may').value.trim().toUpperCase();
             const ghiChu = document.getElementById('nap_ghi_chu').value.trim();
 
             if (!maKey) {
                 showToast("⚠️ Vui lòng nhập mã key!", "warning");
+                return;
+            }
+
+            if (!tenMay) {
+                showToast("⚠️ Vui lòng nhập tên model/máy!", "warning");
                 return;
             }
 
@@ -799,15 +803,15 @@
                     body: JSON.stringify({
                         ma_key: maKey,
                         loai_thiet_bi: loaiTB,
-                        dinh_danh: dinhDanh,
+                        ten_may: tenMay,
                         ghi_chu: ghiChu,
-                        confirm_create: false // Kiểm tra trước
+                        confirm_create: false // Kiểm tra xem key đã có trong kho chưa
                     })
                 });
 
                 const result = await response.json();
 
-                // Trường hợp 1: Backend trả lời Key CHƯA TỒN TẠI (Lỗi 404/Code KEY_NOT_FOUND) -> Bật Modal cảnh báo
+                // Trường hợp 1: Backend báo Key CHƯA TỒN TẠI (Lỗi 404/Code KEY_NOT_FOUND) -> Mở Modal xác nhận
                 if (response.status === 404 || result.code === "KEY_NOT_FOUND") {
                     const confirmKeyCode = document.getElementById('confirm_key_code');
                     if (confirmKeyCode) confirmKeyCode.textContent = result.ma_key || maKey;
@@ -819,7 +823,7 @@
 
                 // Trường hợp 2: Key đã tồn tại & nạp thành công
                 if (response.ok && result.success) {
-                    showToast(result.message, "success");
+                    showToast(result.message || "✅ Nạp key thành công!", "success");
                     document.getElementById('formNapKeyNhanh').reset();
                     triggerLiveSearch();
                 } else {
@@ -839,11 +843,12 @@
             if (modal) modal.classList.add('hidden');
         }
 
+        // --- XỬ LÝ XÁC NHẬN TẠO KEY MỚI TRÊN MODAL ---
         async function executeCreateAndUseKey() {
             const maKey = document.getElementById('confirm_key_code')?.textContent.trim() || 
-                          document.getElementById('nap_ma_key')?.value.trim().toUpperCase();
+                        document.getElementById('nap_ma_key')?.value.trim().toUpperCase();
             const loaiTB = document.getElementById('nap_loai_tb')?.value || "Máy in";
-            const dinhDanh = document.getElementById('nap_dinh_danh')?.value.trim() || "";
+            const tenMay = document.getElementById('nap_ten_may')?.value.trim().toUpperCase() || "";
             const ghiChu = document.getElementById('nap_ghi_chu')?.value.trim() || "";
 
             closeConfirmNewKeyModal();
@@ -861,16 +866,16 @@
                     body: JSON.stringify({
                         ma_key: maKey,
                         loai_thiet_bi: loaiTB,
-                        dinh_danh: dinhDanh,
+                        ten_may: tenMay,
                         ghi_chu: ghiChu,
-                        confirm_create: true // Xác nhận khởi tạo key mới (Tổng 2 lượt, trừ 1 lượt)
+                        confirm_create: true // Xác nhận tạo mới key trong CSDL (Tổng 2 lượt, trừ 1 lượt)
                     })
                 });
 
                 const result = await response.json();
 
                 if (response.ok && result.success) {
-                    showToast(result.message, "success");
+                    showToast(result.message || "✅ Khởi tạo & nạp key thành công!", "success");
                     document.getElementById('formNapKeyNhanh')?.reset();
                     triggerLiveSearch();
                 } else {
@@ -894,9 +899,32 @@
             document.getElementById('modal_success').classList.remove('hidden');
         }
 
+        // 1. Sửa lại hàm đóng Modal để dọn sạch Form nạp key ở trên
         function closeModalAndReload() {
             document.getElementById('modal_success').classList.add('hidden');
+            
+            // Reset toàn bộ Form quy trình xuất key ở cột trái
+            resetFullQuyTrinh();
+            
+            // Tải lại dữ liệu bảng lịch sử ở dưới
             triggerLiveSearch();
+        }
+
+        // 2. Thêm hàm Reset dọn dẹp sạch sẽ toàn bộ trạng thái Form
+        function resetFullQuyTrinh() {
+            // Reset dropdown loại thiết bị
+            const selectTB = document.getElementById('select_loai_tb');
+            if (selectTB) selectTB.value = '';
+
+            // Reset & disable dropdown model
+            const selectModel = document.getElementById('select_model');
+            if (selectModel) {
+                selectModel.innerHTML = '<option value="">-- Chọn Model --</option>';
+                selectModel.disabled = true;
+            }
+
+            // Dọn dẹp Step 2 & Step 3 Preview
+            resetStep2AndPreview();
         }
 
         function copyPreviewKey() {
