@@ -31,16 +31,16 @@
     </header>
 
     <!-- BỘ LỌC TÌM KIẾM ĐỘNG (CLIENT-SIDE DYNAMIC FILTER) -->
-    <section class="p-4 rounded-xl bg-slate-900/80 border border-slate-800 shadow-lg">
-        <div class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-5 gap-3">
+    <section class="p-4 sm:p-5 rounded-2xl bg-slate-900/80 border border-slate-800 shadow-xl">
+        <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">
             <!-- Ô Tìm kiếm keyword động -->
-            <div class="lg:col-span-2">
-                <label class="block text-[11px] font-medium text-slate-400 mb-1">Tìm kiếm nhanh (Thương hiệu / Model)</label>
+            <div class="md:col-span-2 lg:col-span-2">
+                <label class="block text-[11px] font-medium text-slate-400 mb-1.5">Tìm kiếm nhanh (Thương hiệu / Model)</label>
                 <div class="relative">
                     <i class="fa-solid fa-magnifying-glass absolute left-3 top-1/2 -translate-y-1/2 text-slate-500 text-xs"></i>
                     <input type="text" id="searchInput" oninput="filterPrinters()" placeholder="Gõ để tìm kiếm tức thì..." 
-                           class="w-full bg-slate-800 border border-slate-700 rounded-lg pl-9 pr-8 py-2 text-xs text-slate-100 placeholder:text-slate-500 focus:border-cyan-500 focus:ring-1 focus:ring-cyan-500 outline-none transition">
-                    <button type="button" onclick="clearSearch()" id="btnClearSearch" class="hidden absolute right-2.5 top-1/2 -translate-y-1/2 text-slate-400 hover:text-white text-xs">
+                        class="w-full h-10 bg-slate-950 border border-slate-700 rounded-xl pl-9 pr-9 text-xs text-slate-100 placeholder:text-slate-500 focus:border-cyan-500 focus:ring-1 focus:ring-cyan-500 outline-none transition-all">
+                    <button type="button" onclick="clearSearch()" id="btnClearSearch" class="hidden absolute right-2.5 top-1/2 -translate-y-1/2 text-slate-400 hover:text-white text-xs p-1 cursor-pointer transition-colors">
                         <i class="fa-solid fa-xmark"></i>
                     </button>
                 </div>
@@ -48,8 +48,8 @@
 
             <!-- Lọc Thương hiệu -->
             <div>
-                <label class="block text-[11px] font-medium text-slate-400 mb-1">Thương hiệu</label>
-                <select id="brandFilter" onchange="filterPrinters()" class="w-full bg-slate-800 border border-slate-700 rounded-lg p-2 text-xs text-slate-200 focus:border-cyan-500 outline-none cursor-pointer">
+                <label class="block text-[11px] font-medium text-slate-400 mb-1.5">Thương hiệu</label>
+                <select id="brandFilter" onchange="filterPrinters()" class="w-full h-10 bg-slate-950 border border-slate-700 rounded-xl px-3 text-xs text-slate-200 focus:border-cyan-500 focus:ring-1 focus:ring-cyan-500 outline-none cursor-pointer transition-all">
                     <option value="">Tất cả thương hiệu</option>
                     {% for b in existing_brands %}
                         <option value="{{ b }}">{{ b }}</option>
@@ -59,22 +59,11 @@
 
             <!-- Lọc Loại máy -->
             <div>
-                <label class="block text-[11px] font-medium text-slate-400 mb-1">Loại thiết bị</label>
-                <select id="categoryFilter" onchange="filterPrinters()" class="w-full bg-slate-800 border border-slate-700 rounded-lg p-2 text-xs text-slate-200 focus:border-cyan-500 outline-none cursor-pointer">
+                <label class="block text-[11px] font-medium text-slate-400 mb-1.5">Loại thiết bị</label>
+                <select id="categoryFilter" onchange="filterPrinters()" class="w-full h-10 bg-slate-950 border border-slate-700 rounded-xl px-3 text-xs text-slate-200 focus:border-cyan-500 focus:ring-1 focus:ring-cyan-500 outline-none cursor-pointer transition-all">
                     <option value="">Tất cả loại máy</option>
                     {% for c in categories %}
                         <option value="{{ c }}">{{ c }}</option>
-                    {% endfor %}
-                </select>
-            </div>
-
-            <!-- Lọc Hình thức -->
-            <div>
-                <label class="block text-[11px] font-medium text-slate-400 mb-1">Hình thức</label>
-                <select id="conditionFilter" onchange="filterPrinters()" class="w-full bg-slate-800 border border-slate-700 rounded-lg p-2 text-xs text-slate-200 focus:border-cyan-500 outline-none cursor-pointer">
-                    <option value="">Tất cả hình thức</option>
-                    {% for cd in conditions %}
-                        <option value="{{ cd }}">{{ cd }}</option>
                     {% endfor %}
                 </select>
             </div>
@@ -91,7 +80,6 @@
                         <th class="p-3">Thương Hiệu</th>
                         <th class="p-3">Model Máy</th>
                         <th class="p-3">Phân Loại Thiết Bị</th>
-                        <th class="p-3">Hình Thức</th>
                         <th class="p-3">Ngày Cập Nhật</th>
                         <th class="p-3 text-right">Thao Tác</th>
                     </tr>
@@ -101,8 +89,7 @@
                     <tr class="printer-row hover:bg-slate-800/40 transition-colors"
                         data-brand="{{ item.brand_name | lower }}"
                         data-model="{{ item.model_code | lower }}"
-                        data-category="{{ item.category or 'In phun' }}"
-                        data-condition="{{ item.condition or 'Mới' }}">
+                        data-category="{{ item.category or 'In phun' }}">
                         
                         <td class="p-3 text-center text-slate-500 font-mono row-index">{{ loop.index }}</td>
                         
@@ -124,19 +111,6 @@
                             <span class="px-2.5 py-1 rounded-md text-[11px] font-medium bg-slate-800 text-slate-200 border border-slate-700">
                                 {{ item.category or 'In phun' }}
                             </span>
-                        </td>
-
-                        <!-- Hình thức -->
-                        <td class="p-3">
-                            {% if item.condition == 'Mới' %}
-                                <span class="px-2.5 py-1 rounded-md text-[10px] font-bold bg-emerald-500/10 text-emerald-400 border border-emerald-500/20">✨ Máy Mới</span>
-                            {% elif item.condition == 'Like new' %}
-                                <span class="px-2.5 py-1 rounded-md text-[10px] font-bold bg-cyan-500/10 text-cyan-400 border border-cyan-500/20">🌟 Like New</span>
-                            {% elif item.condition == 'Đã qua sử dụng' %}
-                                <span class="px-2.5 py-1 rounded-md text-[10px] font-bold bg-amber-500/10 text-amber-400 border border-amber-500/20">Đã Qua Sử Dụng</span>
-                            {% else %}
-                                <span class="px-2.5 py-1 rounded-md text-[10px] font-bold bg-rose-500/10 text-rose-400 border border-rose-500/20">{{ item.condition }}</span>
-                            {% endif %}
                         </td>
 
                         <!-- Ngày cập nhật -->
@@ -215,9 +189,9 @@
                         <option value="Brother"></option>
                         <option value="Ricoh"></option>
                         <option value="Refine"></option>
-                        <option value="Khả Lợi"></option>
                         <option value="Mimaki"></option>
-                        <option value="Roland"></option>
+                        <option value="Máy ép nhiệt"></option>
+                        <option value="Khả Lợi"></option>
                         <option value="Graphtec"></option>
                         <option value="Pantum"></option>
                         {% for b in existing_brands %}
@@ -243,16 +217,6 @@
                     </select>
                 </div>
 
-                <!-- Hình thức -->
-                <div>
-                    <label class="block text-xs font-semibold text-slate-300 mb-1">Hình thức máy <span class="text-rose-400">*</span></label>
-                    <select id="condition" name="condition" class="w-full bg-slate-800 border border-slate-700 text-white text-xs rounded-lg p-2.5 focus:ring-1 focus:ring-cyan-500 outline-none cursor-pointer">
-                        {% for cd in conditions %}
-                            <option value="{{ cd }}">{{ cd }}</option>
-                        {% endfor %}
-                    </select>
-                </div>
-
                 <!-- Buttons -->
                 <div class="pt-4 border-t border-slate-800 flex justify-end gap-2">
                     <button type="button" onclick="closePrinterModal()" class="px-4 py-2 rounded-lg bg-slate-800 hover:bg-slate-700 text-slate-300 text-xs font-medium transition-all cursor-pointer">Hủy</button>
@@ -273,7 +237,6 @@
         const keyword = document.getElementById('searchInput').value.trim().toLowerCase();
         const selectedBrand = document.getElementById('brandFilter').value;
         const selectedCategory = document.getElementById('categoryFilter').value;
-        const selectedCondition = document.getElementById('conditionFilter').value;
         const btnClear = document.getElementById('btnClearSearch');
 
         // Hiện/Ẩn nút xóa nhanh từ khóa
@@ -290,7 +253,6 @@
             const brand = row.getAttribute('data-brand') || '';
             const model = row.getAttribute('data-model') || '';
             const category = row.getAttribute('data-category') || '';
-            const condition = row.getAttribute('data-condition') || '';
 
             // Kiểm tra khớp từ khóa (thương hiệu hoặc model)
             const matchKeyword = !keyword || brand.includes(keyword) || model.includes(keyword);
@@ -298,9 +260,8 @@
             // Kiểm tra khớp dropdown
             const matchBrand = !selectedBrand || brand === selectedBrand.toLowerCase();
             const matchCategory = !selectedCategory || category === selectedCategory;
-            const matchCondition = !selectedCondition || condition === selectedCondition;
 
-            if (matchKeyword && matchBrand && matchCategory && matchCondition) {
+            if (matchKeyword && matchBrand && matchCategory ) {
                 row.classList.remove('hidden');
                 visibleCount++;
                 // Đánh lại số STT động theo kết quả hiển thị
@@ -346,7 +307,6 @@
         document.getElementById('brand_name').value = item.brand_name || '';
         document.getElementById('model_code').value = item.model_code || '';
         document.getElementById('category').value = item.category || 'In phun';
-        document.getElementById('condition').value = item.condition || 'Mới';
 
         document.getElementById('modalTitle').innerHTML = '<i class="fa-solid fa-pen-to-square text-cyan-400"></i> Chỉnh Sửa Dòng Máy In';
         document.getElementById('printerModal').classList.remove('hidden');
@@ -361,8 +321,7 @@
             id: form.id.value ? parseInt(form.id.value) : null,
             brand_name: form.brand_name.value.trim(),
             model_code: form.model_code.value.trim().toUpperCase(),
-            category: form.category.value,
-            condition: form.condition.value
+            category: form.category.value
         };
 
         btnSave.disabled = true;

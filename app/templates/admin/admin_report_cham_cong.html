@@ -1,58 +1,77 @@
 {% extends "base.html" %}
 
 {% block title %}
-Báo cáo chấm công & lắp đặt
+Báo cáo chấm công lắp đặt
 {% endblock %}
 
 {% block content %}
 <div class="p-4 space-y-6">
-    <div class="shrink-0">
+    <div class="shrink-0 flex items-center gap-2">
+        <!-- Nút Quay lại Dashboard -->
         <a href="/admin/bao-cao" class="inline-flex items-center gap-2 px-3.5 py-2 rounded-lg bg-slate-800 hover:bg-slate-700/80 border border-slate-700 text-slate-200 text-xs sm:text-sm font-medium transition-all shadow-sm group">
             <i class="fa-solid fa-arrow-left text-xs transition-transform group-hover:-translate-x-1 text-slate-400 group-hover:text-cyan-400"></i>
             <span>Quay lại Dashboard</span>
         </a>
+        <!-- Nút Cấu hình chấm công -->
+        <a href="/admin/config-cham-cong" class="inline-flex items-center gap-2 px-3.5 py-2 rounded-lg bg-cyan-600 hover:bg-cyan-500 border border-cyan-500/30 text-white text-xs sm:text-sm font-medium transition-all shadow-sm group">
+            <i class="fa-solid fa-gear text-xs transition-transform group-hover:rotate-90 text-cyan-200"></i>
+            <span>Cấu hình chấm công</span>
+        </a>
     </div>
-    <!-- BỘ LỌC -->
+
+    <!-- BỘ LỌC ĐỒNG BỘ -->
     <div class="p-4 rounded-xl bg-slate-900/80 border border-slate-800">
-        <form id="filterForm" method="GET" action="/cham-cong/bao-cao-lap-dat" class="flex flex-wrap items-end gap-4">
-            <div class="flex items-end gap-3">
-            <div>
+        <form id="filterForm" method="GET" action="/admin/report/bao-cao-lap-dat" class="flex flex-wrap items-end gap-3 sm:gap-4">
+            
+            <!-- Từ ngày -->
+            <div class="flex-1 min-w-[140px] max-w-[180px]">
                 <label for="start_date" class="block text-xs font-medium text-slate-400 mb-1">Từ ngày</label>
                 <input type="date" id="start_date" name="start_date" value="{{ start_date }}" 
-                    class="bg-slate-800 border border-slate-700 text-slate-200 text-xs rounded-lg p-2.5 focus:ring-cyan-500 focus:border-cyan-500">
+                    class="w-full h-10 bg-slate-800 border border-slate-700 text-slate-200 text-xs rounded-lg px-3 focus:ring-1 focus:ring-cyan-500 focus:border-cyan-500 outline-none transition-all">
             </div>
 
-            <div>
+            <!-- Đến ngày -->
+            <div class="flex-1 min-w-[140px] max-w-[180px]">
                 <label for="end_date" class="block text-xs font-medium text-slate-400 mb-1">Đến ngày</label>
                 <input type="date" id="end_date" name="end_date" value="{{ end_date }}" 
-                    class="bg-slate-800 border border-slate-700 text-slate-200 text-xs rounded-lg p-2.5 focus:ring-cyan-500 focus:border-cyan-500">
+                    class="w-full h-10 bg-slate-800 border border-slate-700 text-slate-200 text-xs rounded-lg px-3 focus:ring-1 focus:ring-cyan-500 focus:border-cyan-500 outline-none transition-all">
             </div>
 
-            <!-- Nút bấm gọi hàm setCurrentMonthRange() -->
-            <button type="button" onclick="setCurrentMonthRange()" 
-                    class="bg-cyan-600 hover:bg-cyan-500 text-white font-medium text-xs rounded-lg px-3 py-2.5 transition flex items-center gap-1.5 cursor-pointer">
-                <span>📅 Tháng hiện tại</span>
-            </button>
-        </div>
-
+            <!-- Nút Tháng hiện tại -->
             <div>
+                <button type="button" onclick="setCurrentMonthRange()" 
+                        class="h-10 inline-flex items-center gap-1.5 px-3.5 bg-slate-800 hover:bg-slate-700 border border-slate-700 text-slate-300 text-xs font-medium rounded-lg transition-all cursor-pointer">
+                    <i class="fa-regular fa-calendar-days text-cyan-400"></i>
+                    <span>Tháng hiện tại</span>
+                </button>
+            </div>
+
+            <!-- Bộ lọc Nhân viên -->
+            <div class="flex-1 min-w-[220px] max-w-[280px]">
                 <label for="username" class="block text-xs font-medium text-slate-400 mb-1">Nhân viên</label>
-                <select id="username" name="username" class="bg-slate-800 border border-slate-700 text-slate-200 text-xs rounded-lg p-2.5">
+                <select id="username" name="username" 
+                    class="w-full h-10 bg-slate-800 border border-slate-700 text-slate-200 text-xs rounded-lg px-3 focus:ring-1 focus:ring-cyan-500 focus:border-cyan-500 outline-none transition-all cursor-pointer">
                     <option value="">-- Tất cả nhân viên --</option>
-                    {% for u in all_users %}
-                    <option value="{{ u.username }}" {% if selected_user == u.username %}selected{% endif %}>
-                        {{ u.ho_ten or u.username }}
-                    </option>
-                    {% endfor %}
                 </select>
             </div>
 
+            <!-- Nút Lọc & Nút Lọc Nhanh -->
             <div class="flex items-center gap-2">
-                <button type="submit" class="px-4 py-2.5 bg-cyan-600 hover:bg-cyan-500 text-white font-medium text-xs rounded-lg transition-colors">
-                    <i class="fa-solid fa-filter mr-1"></i> Lọc dữ liệu
+                <button type="submit" class="h-10 inline-flex items-center gap-1.5 px-4 bg-cyan-600 hover:bg-cyan-500 text-white font-medium text-xs rounded-lg transition-all shadow-sm cursor-pointer">
+                    <i class="fa-solid fa-filter text-xs"></i>
+                    <span>Lọc dữ liệu</span>
                 </button>
-                <button type="button" onclick="setQuickRange(7)" class="px-3 py-2.5 bg-slate-800 text-slate-300 text-xs rounded-lg hover:bg-slate-700">7 ngày</button>
-                <button type="button" onclick="setQuickRange(30)" class="px-3 py-2.5 bg-slate-800 text-slate-300 text-xs rounded-lg hover:bg-slate-700">30 ngày</button>
+                <button type="button" onclick="setQuickRange(7)" class="h-10 px-3 bg-slate-800 text-slate-300 text-xs font-medium rounded-lg border border-slate-700 hover:bg-slate-700 hover:text-white transition-all cursor-pointer">7 ngày</button>
+                <button type="button" onclick="setQuickRange(30)" class="h-10 px-3 bg-slate-800 text-slate-300 text-xs font-medium rounded-lg border border-slate-700 hover:bg-slate-700 hover:text-white transition-all cursor-pointer">30 ngày</button>
+            </div>
+
+            <!-- Nút Xuất Excel -->
+            <div class="ml-auto sm:ml-0">
+                <button type="button" onclick="downloadReport()" title="Tải báo cáo Excel"
+                    class="h-10 inline-flex items-center gap-1.5 px-4 bg-emerald-600 hover:bg-emerald-500 border border-emerald-500/30 text-white text-xs font-medium rounded-lg transition-all shadow-sm cursor-pointer group">
+                    <i class="fa-solid fa-file-excel text-xs transition-transform group-hover:scale-110 text-emerald-200"></i>
+                    <span>Xuất Excel</span>
+                </button>
             </div>
         </form>
     </div>
@@ -143,7 +162,79 @@ Báo cáo chấm công & lắp đặt
 
 {% block scripts %}
 <script>
+const CURRENT_SELECTED_USER = "{{ selected_user or '' }}";
+
 document.addEventListener("DOMContentLoaded", function () {
+    const startInput = document.getElementById("start_date");
+    const endInput = document.getElementById("end_date");
+
+    if (startInput && endInput && (!startInput.value || !endInput.value)) {
+        const now = new Date();
+        const start = new Date(now.getFullYear(), now.getMonth(), 1);
+        const end = new Date(now.getFullYear(), now.getMonth() + 1, 0);
+
+        function formatDate(date) {
+            const year = date.getFullYear();
+            const month = String(date.getMonth() + 1).padStart(2, "0");
+            const day = String(date.getDate()).padStart(2, "0");
+            return `${year}-${month}-${day}`;
+        }
+
+        if (!startInput.value) startInput.value = formatDate(start);
+        if (!endInput.value) endInput.value = formatDate(end);
+    }
+
+    if (startInput) {
+        const currentMonth = startInput.value ? startInput.value.slice(0, 7) : new Date().toISOString().slice(0, 7);
+        loadEmployeeDropdown(currentMonth);
+
+        startInput.addEventListener("change", (e) => {
+            if (e.target.value) {
+                const selectedMonth = e.target.value.slice(0, 7);
+                loadEmployeeDropdown(selectedMonth);
+            }
+        });
+    }
+
+    initCharts();
+});
+
+async function loadEmployeeDropdown(selectedMonth) {
+    const userSelect = document.getElementById("username");
+    if (!userSelect || !selectedMonth) return;
+
+    try {
+        const response = await fetch(`/admin/report/employees?month=${selectedMonth}`);
+        if (!response.ok) throw new Error(`HTTP error! Status: ${response.status}`);
+
+        const data = await response.json();
+        
+        if (data.employees) {
+            userSelect.innerHTML = '';
+            
+            data.employees.forEach(emp => {
+                const option = document.createElement('option');
+                if (emp === "Tất cả") {
+                    option.value = "";
+                    option.textContent = "-- Tất cả nhân viên --";
+                } else {
+                    option.value = emp;
+                    option.textContent = emp;
+                }
+
+                if (CURRENT_SELECTED_USER && option.value === CURRENT_SELECTED_USER) {
+                    option.selected = true;
+                }
+
+                userSelect.appendChild(option);
+            });
+        }
+    } catch (error) {
+        console.error("Lỗi khi nạp danh sách nhân viên:", error);
+    }
+}
+
+function initCharts() {
     if (typeof Chart === "undefined") {
         console.error("❌ Chart.js chưa được load. Kiểm tra base.html");
         return;
@@ -160,7 +251,6 @@ document.addEventListener("DOMContentLoaded", function () {
         return;
     }
 
-    // Cấu hình chung Chart.js
     Chart.defaults.color = "#94a3b8";
     Chart.defaults.borderColor = "rgba(255,255,255,0.05)";
 
@@ -169,7 +259,6 @@ document.addEventListener("DOMContentLoaded", function () {
     const dates = Array.isArray(chartData.dates) ? chartData.dates : [];
     const dateCounts = Array.isArray(chartData.dateCounts) ? chartData.dateCounts : [];
 
-    // 1. Biểu đồ nhân viên
     const staffCanvas = document.getElementById("staffChart");
     if (staffCanvas) {
         new Chart(staffCanvas, {
@@ -205,7 +294,6 @@ document.addEventListener("DOMContentLoaded", function () {
         });
     }
 
-    // 2. Biểu đồ xu hướng
     const trendCanvas = document.getElementById("trendChart");
     if (trendCanvas) {
         new Chart(trendCanvas, {
@@ -235,9 +323,8 @@ document.addEventListener("DOMContentLoaded", function () {
             }
         });
     }
-});
+}
 
-// Hàm set nhanh khoảng thời gian
 function setQuickRange(days) {
     const end = new Date();
     const start = new Date();
@@ -254,49 +341,94 @@ function setQuickRange(days) {
     document.getElementById("start_date").value = formatDate(start);
     document.getElementById("filterForm").submit();
 }
+
 function setCurrentMonthRange() {
-        const now = new Date();
-        
-        // Ngày 1 của tháng hiện tại
-        const start = new Date(now.getFullYear(), now.getMonth(), 1);
-        
-        // Ngày cuối cùng của tháng hiện tại
-        const end = new Date(now.getFullYear(), now.getMonth() + 1, 0);
+    const now = new Date();
+    const start = new Date(now.getFullYear(), now.getMonth(), 1);
+    const end = new Date(now.getFullYear(), now.getMonth() + 1, 0);
 
-        function formatDate(date) {
-            const year = date.getFullYear();
-            const month = String(date.getMonth() + 1).padStart(2, "0");
-            const day = String(date.getDate()).padStart(2, "0");
-            return `${year}-${month}-${day}`;
-        }
-
-        document.getElementById("start_date").value = formatDate(start);
-        document.getElementById("end_date").value = formatDate(end);
-        
-        // Submit form để lọc dữ liệu
-        document.getElementById("filterForm").submit();
+    function formatDate(date) {
+        const year = date.getFullYear();
+        const month = String(date.getMonth() + 1).padStart(2, "0");
+        const day = String(date.getDate()).padStart(2, "0");
+        return `${year}-${month}-${day}`;
     }
 
-    // Tự động gán mặc định nếu người dùng mở trang mà chưa có tham số ngày
-    document.addEventListener("DOMContentLoaded", () => {
-        const startInput = document.getElementById("start_date");
-        const endInput = document.getElementById("end_date");
+    document.getElementById("start_date").value = formatDate(start);
+    document.getElementById("end_date").value = formatDate(end);
+    document.getElementById("filterForm").submit();
+}
 
-        if (!startInput.value || !endInput.value) {
-            const now = new Date();
-            const start = new Date(now.getFullYear(), now.getMonth(), 1);
-            const end = new Date(now.getFullYear(), now.getMonth() + 1, 0);
+// Xử lý Tải Báo Cáo Excel (Sửa đọc đúng tham số từ Form mới)
+async function downloadReport() {
+    const startDate = document.getElementById('start_date')?.value || '';
+    const endDate = document.getElementById('end_date')?.value || '';
+    const userSelect = document.getElementById('username');
+    const selectedNv = userSelect ? userSelect.value : 'Tất cả';
 
-            function formatDate(date) {
-                const year = date.getFullYear();
-                const month = String(date.getMonth() + 1).padStart(2, "0");
-                const day = String(date.getDate()).padStart(2, "0");
-                return `${year}-${month}-${day}`;
-            }
+    const monthParam = startDate ? startDate.slice(0, 7) : new Date().toISOString().slice(0, 7);
 
-            if (!startInput.value) startInput.value = formatDate(start);
-            if (!endInput.value) endInput.value = formatDate(end);
+    // Xử lý SweetAlert2 xác nhận tải
+    if (typeof Swal !== "undefined") {
+        const confirmResult = await Swal.fire({
+            title: 'Xác nhận tải báo cáo Excel?',
+            html: `
+                <div style="text-align: left; font-size: 0.9rem; line-height: 1.6; background: #1e293b; color: #e2e8f0; padding: 12px; border-radius: 8px;">
+                    <b>📅 Từ ngày:</b> ${startDate || 'N/A'}<br>
+                    <b>📅 Đến ngày:</b> ${endDate || 'N/A'}<br>
+                    <b>👤 Nhân viên:</b> ${selectedNv || 'Tất cả'}
+                </div>
+            `,
+            icon: 'question',
+            showCancelButton: true,
+            confirmButtonColor: '#059669',
+            cancelButtonColor: '#64748b',
+            confirmButtonText: '<i class="fa-solid fa-file-excel mr-1"></i> Tải về ngay',
+            cancelButtonText: 'Hủy'
+        });
+
+        if (!confirmResult.isConfirmed) return;
+
+        Swal.fire({
+            title: 'Đang tạo tệp Excel...',
+            text: 'Vui lòng đợi trong giây lát.',
+            allowOutsideClick: false,
+            didOpen: () => { Swal.showLoading(); }
+        });
+    }
+
+    const downloadUrl = `/admin/report/export-excel?month=${encodeURIComponent(monthParam)}&selected_nv=${encodeURIComponent(selectedNv || 'Tất cả')}`;
+
+    try {
+        const response = await fetch(downloadUrl);
+        if (!response.ok) throw new Error('Không thể khởi tạo file báo cáo.');
+
+        const blob = await response.blob();
+        const blobUrl = window.URL.createObjectURL(blob);
+        const a = document.createElement('a');
+        a.style.display = 'none';
+        a.href = blobUrl;
+        a.download = `Bao_Cao_Cham_Cong_${monthParam}.xlsx`;
+        
+        document.body.appendChild(a);
+        a.click();
+        
+        window.URL.revokeObjectURL(blobUrl);
+        document.body.removeChild(a);
+
+        if (typeof Swal !== "undefined") Swal.close();
+    } catch (error) {
+        if (typeof Swal !== "undefined") {
+            Swal.fire({
+                icon: 'error',
+                title: 'Lỗi tải tệp!',
+                text: 'Không tìm thấy dữ liệu phù hợp hoặc máy chủ gặp sự cố.',
+                confirmButtonColor: '#0284c7'
+            });
+        } else {
+            alert("Lỗi tải tệp Excel!");
         }
-    });
+    }
+}
 </script>
 {% endblock %}

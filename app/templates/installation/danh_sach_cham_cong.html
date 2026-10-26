@@ -675,19 +675,33 @@
 
                             <!-- Body Card: Ảnh + Chi tiết đơn -->
                             <div class="d-flex gap-3 mb-3 min-w-0">
-                                <div class="img-container">
-                                    {% if item.hinh_anh %}
-                                        {% set clean_img = item.hinh_anh.strip() %}
-                                        {% if clean_img.startswith('http://') or clean_img.startswith('https://') or clean_img.startswith('/') or clean_img.startswith('data:') %}
-                                            {% set img_src = clean_img %}
+                                <div class="img-container position-relative">
+                                    {# 1. Chuẩn hóa chuỗi hình ảnh an toàn #}
+                                    {% set raw_img = (item.hinh_anh or '') | string | trim %}
+                                    
+                                    {# 2. Kiểm tra nếu có dữ liệu ảnh hợp lệ (không phải null/undefined/rỗng) #}
+                                    {% if raw_img and raw_img.lower() not in ['none', 'null', 'undefined', ''] %}
+                                        {% if raw_img.startswith('http://') or raw_img.startswith('https://') or raw_img.startswith('/') or raw_img.startswith('data:') %}
+                                            {% set img_src = raw_img %}
                                         {% else %}
-                                            {% set img_src = 'data:image/jpeg;base64,' ~ clean_img %}
+                                            {% set img_src = 'data:image/jpeg;base64,' ~ raw_img %}
                                         {% endif %}
 
-                                        <!-- Đã thêm class "zoomable-img" vào thẻ img bên dưới -->
-                                        <img src="{{ img_src }}" class="img-preview-trigger zoomable-img" data-src="{{ img_src }}" alt="Chứng từ">
+                                        {# Thẻ ảnh chính kèm sự kiện onerror khi ảnh hỏng/bị xóa trên Supabase #}
+                                        <img src="{{ img_src }}" 
+                                            class="img-preview-trigger zoomable-img w-100 h-100 object-fit-cover" 
+                                            data-src="{{ img_src }}" 
+                                            alt="Chứng từ"
+                                            onerror="this.style.display='none'; if(this.nextElementSibling) this.nextElementSibling.classList.remove('d-none');">
+
+                                        {# Khối hiển thị khi ảnh bị lỗi 404 hoặc đường dẫn hỏng #}
+                                        <div class="w-100 h-100 d-none d-flex flex-column align-items-center justify-content-center text-muted small bg-dark rounded border border-secondary">
+                                            <i class="fa-solid fa-image-slash mb-1 fs-5 text-warning"></i>
+                                            <span style="font-size: 10px;">Ảnh đã xóa</span>
+                                        </div>
                                     {% else %}
-                                        <div class="w-100 h-100 d-flex flex-column align-items-center justify-content-center text-muted small">
+                                        {# Khối hiển thị khi bản ghi không có ảnh #}
+                                        <div class="w-100 h-100 d-flex flex-column align-items-center justify-content-center text-muted small bg-dark rounded border border-secondary">
                                             <i class="fa-regular fa-image mb-1 fs-5"></i>
                                             <span style="font-size: 10px;">Không có ảnh</span>
                                         </div>
@@ -695,17 +709,18 @@
                                 </div>
 
                                 <div class="flex-grow-1 min-w-0">
-                                    <p class="mb-2 text-light text-break small line-clamp-2" title="{{ item.noi_dung }}">
-                                        {{ item.noi_dung }}
+                                    <p class="mb-2 text-light text-break small line-clamp-2" title="{{ item.noi_dung or '' }}">
+                                        {{ item.noi_dung or '' }}
                                     </p>
                                     <div class="d-flex flex-wrap gap-3 text-muted small">
                                         <span>
                                             <i class="fa-regular fa-clock me-1 text-info"></i>
                                             {% if item.thoi_gian %}
-                                                {% if item.thoi_gian is string %}
-                                                    {{ item.thoi_gian[8:10] }}/{{ item.thoi_gian[5:7] }}/{{ item.thoi_gian[0:4] }} {{ item.thoi_gian[11:16] }}
+                                                {% set tg_str = item.thoi_gian | string %}
+                                                {% if tg_str | length >= 16 %}
+                                                    {{ tg_str[8:10] }}/{{ tg_str[5:7] }}/{{ tg_str[0:4] }} {{ tg_str[11:16] }}
                                                 {% else %}
-                                                    {{ item.thoi_gian.strftime('%d/%m/%Y %H:%M') }}
+                                                    {{ tg_str }}
                                                 {% endif %}
                                             {% else %}
                                                 N/A

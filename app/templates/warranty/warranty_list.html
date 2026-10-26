@@ -7,6 +7,18 @@
         filter: invert(0.8);
         cursor: pointer;
     }
+    /* Ẩn mũi tên trên Chrome, Safari, Edge, Opera */
+    input[type="number"]::-webkit-inner-spin-button,
+    input[type="number"]::-webkit-outer-spin-button {
+        -webkit-appearance: none;
+        margin: 0;
+    }
+
+    /* Ẩn mũi tên trên Firefox */
+    input[type="number"] {
+        -moz-appearance: textfield;
+        appearance: textfield;
+    }
 </style>
 {% endblock %}
 
@@ -49,7 +61,7 @@
     <div class="bg-slate-900/90 p-4 rounded-2xl border border-slate-800/80 shadow-2xl backdrop-blur-md">
         <form method="GET" action="/warranty/list" class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-12 gap-3 items-end">
             
-            <!-- 1. Từ khóa tìm kiếm (Col 3) -->
+            <!-- 1. Từ khóa tìm kiếm -->
             <div class="lg:col-span-3">
                 <label class="block text-[10px] font-bold text-slate-400 uppercase tracking-wider mb-1.5 flex items-center gap-1.5">
                     <i class="fa-solid fa-magnifying-glass text-indigo-400 text-[10px]"></i> Từ khóa
@@ -63,7 +75,7 @@
                 </div>
             </div>
 
-            <!-- 2. Lọc Danh Mục (Col 2) -->
+            <!-- 2. Lọc Danh Mục -->
             <div class="lg:col-span-2">
                 <label class="block text-[10px] font-bold text-slate-400 uppercase tracking-wider mb-1.5 flex items-center gap-1.5">
                     <i class="fa-solid fa-layer-group text-indigo-400 text-[10px]"></i> Danh mục
@@ -79,7 +91,7 @@
                 </div>
             </div>
 
-            <!-- 3. Lọc Nhân Viên (Col 2) -->
+            <!-- 3. Lọc Nhân Viên -->
             <div class="lg:col-span-2">
                 <label class="block text-[10px] font-bold text-slate-400 uppercase tracking-wider mb-1.5 flex items-center gap-1.5">
                     <i class="fa-solid fa-user-pen text-indigo-400 text-[10px]"></i> Nhân viên
@@ -97,7 +109,7 @@
                 </div>
             </div>
 
-            <!-- 4. Khoảng thời gian (Col 3) -->
+            <!-- 4. Khoảng thời gian -->
             <div class="lg:col-span-3">
                 <label class="block text-[10px] font-bold text-slate-400 uppercase tracking-wider mb-1.5 flex items-center gap-1.5">
                     <i class="fa-regular fa-calendar-days text-indigo-400 text-[10px]"></i> Khoảng thời gian
@@ -110,15 +122,13 @@
                 </div>
             </div>
 
-            <!-- 5. Thao tác Lọc & Reset (Col 2) -->
+            <!-- 5. Thao tác Lọc & Reset -->
             <div class="lg:col-span-2">
                 <div class="flex items-center gap-1.5 w-full h-10">
-                    <!-- Nút Lọc -->
                     <button type="submit" class="flex-1 h-full bg-indigo-600 hover:bg-indigo-500 active:bg-indigo-700 text-white rounded-xl font-semibold text-xs transition shadow-lg shadow-indigo-600/20 flex items-center justify-center gap-1.5 cursor-pointer shrink-0">
                         <i class="fa-solid fa-filter text-[11px]"></i> Lọc
                     </button>
                     
-                    <!-- Nút Reset -->
                     {% if request.query_params %}
                     <a href="/warranty/list" class="h-full w-10 shrink-0 bg-slate-800 hover:bg-slate-700 text-slate-300 hover:text-white rounded-xl text-xs transition border border-slate-700/60 flex items-center justify-center cursor-pointer" title="Bỏ lọc">
                         <i class="fa-solid fa-rotate-left text-[11px]"></i>
@@ -130,7 +140,7 @@
         </form>
     </div>
 
-    <!-- BẢNG DỮ LIỆU CẢI TIẾN -->
+    <!-- BẢNG DỮ LIỆU BẢO HÀNH -->
     <div class="bg-slate-900/90 rounded-2xl border border-slate-800 shadow-2xl overflow-hidden">
         <div class="overflow-x-auto">
             <table class="w-full text-left border-collapse text-xs" id="warrantyTable">
@@ -138,8 +148,8 @@
                     <tr class="bg-slate-800/80 border-b border-slate-700/80 text-slate-400 uppercase tracking-wider text-[10px] font-bold">
                         <th class="py-3.5 px-3 min-w-[130px]">Số Serial (S/N)</th>
                         <th class="py-3.5 px-3 min-w-[180px]">Khách Hàng & SĐT</th>
-                        <th class="py-3.5 px-3 min-w-[220px]">Model / Danh Mục / Tình Trạng</th>
-                        <th class="py-3.5 px-3 min-w-[180px]">Gói Bảo Hành Áp Dụng</th>
+                        <th class="py-3.5 px-3 min-w-[320px]">Model / Loại Mực / Tình Trạng</th>
+                        <th class="py-3.5 px-3 min-w-[185px]">Gói Bảo Hành Áp Dụng</th>
                         <th class="py-3.5 px-3 min-w-[110px]">Counter</th>
                         <th class="py-3.5 px-3 min-w-[150px]">KTV & Ngày Tạo</th>
                         <th class="py-3.5 px-3 text-center min-w-[90px]">Thao Tác</th>
@@ -151,26 +161,22 @@
                         {% set session_user = request.session.get('user') %}
                         {% set user_dict = session_user if session_user is mapping else {} %}
                         
-                        {# 1. Bổ sung đầy đủ ho_ten, display_name, username từ Session để không sót truờng hợp nào #}
                         {% set s_hoten = (request.session.get('ho_ten') or user_dict.get('ho_ten') or '') | string | lower | trim %}
                         {% set s_display = (request.session.get('display_name') or user_dict.get('display_name') or user_dict.get('name') or '') | string | lower | trim %}
                         {% set s_username = (request.session.get('username') or user_dict.get('username') or '') | string | lower | trim %}
                         {% set s_raw_user = (session_user if session_user is string else '') | string | lower | trim %}
 
-                        {# 2. Phân cấp quyền #}
                         {% set role_levels = {'Staff': 1, 'user': 1, 'admin': 2, 'super admin': 3, 'system admin': 4} %}
                         {% set current_user_level = role_levels.get(user_role, 1) %}
                         {% set can_delete = (user_role == 'system admin') %}
 
                         {% for item in items %}
-                            {# 3. Bóc tách staff_name từ DB (Xử lý an toàn nếu là Dict hoặc String) #}
                             {% if item.staff_name is mapping %}
                                 {% set db_staff = (item.staff_name.get('ho_ten') or item.staff_name.get('display_name') or item.staff_name.get('username') or '') | string | lower | trim %}
                             {% else %}
                                 {% set db_staff = (item.staff_name or '') | string | lower | trim %}
                             {% endif %}
 
-                            {# 4. Kiểm tra chính chủ: Khớp với BẤT KỲ danh tính nào của Session #}
                             {% set is_author = (db_staff != '') and (
                                 db_staff == s_hoten or 
                                 db_staff == s_display or 
@@ -178,24 +184,31 @@
                                 db_staff == s_raw_user
                             ) %}
                             
-                            {# Quyền SỬA: Là tác giả HOẶC thuộc nhóm Admin (Cấp bậc > 3) #}
                             {% set can_edit = is_author or (current_user_level >= 3) %}
 
-                        <tr class="hover:bg-slate-800/40 transition border-b border-slate-800/60" id="row-{{ item.id }}" data-item-id="{{ item.id }}">
+                        <tr class="hover:bg-slate-800/40 transition border-b border-slate-800/60" 
+                            id="row-{{ item.id }}" 
+                            data-item-id="{{ item.id }}"
+                            data-brand="{{ item.brand_name or '' }}"
+                            data-model="{{ item.model_name or '' }}"
+                            data-category="{{ item.category or 'In phun' }}"
+                            data-ink-type="{{ item.ink_type or 'DYE UV' }}"
+                            data-condition="{{ item.condition or 'Máy mới' }}">
 
-                            <!-- 1. Serial Number -->
+                            <!-- 1. Serial Number (ĐÃ FIX: Thêm border-0 p-0 focus:ring-0 vào thẻ input) -->
                             <td class="py-2.5 px-3 align-middle min-w-[140px]">
-                                <div class="serial-wrapper flex items-center gap-1 bg-slate-900/60 border border-slate-700/50 rounded-lg px-2 py-1 focus-within:border-indigo-500 transition">
+                                <div class="serial-wrapper flex items-center gap-1 bg-slate-900/60 border border-slate-700/50 rounded-lg px-2.5 h-8 focus-within:border-indigo-500 transition">
                                     <input 
                                         type="text" 
-                                        class="row-sn min-w-0 w-full bg-transparent text-xs text-indigo-300 font-mono font-semibold uppercase outline-none" 
+                                        class="row-sn min-w-0 w-full bg-transparent border-0 p-0 focus:ring-0 outline-none text-xs text-indigo-300 font-mono font-semibold uppercase disabled:bg-transparent" 
                                         value="{{ item.serial_number or '' }}" 
                                         placeholder="S/N Bắt buộc *" 
+                                        disabled
                                         required
                                         oninput="this.value = this.value.toUpperCase(); validateSerialInput(this);"
                                     >
                                     {% if item.serial_number %}
-                                    <button type="button" onclick="copyToClipboard('{{ item.serial_number }}')" class="text-indigo-400/60 hover:text-indigo-300 shrink-0 p-0.5" title="Copy S/N">
+                                    <button type="button" onclick="copyToClipboard('{{ item.serial_number }}')" class="text-indigo-400/60 hover:text-indigo-300 shrink-0 p-0.5 cursor-pointer" title="Copy S/N">
                                         <i class="fa-regular fa-copy text-[11px]"></i>
                                     </button>
                                     {% endif %}
@@ -203,28 +216,61 @@
                             </td>
 
                             <!-- 2. Khách hàng & SĐT -->
-                            <td class="py-2.5 px-3 align-middle min-w-[70]">
+                            <td class="py-2.5 px-3 align-middle min-w-[180px]">
                                 <input type="text" class="row-customer min-w-0 w-full bg-transparent border border-transparent focus:border-indigo-500 rounded px-1 py-0.5 text-xs text-slate-100 font-bold outline-none disabled:bg-transparent disabled:text-slate-100 disabled:opacity-100" value="{{ item.customer_name or '' }}" disabled required>
                                 <input type="text" class="row-phone min-w-0 w-full bg-transparent border border-transparent focus:border-indigo-500 rounded px-1 py-0.5 text-[11px] text-slate-400 font-mono outline-none disabled:bg-transparent disabled:text-slate-400 disabled:opacity-100" value="{{ item.phone_number or '' }}" disabled required>
                             </td>
 
-                            <!-- 3. Model / Danh Mục / Tình Trạng -->
-                            <td class="py-2.5 px-3 align-middle min-w-[300px]">
-                                <div class="flex flex-col justify-center gap-1 h-[56px]">
-                                    <!-- Tầng 1: Model Name (h-5) -->
-                                    <div class="h-5 flex items-center min-w-0">
-                                        <input type="text" class="row-model min-w-0 w-full bg-transparent border border-transparent focus:border-indigo-500 rounded px-1 text-xs font-bold text-slate-100 uppercase tracking-wide outline-none disabled:bg-transparent disabled:text-slate-100 disabled:opacity-100 truncate" value="{{ item.model_name or '' }}" placeholder="Chưa có model" disabled>
+                            <!-- 3. Model / Loại Mực / Tình Trạng (Chế độ Xem vs Chế độ Sửa) -->
+                            <td class="py-2.5 px-3 align-middle min-w-[320px]">
+                                <!-- CHẾ ĐỘ XEM TĨNH -->
+                                <div class="view-mode-info flex flex-col justify-center gap-1 min-h-[56px]">
+                                    <div class="flex items-center font-bold text-xs text-slate-100 truncate">
+                                        <span class="text-cyan-400 uppercase tracking-wide">
+                                            {{ item.brand_name or '' }} {{ item.model_name or '' }}
+                                        </span>
+                                        {% if item.ink_type and item.ink_type != 'N/A' %}
+                                            <span class="text-emerald-400 font-medium ml-1.5">
+- {{ item.ink_type }}
+                                            </span>
+                                        {% endif %}
                                     </div>
-                                    <!-- Tầng 2: Category & Condition (h-7) -->
-                                    <div class="grid grid-cols-2 gap-2 h-7">
-                                        <select class="row-category w-full h-7 min-w-0 bg-slate-800/90 text-indigo-300 text-[10px] font-semibold px-2 rounded-md border border-indigo-700/50 outline-none appearance-none text-center disabled:cursor-default truncate" disabled>
-                                            {% for cat in categories %}
-                                                <option value="{{ cat }}" class="bg-slate-900 text-slate-100" {% if item.category == cat %}selected{% endif %}>{{ cat }}</option>
-                                            {% endfor %}
+
+                                    <div class="grid grid-cols-2 gap-2 h-7 mt-0.5">
+                                        <span class="bg-slate-800/90 text-indigo-300 text-[10px] font-semibold px-2 py-1 rounded-md border border-indigo-700/50 text-center truncate">
+                                            {{ item.category or 'In phun' }}
+                                        </span>
+                                        <span class="text-[10px] font-semibold px-2 py-1 rounded-md border text-center truncate {% if (item.condition or '')|trim == 'Đã qua sử dụng' %}bg-amber-950/60 text-amber-300 border-amber-800/60{% else %}bg-emerald-950/60 text-emerald-300 border-emerald-800/60{% endif %}">
+                                            {{ item.condition or 'Máy mới' }}
+                                        </span>
+                                    </div>
+                                </div>
+
+                                <!-- CHẾ ĐỘ SỬA NĂNG ĐỘNG -->
+                                <div class="edit-mode-inputs hidden space-y-1.5">
+                                    <div class="relative flex-1">
+                                        <i class="fa-solid fa-magnifying-glass absolute left-2.5 top-1/2 -translate-y-1/2 text-slate-500 text-[10px]"></i>
+                                        <input type="text" list="printerList" 
+                                            class="row-model-input w-full h-8 bg-slate-950 border border-slate-700 focus:border-cyan-500 rounded-lg pl-7 pr-2 text-xs text-slate-100 font-semibold outline-none" 
+                                            value="{% if item.brand_name %}{{ item.brand_name }} {{ item.model_name }}{% else %}{{ item.model_name }}{% endif %}"
+                                            data-brand="{{ item.brand_name or '' }}"
+                                            data-model="{{ item.model_name or '' }}"
+                                            placeholder="Gõ tìm model..." 
+                                            oninput="onInlineModelChange(this)">
+                                    </div>
+                                    
+                                    <div class="grid grid-cols-3 gap-1">
+                                        <input type="text" class="row-category w-full h-7 bg-slate-900/60 border border-slate-800 text-slate-400 text-[10px] font-medium px-1.5 rounded outline-none pointer-events-none select-none truncate" readonly value="{{ item.category or 'In phun' }}">
+
+                                        <select class="row-condition w-full h-7 bg-slate-950 border border-slate-700 text-emerald-400 text-[10px] font-medium px-1 rounded outline-none" onchange="onInlineConditionChange(this)">
+                                            <option value="Máy mới" {% if item.condition == 'Máy mới' %}selected{% endif %}>Máy mới</option>
+                                            <option value="Đã qua sử dụng" {% if item.condition == 'Đã qua sử dụng' %}selected{% endif %}>Đã qua sử dụng</option>
                                         </select>
-                                        <select class="row-condition w-full h-7 min-w-0 text-[10px] font-semibold px-2 rounded-md border outline-none appearance-none text-center disabled:cursor-default truncate {% if item.condition == 'Đã qua sử dụng' %}bg-amber-950/60 text-amber-300 border-amber-800/60{% else %}bg-emerald-950/60 text-emerald-300 border-emerald-800/60{% endif %}" disabled>
-                                            {% for cond in conditions or ['Mới', 'Đã qua sử dụng'] %}
-                                                <option value="{{ cond }}" class="bg-slate-900 text-slate-100" {% if (item.condition or '')|trim == cond %}selected{% endif %}>{{ cond }}</option>
+
+                                        <select class="row-ink-type w-full h-7 bg-slate-950 border border-slate-700 text-cyan-300 text-[10px] font-semibold px-1 rounded outline-none truncate" required>
+                                            <option value="" disabled {% if not item.ink_type or item.ink_type == 'N/A' %}selected{% endif %}>-- Chọn loại * --</option>
+                                            {% for ink_opt in ["DYE UV","MỰC CHÍNH HÃNG", "CHUYỂN NHIỆT", "IN PHIM", "PREMIUM DYE", "MỰC PET", "DYE INKTEK", "PIGMENT UV", "PIGMENT ART", "PIGMENT CANON", "KHÔNG MỰC","THIẾT BỊ ĐIỆN"] %}
+                                                <option value="{{ ink_opt }}" {% if item.ink_type == ink_opt %}selected{% endif %}>{{ ink_opt }}</option>
                                             {% endfor %}
                                         </select>
                                     </div>
@@ -234,27 +280,25 @@
                             <!-- 4. Gói Bảo Hành Áp Dụng -->
                             <td class="py-2.5 px-3 align-middle min-w-[185px]">
                                 <div class="flex flex-col justify-center gap-1 h-[56px]">
-                                    <!-- Tầng 1: Label Tiêu Đề (h-5) -->
                                     <div class="h-5 flex items-center min-w-0 px-0.5">
                                         <span class="text-[9px] font-bold text-slate-400 uppercase tracking-wider truncate">Gói bảo hành</span>
                                     </div>
-                                    <!-- Tầng 2: Select Gói BH (h-7) -->
-                                    <select class="row-policy w-full h-7 min-w-0 bg-amber-500/10 text-amber-300 border border-amber-500/30 text-[10px] font-semibold px-2 rounded-md outline-none appearance-none disabled:bg-amber-500/10 disabled:border-amber-500/20 disabled:text-amber-300 disabled:opacity-100 disabled:cursor-default focus:border-amber-400 transition truncate" onchange="onPolicyChange(this)" disabled>
-                                        <option value="NULL" class="bg-slate-900 text-slate-300" data-category="" data-condition="" data-has-page-limit="false">-- Chưa áp dụng --</option>
+                                    <select class="row-policy w-full h-7 min-w-0 bg-amber-500/10 text-amber-300 border border-amber-500/30 text-[10px] font-semibold px-2 rounded-md outline-none appearance-none disabled:bg-amber-500/10 disabled:border-amber-500/20 disabled:text-amber-300 disabled:opacity-100 disabled:cursor-default focus:border-amber-400 transition truncate" onchange="onInlinePolicyChange(this)" disabled>
+                                        <option value="NULL" class="bg-slate-900 text-slate-300" data-brand="" data-category="" data-condition="" data-has-page="false" data-has-meter="false">-- Chưa áp dụng --</option>
                                         {% if policies %}
                                             {% for p in policies %}
                                                 {% if p.is_active != False %}
-                                                    {% set body_limit = p.page_limit_body or 0 %}
-                                                    {% set head_limit = p.page_limit_head or 0 %}
-                                                    {% set is_no_limit = p.no_page_limit in [True, 'true', 'True', 1] %}
-                                                    {% set has_limit = (not is_no_limit) and (body_limit > 0 or head_limit > 0) %}
+                                                    {% set has_page = p.no_page_limit != True and ((p.page_limit_body or 0) > 0 or (p.page_limit_head or 0) > 0) %}
+                                                    {% set has_meter = p.no_meter_limit != True and ((p.meter_limit_body or 0) > 0 or (p.meter_limit_head or 0) > 0) %}
                                                     <option value="{{ p.policy_name }}" 
                                                             class="bg-slate-900 text-slate-100 py-1"
-                                                            data-category="{{ p.category }}" 
-                                                            data-condition="{{ p.condition }}"
-                                                            data-has-page-limit="{{ 'true' if has_limit else 'false' }}"
+                                                            data-brand="{{ p.brand_name or '' }}"
+                                                            data-category="{{ p.category or '' }}" 
+                                                            data-condition="{{ p.condition or '' }}"
+                                                            data-has-page="{{ 'true' if has_page else 'false' }}"
+                                                            data-has-meter="{{ 'true' if has_meter else 'false' }}"
                                                             {% if item.applied_policy_name == p.policy_name %}selected{% endif %}>
-                                                        {{ p.policy_name }}
+                                                        {{ p.policy_name }} ({{ p.warranty_months }}T - {{ p.head_warranty_months }}T)
                                                     </option>
                                                 {% endif %}
                                             {% endfor %}
@@ -263,17 +307,17 @@
                                 </div>
                             </td>
 
-                            <!-- 5. Counter Hiện Tại -->
+                            <!-- 5. Counter Hiện Tại (ĐÃ FIX: Thêm class counter-wrapper, thêm border-0 p-0 focus:ring-0 vào input) -->
                             <td class="py-2.5 px-3 align-middle min-w-[115px]">
                                 <div class="flex flex-col justify-center gap-1 h-[56px]">
-                                    <!-- Tầng 1: Label Tiêu Đề (h-5) -->
                                     <div class="h-5 flex items-center min-w-0 justify-end px-0.5">
                                         <span class="text-[9px] font-bold text-slate-400 uppercase tracking-wider truncate">Số Counter</span>
                                     </div>
-                                    <!-- Tầng 2: Input Counter (h-7) -->
-                                    <div class="flex items-center justify-between h-7 min-w-0 bg-emerald-500/10 border border-emerald-500/30 px-2 rounded-md w-full">
-                                        <span class="text-[10px] text-emerald-400 font-mono font-bold shrink-0">#</span>
-                                        <input type="number" class="row-counter min-w-0 w-full bg-transparent text-emerald-300 font-mono font-bold text-[11px] text-right outline-none disabled:bg-transparent disabled:text-emerald-300 disabled:opacity-100" value="{{ item.current_counter or 0 }}" min="0" disabled>
+                                    <div class="counter-wrapper flex items-center justify-between h-7 min-w-0 bg-emerald-500/10 border border-emerald-500/30 px-2 rounded-md w-full focus-within:border-emerald-400 transition">
+                                        <span class="row-counter-unit text-[10px] text-emerald-400 font-mono font-bold shrink-0 mr-1 select-none">#</span>
+                                        <input type="number" 
+                                            class="row-counter min-w-0 w-full bg-transparent border-0 p-0 focus:ring-0 text-emerald-300 font-mono font-bold text-[11px] text-right outline-none disabled:bg-transparent disabled:text-emerald-300 disabled:opacity-100" 
+                                            value="{{ item.current_counter or 0 }}" min="0" disabled>
                                     </div>
                                 </div>
                             </td>
@@ -286,35 +330,34 @@
                                 </div>
                                 <div class="flex items-center gap-1.5 text-slate-300 text-[11px] font-mono">
                                     <i class="fa-regular fa-calendar-days text-[10px] text-indigo-400 shrink-0"></i>
-                                    <input type="date" class="row-date bg-transparent border-0 p-0 text-slate-300 text-[11px] font-mono outline-none disabled:bg-transparent disabled:text-slate-300 disabled:opacity-100 [color-scheme:dark]" value="{{ item.purchase_date or item.created_at or '' }}" disabled>
+                                    <input type="date" class="row-date w-full bg-transparent border-0 p-0 text-slate-300 text-[11px] font-mono outline-none disabled:bg-transparent disabled:text-slate-300 disabled:opacity-100 [color-scheme:dark]" value="{{ item.purchase_date or item.created_at or '' }}" disabled>
                                 </div>
                             </td>
 
                             <!-- 7. Thao Tác Inline Edit -->
                             <td class="py-2.5 px-3 align-middle text-center min-w-[90px]">
                                 <div class="action-view-mode flex justify-center items-center gap-1">
-                                    <!-- Button Xem chi tiết (Thêm mới) -->
                                     <a href="/warranty/chi-tiet/{{ item.id }}" 
-                                    class="p-1.5 text-slate-400 hover:text-sky-400 transition rounded-lg hover:bg-slate-800 flex items-center justify-center" 
+                                    class="p-1.5 text-slate-400 hover:text-sky-400 transition rounded-lg hover:bg-slate-800 flex items-center justify-center cursor-pointer" 
                                     title="Xem chi tiết">
                                         <i class="fa-solid fa-eye text-xs"></i>
                                     </a>
                                     {% if can_edit %}
-                                    <button type="button" onclick="enableEditRow(this)" class="p-1.5 text-slate-400 hover:text-indigo-300 transition rounded-lg hover:bg-slate-800" title="Sửa nhanh hàng này">
+                                    <button type="button" onclick="enableEditRow(this)" class="p-1.5 text-slate-400 hover:text-indigo-300 transition rounded-lg hover:bg-slate-800 cursor-pointer" title="Sửa nhanh hàng này">
                                         <i class="fa-solid fa-pen-to-square text-xs"></i>
                                     </button>
                                     {% endif %}
                                     {% if can_delete %}
-                                    <button type="button" onclick="confirmDelete('{{ item.id }}', '{{ item.serial_number or item.customer_name }}')" class="p-1.5 text-slate-400 hover:text-rose-400 transition rounded-lg hover:bg-slate-800" title="Xóa">
+                                    <button type="button" onclick="confirmDelete('{{ item.id }}', '{{ item.serial_number or item.customer_name }}')" class="p-1.5 text-slate-400 hover:text-rose-400 transition rounded-lg hover:bg-slate-800 cursor-pointer" title="Xóa">
                                         <i class="fa-solid fa-trash-can text-xs"></i>
                                     </button>
                                     {% endif %}
                                 </div>
                                 <div class="action-edit-mode hidden flex justify-center items-center gap-1">
-                                    <button type="button" onclick="saveEditRow('{{ item.id }}', this)" class="p-1.5 bg-emerald-600 hover:bg-emerald-500 text-white rounded-lg text-xs transition shadow-md" title="Lưu thay đổi">
+                                    <button type="button" onclick="saveEditRow('{{ item.id }}', this)" class="p-1.5 bg-emerald-600 hover:bg-emerald-500 text-white rounded-lg text-xs transition shadow-md cursor-pointer" title="Lưu thay đổi">
                                         <i class="fa-solid fa-check"></i>
                                     </button>
-                                    <button type="button" onclick="cancelEditRow(this)" class="p-1.5 bg-slate-800 hover:bg-slate-700 text-slate-300 rounded-lg text-xs transition border border-slate-700" title="Hủy">
+                                    <button type="button" onclick="cancelEditRow(this)" class="p-1.5 bg-slate-800 hover:bg-slate-700 text-slate-300 rounded-lg text-xs transition border border-slate-700 cursor-pointer" title="Hủy">
                                         <i class="fa-solid fa-xmark"></i>
                                     </button>
                                 </div>
@@ -335,364 +378,415 @@
     </div>
 </div>
 
-<!-- TEMPLATE INLINE INPUT KHI BẤM THÊM HÀNG MỚI -->
+<!-- ========================================== -->
+<!-- TEMPLATE HÀNG MỚI (Chỉ chứa thẻ <tr>) -->
+<!-- ========================================== -->
 <template id="inlineRowTemplate">
     <tr class="bg-indigo-950/40 border-b border-indigo-900/60 new-inline-row">
-        <!-- Serial -->
-        <td class="py-2.5 px-2">
-            <input type="text" class="row-sn w-full bg-slate-950 border border-slate-700 focus:border-indigo-500 rounded-lg px-2.5 py-1.5 text-xs text-indigo-200 font-mono uppercase outline-none" placeholder="VD: SN123456">
-        </td>
-
-        <!-- Khách hàng & SĐT -->
-        <td class="py-2.5 px-2 space-y-1">
-            <input type="text" class="row-customer w-full bg-slate-950 border border-slate-700 focus:border-indigo-500 rounded-lg px-2.5 py-1 text-xs text-slate-100 outline-none" placeholder="Tên khách hàng *" required>
-            
-            <div class="phone-wrapper relative">
-                <input type="text" class="row-phone w-full bg-slate-950 border border-slate-700 focus:border-indigo-500 rounded-lg px-2.5 py-1 text-xs text-slate-300 font-mono outline-none" placeholder="Số điện thoại *" required oninput="validatePhoneInput(this)">
+        
+        <!-- BƯỚC 1.1: Serial -->
+        <td class="py-2.5 px-2.5 align-top">
+            <div class="serial-wrapper border border-slate-700 focus-within:border-indigo-500 rounded-lg overflow-hidden transition h-8 flex items-center">
+                <input type="text" class="row-sn w-full bg-slate-950 border-0 outline-none focus:ring-0 px-2.5 text-xs text-indigo-300 font-mono font-bold uppercase" placeholder="Nhập S/N *" required oninput="this.value = this.value.toUpperCase(); validateSerialInput(this);">
             </div>
         </td>
 
-        <!-- Model, Danh Mục & Tình Trạng -->
-         <td class="py-2.5 px-2 space-y-1">
-            <!-- Model máy (KTV tự nhập) -->
-            <input type="text" class="row-model w-full bg-slate-950 border border-slate-700 focus:border-indigo-500 rounded-lg px-2.5 py-1 text-xs text-slate-100 uppercase outline-none" placeholder="Model máy">
-            
-            <!-- Danh mục & Tình trạng (Tự động nhảy theo Gói Bảo Hành - Khóa thao tác) -->
-            <div class="grid grid-cols-2 gap-1">
-                <select class="row-category w-full bg-slate-900/80 border border-slate-800 text-indigo-300 text-[11px] px-1.5 py-1 rounded-lg outline-none appearance-none text-center cursor-not-allowed opacity-70" disabled title="Tự động nhảy theo gói bảo hành">
-                    <option value="">-- Danh mục --</option>
-                    {% for cat in categories or ['Máy In Phun', 'Máy Laser', 'Máy In Kim', 'Thiết bị khác'] %}
-                        <option value="{{ cat }}">{{ cat }}</option>
-                    {% endfor %}
-                </select>
+        <!-- BƯỚC 1.2: Khách hàng & SĐT -->
+        <td class="py-2.5 px-2.5 align-top space-y-1.5">
+            <input type="text" class="row-customer w-full h-8 bg-slate-950 border border-slate-700 focus:border-indigo-500 focus:ring-1 focus:ring-indigo-500 rounded-lg px-2.5 text-xs text-slate-100 outline-none transition" placeholder="Tên khách hàng *" required>
+            <input type="text" class="row-phone w-full h-8 bg-slate-950 border border-slate-700 focus:border-indigo-500 focus:ring-1 focus:ring-indigo-500 rounded-lg px-2.5 text-xs text-slate-300 font-mono outline-none transition" placeholder="Số điện thoại *" required oninput="validatePhoneInput(this)">
+        </td>
 
-                <select class="row-condition w-full bg-slate-900/80 border border-slate-800 text-emerald-400 text-[11px] px-1.5 py-1 rounded-lg outline-none appearance-none text-center cursor-not-allowed opacity-70" disabled title="Tự động nhảy theo gói bảo hành">
-                    <option value="">-- Tình trạng --</option>
-                    {% for cond in conditions or ['Mới', 'Đã qua sử dụng'] %}
-                        <option value="{{ cond }}">{{ cond }}</option>
-                    {% endfor %}
-                </select>
+        <!-- BƯỚC 2: Chọn Model + (Danh mục & Tình trạng) -->
+        <td class="py-2.5 px-2.5 align-top space-y-1.5">
+            <div class="flex items-center gap-1.5">
+                <div class="relative flex-1">
+                    <i class="fa-solid fa-magnifying-glass absolute left-2.5 top-1/2 -translate-y-1/2 text-slate-500 text-[10px]"></i>
+                    <input type="text" list="printerList" 
+                        class="row-model-input w-full h-8 bg-slate-950 border border-slate-700 focus:border-cyan-500 focus:ring-1 focus:ring-cyan-500 rounded-lg pl-7 pr-2 text-xs text-slate-100 font-semibold outline-none transition-all shadow-inner" 
+                        placeholder="Gõ tìm hãng/model..." 
+                        oninput="onInlineModelChange(this); this.classList.remove('border-red-500')">
+                </div>
+                
+                <button type="button" onclick="openPrinterModal()" 
+                    class="h-8 px-2.5 bg-slate-800 hover:bg-slate-700 text-cyan-400 hover:text-cyan-300 border border-slate-700 rounded-lg text-[11px] font-semibold flex items-center justify-center gap-1.5 shrink-0 transition-all cursor-pointer" 
+                    title="Thêm model mới vào danh mục">
+                    <i class="fa-solid fa-plus text-[10px]"></i> Thêm
+                </button>
+            </div>
+            
+            <div class="grid grid-cols-2 gap-1.5">
+                <div class="relative">
+                    <i class="fa-solid fa-lock absolute left-2 top-1/2 -translate-y-1/2 text-slate-600 text-[9px]"></i>
+                    <input type="text" 
+                        class="row-category w-full h-8 bg-slate-900/60 border border-slate-800/80 text-slate-400 text-xs font-medium pl-5 pr-1.5 rounded-lg outline-none cursor-not-allowed pointer-events-none select-none truncate" 
+                        readonly placeholder="Danh mục">
+                </div>
+
+                <div>
+                    <select class="row-condition w-full h-8 bg-slate-950 border border-slate-700 text-emerald-400 focus:border-cyan-500 text-xs font-medium px-2 rounded-lg outline-none cursor-pointer transition" 
+                        onchange="onInlineConditionChange(this)">
+                        <option value="Máy mới">Máy mới</option>
+                        <option value="Đã qua sử dụng">Đã qua sử dụng</option>
+                    </select>
+                </div>
             </div>
         </td>
 
-        <!-- Select Gói Bảo Hành -->
-        <td class="py-2.5 px-2">
-            <select class="row-policy w-full bg-slate-950 border border-slate-700 focus:border-indigo-500 rounded-lg px-2 py-1.5 text-xs text-slate-200 outline-none" onchange="onPolicyChange(this)">
-                <option value="NULL" data-category="" data-condition="" data-has-page-limit="false">-- Chọn gói bảo hành --</option>
-                {% if policies %}
-                    {% for p in policies %}
-                        {% if p.is_active != False %}
-                            {% set body_limit = p.page_limit_body or 0 %}
-                            {% set head_limit = p.page_limit_head or 0 %}
-                            {% set is_no_limit = p.no_page_limit in [True, 'true', 'True', 1] %}
-                            {% set has_limit = (not is_no_limit) and (body_limit > 0 or head_limit > 0) %}
+        <!-- BƯỚC 3: Loại Mực & Gói Bảo Hành (ĐÃ FIX: Xóa các thuộc tính selected thừa) -->
+        <td class="py-2.5 px-2.5 align-top space-y-1.5">
+            <select class="row-ink-type w-full h-8 bg-slate-950 border border-slate-700 text-cyan-300 focus:border-cyan-500 text-xs font-semibold px-2.5 rounded-lg outline-none cursor-pointer transition truncate" required>
+                <option value="" disabled selected>-- Chọn loại mực * --</option>
+                <option value="DYE UV">DYE UV</option>
+                <option value="CHÍNH HÃNG">MỰC CHÍNH HÃNG</option>
+                <option value="CHUYỂN NHIỆT">CHUYỂN NHIỆT</option>
+                <option value="IN PHIM">IN PHIM</option>
+                <option value="PREMIUM DYE">PREMIUM DYE</option>
+                <option value="MỰC PET">MỰC PET</option>
+                <option value="DYE INKTEK">DYE INKTEK</option>
+                <option value="PIGMENT UV">PIGMENT UV</option>
+                <option value="PIGMENT ART">PIGMENT ART</option>
+                <option value="PIGMENT CANON">PIGMENT CANON</option>
+                <option value="KHÔNG MỰC">KHÔNG MỰC</option>
+                <option value="THIẾT BỊ ĐIỆN">THIẾT BỊ ĐIỆN</option>
 
-                            <option value="{{ p.policy_name }}" 
-                                    data-category="{{ p.category }}" 
-                                    data-condition="{{ p.condition }}"
-                                    data-has-page-limit="{{ 'true' if has_limit else 'false' }}">
-                                {{ p.policy_name }} ({{ p.warranty_months }}T{% if p.head_warranty_months %}/Đầu {{ p.head_warranty_months }}T{% endif %})
-                            </option>
-                        {% endif %}
-                    {% endfor %}
-                {% endif %}
+            </select>
+
+            <select class="row-policy w-full h-8 bg-amber-500/10 border border-amber-500/30 focus:border-amber-400 focus:ring-1 focus:ring-amber-500 text-amber-300 rounded-lg px-2.5 text-[11px] font-semibold outline-none cursor-pointer disabled:opacity-50 disabled:cursor-not-allowed transition-all" 
+                onchange="onInlinePolicyChange(this)" disabled>
+                <option value="">-- Chờ chọn Model --</option>
             </select>
         </td>
 
-        <!-- Counter đầu -->
-        <td class="py-2.5 px-2">
-            <input type="number" 
-                class="row-counter w-full bg-slate-950 border border-slate-700 focus:border-indigo-500 rounded-lg px-2 py-1.5 text-xs text-slate-200 font-mono outline-none disabled:opacity-40 disabled:bg-slate-900/80 disabled:cursor-not-allowed disabled:border-slate-800" 
-                value="0" 
-                min="0" 
-                placeholder="Counter" 
-                disabled>
+        <!-- BƯỚC 4: Counter -->
+        <td class="py-2.5 px-2.5 align-top">
+            <div class="counter-wrapper flex items-center h-8 bg-slate-950 border border-slate-700 rounded-lg px-2.5 focus-within:border-cyan-500 focus-within:ring-1 focus-within:ring-cyan-500 transition-all">
+                <span class="row-counter-unit text-[11px] text-slate-500 font-bold shrink-0 mr-1 select-none">#</span>
+                <input type="number" 
+                    class="row-counter w-full bg-transparent border-0 p-0 text-xs text-emerald-300 font-mono font-bold outline-none focus:outline-none focus:ring-0 disabled:opacity-40 disabled:cursor-not-allowed text-right" 
+                    value="0" min="0" disabled title="Tự động mở theo gói bảo hành">
+            </div>
         </td>
 
-        <!-- Ngày mua -->
-        <td class="py-2.5 px-2">
-            <input type="date" class="row-date w-full bg-slate-950 border border-slate-700 focus:border-indigo-500 rounded-lg px-2 py-1.5 text-xs text-slate-300 font-mono outline-none">
+        <!-- BƯỚC 1.3: Ngày mua -->
+        <td class="py-2.5 px-2.5 align-top">
+            <input type="date" class="row-date w-full h-8 bg-slate-950 border border-slate-700 focus:border-indigo-500 focus:ring-1 focus:ring-indigo-500 rounded-lg px-2 text-[11px] text-slate-300 font-mono outline-none [color-scheme:dark] transition-all">
         </td>
 
         <!-- Thao tác -->
-        <td class="py-2.5 px-2 text-center">
-            <div class="flex items-center justify-center gap-1">
-                <button type="button" onclick="saveSingleRow(this)" class="p-1.5 bg-emerald-600 hover:bg-emerald-500 text-white rounded-lg text-xs transition" title="Lưu">
+        <td class="py-2.5 px-2.5 text-center align-top">
+            <div class="flex items-center justify-center gap-1.5 h-8">
+                <button type="button" onclick="saveSingleRow(this)" class="w-8 h-8 flex items-center justify-center bg-emerald-600 hover:bg-emerald-500 text-white rounded-lg text-xs transition shadow-md shadow-emerald-900/30 cursor-pointer" title="Lưu nhanh">
                     <i class="fa-solid fa-check"></i>
                 </button>
-                <button type="button" onclick="removeInlineRow(this)" class="p-1.5 bg-rose-950/80 hover:bg-rose-900 text-rose-400 rounded-lg text-xs transition" title="Hủy">
+                <button type="button" onclick="removeInlineRow(this)" class="w-8 h-8 flex items-center justify-center bg-rose-950/80 hover:bg-rose-900 text-rose-400 rounded-lg text-xs transition border border-rose-900 cursor-pointer" title="Hủy">
                     <i class="fa-solid fa-xmark"></i>
                 </button>
             </div>
         </td>
     </tr>
 </template>
+
+<!-- MODAL THÊM MÁY IN -->
+<div id="printerModal" class="fixed inset-0 z-[60] hidden bg-slate-950/80 backdrop-blur-sm flex items-center justify-center p-4">
+    <div class="bg-slate-900 border border-slate-800 rounded-xl w-full max-w-md overflow-hidden shadow-2xl">
+        <div class="p-4 sm:p-5 border-b border-slate-800 flex items-center justify-between">
+            <h3 id="printerModalTitle" class="text-base font-bold text-white flex items-center gap-2">
+                <i class="fa-solid fa-print text-emerald-400"></i> Thêm Dòng Máy In Mới
+            </h3>
+            <button type="button" onclick="closePrinterModal()" class="text-slate-400 hover:text-white p-1 cursor-pointer">
+                <i class="fa-solid fa-xmark text-lg"></i>
+            </button>
+        </div>
+
+        <form id="printerForm" onsubmit="savePrinter(event)" class="p-4 sm:p-6 space-y-4">
+            <div>
+                <label class="block text-[11px] font-medium text-slate-300 mb-1">Tên thương hiệu <span class="text-rose-400">*</span></label>
+                <input type="text" id="brand_name" name="brand_name" list="brand_list" required placeholder="VD: Epson, Canon, Brother..." 
+                        class="w-full h-10 bg-slate-950 border border-slate-700 text-white text-xs rounded-lg px-3 focus:ring-1 focus:ring-emerald-500 outline-none transition-all">
+                <datalist id="brand_list">
+                    <option value="Epson"></option>
+                    <option value="Canon"></option>
+                    <option value="HP"></option>
+                    <option value="Brother"></option>
+                    <option value="Ricoh"></option>
+                    <option value="Refine"></option>
+                    <option value="Mimaki"></option>
+                    <option value="Graphtec"></option>
+                    <option value="Pantum"></option>
+                    <option value="CHN(TQ)"></option>
+                    <option value="Khác"></option>
+
+                    {% for b in existing_brands %}
+                        <option value="{{ b }}"></option>
+                    {% endfor %}
+                </datalist>
+            </div>
+
+            <div>
+                <label class="block text-[11px] font-medium text-slate-300 mb-1">Mã Model máy <span class="text-rose-400">*</span></label>
+                <input type="text" id="model_code" name="model_code" required placeholder="VD: C5290, L18050, CE6000..." 
+                        class="w-full h-10 bg-slate-950 border border-slate-700 text-white text-xs font-mono font-semibold uppercase rounded-lg px-3 focus:ring-1 focus:ring-emerald-500 outline-none transition-all">
+            </div>
+
+            <div>
+                <label class="block text-[11px] font-medium text-slate-300 mb-1">Phân loại thiết bị <span class="text-rose-400">*</span></label>
+                <select id="printer_category" name="category" class="w-full h-10 bg-slate-950 border border-slate-700 text-white text-xs rounded-lg px-3 focus:ring-1 focus:ring-emerald-500 outline-none cursor-pointer transition-all">
+                    {% for cat in categories or ["In phun", "In Laser", "In kim", "Cắt bế", "Cán màng", "Ép nhiệt", "Scan", "Thiết bị khác"] %}
+                        <option value="{{ cat }}">{{ cat }}</option>
+                    {% endfor %}
+                </select>
+            </div>
+
+            <div class="pt-4 border-t border-slate-800 flex justify-end gap-2.5">
+                <button type="button" onclick="closePrinterModal()" class="h-10 px-4 rounded-lg bg-slate-800 hover:bg-slate-700 text-slate-300 text-xs font-semibold transition-all cursor-pointer">Hủy</button>
+                <button type="submit" class="h-10 px-5 rounded-lg bg-emerald-600 hover:bg-emerald-500 text-white text-xs font-semibold transition-all cursor-pointer shadow-md shadow-emerald-900/20">
+                    Lưu Thiết Bị
+                </button>
+            </div>
+        </form>
+    </div>
+</div>
 {% endblock %}
 
 {% block scripts %}
+<!-- Parse an toàn dữ liệu danh sách gói bảo hành từ Jinja2 -->
+<script id="policies-data" type="application/json">
+    {{ policies | default([]) | tojson | safe }}
+</script>
+
 <script>
-// Biến lưu trữ dữ liệu gốc trước khi sửa
+const allPolicies = JSON.parse(document.getElementById('policies-data').textContent || '[]');
+let allPrinters = [];
+let isPrintersLoaded = false;
 const originalRowData = {};
 
-// ==========================================
-// 1. QUẢN LÝ KHÓA/MỞ & TỰ ĐỘNG THÔNG TIN THEO GÓI
-// ==========================================
+// Biến lưu trữ input model đang thao tác để tự điền sau khi tạo mới máy in từ Modal
+let currentActiveModelInput = null;
 
-// Hàm đổi màu sắc badge Condition động dựa trên giá trị được chọn
-function updateConditionBadgeStyle(selectEl) {
-    if (!selectEl) return;
-    
-    // Xóa màu sắc cũ
-    selectEl.classList.remove(
-        'bg-amber-950/60', 'text-amber-400', 'border-amber-800/60',
-        'bg-emerald-950/60', 'text-emerald-400', 'border-emerald-800/60'
-    );
-
-    // Thêm màu sắc mới tương ứng
-    if (selectEl.value === 'Đã qua sử dụng') {
-        selectEl.classList.add('bg-amber-950/60', 'text-amber-400', 'border-amber-800/60');
-    } else {
-        selectEl.classList.add('bg-emerald-950/60', 'text-emerald-400', 'border-emerald-800/60');
-    }
+// =========================================================
+// HÀM CHUẨN HÓA CHUỖI TOÀN CỤC (Bỏ dấu, lower-case, xóa ký tự đặc biệt)
+// =========================================================
+function normalizeString(str) {
+    if (!str) return '';
+    return String(str)
+        .normalize('NFD')
+        .replace(/[\u0300-\u036f]/g, '')
+        .replace(/đ/g, 'd')
+        .replace(/Đ/g, 'D')
+        .toLowerCase()
+        .replace(/[^a-z0-9]/g, '')
+        .trim();
 }
 
-// Hàm xử lý sự kiện khi thay đổi Gói Bảo Hành
-function onPolicyChange(selectPolicy) {
-    if (!selectPolicy) return;
+function simplifyCondition(condStr) {
+    const norm = normalizeString(condStr);
+    return norm.replace(/^may/, ''); 
+}
 
-    const tr = selectPolicy.closest('tr');
-    if (!tr) return;
+// ==========================================
+// 1. DỮ LIỆU MÁY IN & BỘ LỌC CHÍNH SÁCH BẢO HÀNH
+// ==========================================
 
-    const selectedOption = selectPolicy.options[selectPolicy.selectedIndex];
-    const category = selectedOption.getAttribute('data-category');
-    const condition = selectedOption.getAttribute('data-condition');
-    const hasPageLimit = selectedOption.getAttribute('data-has-page-limit') === 'true';
+async function loadPrintersForInline() {
+    if (isPrintersLoaded) return;
+    try {
+        const res = await fetch('/warranty/api/danh-sach-may-in/options');
+        const json = await res.json();
+        if (json.status === 'success' || json.data) {
+            allPrinters = json.raw_items || json.data || [];
+            isPrintersLoaded = true;
 
-    const catSelect = tr.querySelector('.row-category');
-    const condSelect = tr.querySelector('.row-condition');
-    const counterInput = tr.querySelector('.row-counter');
-
-    if (selectPolicy.value && selectPolicy.value !== 'NULL') {
-        if (category && category !== 'ALL' && catSelect) catSelect.value = category;
-        if (condition && condition !== 'ALL' && condSelect) {
-            condSelect.value = condition;
-            updateConditionBadgeStyle(condSelect);
-        }
-
-        if (catSelect) catSelect.disabled = true;
-        if (condSelect) condSelect.disabled = true;
-
-        if (counterInput && !selectPolicy.disabled) {
-            if (hasPageLimit) {
-                counterInput.disabled = false;
-                counterInput.focus();
-                counterInput.select();
-            } else {
-                counterInput.disabled = true;
-                counterInput.value = 0;
+            let datalist = document.getElementById('printerList');
+            if (!datalist) {
+                datalist = document.createElement('datalist');
+                datalist.id = 'printerList';
+                document.body.appendChild(datalist);
             }
+            datalist.innerHTML = '';
+            
+            allPrinters.forEach(p => {
+                const opt = document.createElement('option');
+                opt.value = `${p.brand_name} ${p.model_code}`;
+                datalist.appendChild(opt);
+            });
         }
-    } else {
-        if (catSelect) { catSelect.value = ""; catSelect.disabled = true; }
-        if (condSelect) { condSelect.value = ""; condSelect.disabled = true; updateConditionBadgeStyle(condSelect); }
-        if (counterInput) { counterInput.disabled = true; counterInput.value = 0; }
+    } catch (err) {
+        console.error("Lỗi tải danh mục máy in:", err);
     }
 }
 
-// ==========================================
-// 2. VALIDATION REALTIME (SERIAL & PHONE)
-// ==========================================
+function onInlineModelChange(inputEl) {
+    const tr = inputEl.closest('tr');
+    const categoryInput = tr.querySelector('.row-category');
+    const rawVal = inputEl.value.trim();
+    const cleanVal = rawVal.toLowerCase().replace(/\s+/g, ' ');
 
-function validateSerialInput(inputEl) {
-    const wrapper = inputEl.closest('.serial-wrapper') || inputEl.parentElement;
-    const val = inputEl.value.trim();
+    if (!cleanVal) {
+        if (categoryInput) categoryInput.value = '';
+        inputEl.removeAttribute('data-brand');
+        inputEl.removeAttribute('data-model');
+        filterInlinePolicies(tr);
+        return;
+    }
     
-    if (!val) {
-        wrapper.classList.remove('border-slate-700/50', 'focus-within:border-indigo-500', 'border-slate-700');
-        wrapper.classList.add('border-red-500', 'bg-red-950/20');
-        return false;
-    } else {
-        wrapper.classList.remove('border-red-500', 'bg-red-950/20');
-        wrapper.classList.add('border-slate-700/50', 'focus-within:border-indigo-500');
-        return true;
-    }
-}
-
-function validatePhoneInput(inputEl) {
-    const val = inputEl.value.trim();
-    const cleanVal = val.replace(/\s+/g, '');
-    const isNumeric = /^\d+$/.test(cleanVal);
-
-    if (val && (!isNumeric || cleanVal.length < 9 || cleanVal.length > 11)) {
-        inputEl.classList.remove('border-slate-700', 'focus:border-indigo-500');
-        inputEl.classList.add('border-red-500');
-        return false;
-    } else {
-        inputEl.classList.remove('border-red-500');
-        inputEl.classList.add('border-slate-700', 'focus:border-indigo-500');
-        return true;
-    }
-}
-
-// ==========================================
-// 3. TRÍCH XUẤT VÀ KIỂM TRA DỮ LIỆU HÀNG
-// ==========================================
-
-function extractRowData(tr) {
-    const snInput = tr.querySelector('.row-sn');
-    const customerInput = tr.querySelector('.row-customer');
-    const phoneInput = tr.querySelector('.row-phone');
-    const modelInput = tr.querySelector('.row-model');
-
-    const snVal = snInput ? snInput.value.trim().toUpperCase() : '';
-    const customerVal = customerInput ? customerInput.value.trim() : '';
-    const phoneVal = phoneInput ? phoneInput.value.trim().replace(/\s+/g, '') : '';
-    const modelVal = modelInput ? modelInput.value.trim() : '';
-    
-    const categoryVal = tr.querySelector('.row-category')?.value || '';
-    const conditionVal = tr.querySelector('.row-condition')?.value || '';
-    const policyVal = tr.querySelector('.row-policy')?.value || 'NULL';
-    const counterVal = parseInt(tr.querySelector('.row-counter')?.value || 0, 10);
-    const dateVal = tr.querySelector('.row-date')?.value || null;
-
-    let isValid = true;
-
-    // Kiểm tra Serial bắt buộc
-    if (!snVal) {
-        isValid = false;
-        if (snInput) validateSerialInput(snInput);
-    }
-
-    // Kiểm tra Tên khách hàng
-    if (!customerVal) {
-        isValid = false;
-        if (customerInput) customerInput.classList.add('border-red-500');
-    }
-
-    // Kiểm tra Số điện thoại bắt buộc, phải là số và đúng độ dài (9-11 số)
-    const isPhoneValid = /^\d+$/.test(phoneVal) && phoneVal.length >= 9 && phoneVal.length <= 11;
-    if (!phoneVal || !isPhoneValid) {
-        isValid = false;
-        if (phoneInput) {
-            phoneInput.classList.add('border-red-500');
-        }
-    }
-
-    if (!isValid) return null;
-
-    return {
-        serial_number: snVal,
-        customer_name: customerVal,
-        phone_number: phoneVal,
-        model_name: modelVal || null,
-        category: categoryVal,
-        condition: conditionVal,
-        applied_policy_name: policyVal,
-        initial_counter: counterVal,
-        current_counter: counterVal,
-        purchase_date: dateVal
-    };
-}
-
-// ==========================================
-// 4. CHỨC NĂNG SỬA TRỰC TIẾP TRÊN HÀNG (INLINE EDIT)
-// ==========================================
-
-function enableEditRow(btn) {
-    const tr = btn.closest('tr');
-    if (!tr) return;
-
-    const rowId = tr.getAttribute('data-item-id') || tr.id;
-    const inputs = tr.querySelectorAll('input, select');
-
-    originalRowData[rowId] = {};
-    inputs.forEach((e, idx) => {
-        originalRowData[rowId][idx] = e.value;
+    const matchedPrinter = allPrinters.find(p => {
+        const fullName = `${p.brand_name} ${p.model_code}`.toLowerCase().replace(/\s+/g, ' ');
+        return fullName === cleanVal;
     });
 
-    inputs.forEach(el => {
-        el.disabled = false;
-        el.classList.remove('bg-transparent', 'border-transparent');
-        if (el.tagName === 'INPUT') {
-            el.classList.add('bg-slate-950', 'border-slate-700');
+    if (matchedPrinter) {
+        inputEl.setAttribute('data-brand', (matchedPrinter.brand_name || '').trim());
+        inputEl.setAttribute('data-model', (matchedPrinter.model_code || '').trim());
+        if (categoryInput) categoryInput.value = matchedPrinter.category || 'In phun';
+    } else {
+        const firstSpaceIdx = rawVal.indexOf(' ');
+        if (firstSpaceIdx > 0) {
+            inputEl.setAttribute('data-brand', rawVal.substring(0, firstSpaceIdx).trim());
+            inputEl.setAttribute('data-model', rawVal.substring(firstSpaceIdx + 1).trim());
+        } else {
+            inputEl.setAttribute('data-brand', rawVal);
+            inputEl.setAttribute('data-model', rawVal);
         }
-    });
+    }
+    
+    filterInlinePolicies(tr);
+}
 
+function onInlineConditionChange(selectEl) {
+    const tr = selectEl.closest('tr');
+    selectEl.classList.remove('text-amber-400', 'text-emerald-400');
+    if (selectEl.value === 'Đã qua sử dụng' || selectEl.value === 'Like new') {
+        selectEl.classList.add('text-amber-400');
+    } else {
+        selectEl.classList.add('text-emerald-400');
+    }
+    filterInlinePolicies(tr);
+}
+
+function filterInlinePolicies(tr) {
+    const categoryInput = tr.querySelector('.row-category');
+    const conditionSelect = tr.querySelector('.row-condition');
+    const modelInput = tr.querySelector('.row-model-input');
     const policySelect = tr.querySelector('.row-policy');
-    if (policySelect) onPolicyChange(policySelect);
 
-    tr.querySelector('.action-view-mode')?.classList.add('hidden');
-    tr.querySelector('.action-edit-mode')?.classList.remove('hidden');
-}
+    if (!policySelect) return;
 
-function cancelEditRow(btn) {
-    const tr = btn.closest('tr');
-    if (!tr) return;
+    const category = categoryInput ? categoryInput.value.trim() : (tr.getAttribute('data-category') || '');
+    const condition = conditionSelect ? conditionSelect.value.trim() : (tr.getAttribute('data-condition') || 'Máy mới');
+    const brand = (modelInput ? modelInput.getAttribute('data-brand') : '') || tr.getAttribute('data-brand') || '';
+    
+    const targetBrandNorm = normalizeString(brand);
+    const savedPolicyVal = policySelect.value; 
 
-    const rowId = tr.getAttribute('data-item-id') || tr.id;
-    const inputs = tr.querySelectorAll('input, select');
+    policySelect.innerHTML = '<option value="">-- Chọn Gói Bảo Hành --</option>';
 
-    if (originalRowData[rowId]) {
-        inputs.forEach((e, idx) => {
-            if (originalRowData[rowId][idx] !== undefined) {
-                e.value = originalRowData[rowId][idx];
-            }
-        });
-        delete originalRowData[rowId];
-    }
-
-    inputs.forEach(el => {
-        el.disabled = true;
-        el.classList.add('bg-transparent', 'border-transparent');
-        if (el.tagName === 'INPUT') {
-            el.classList.remove('bg-slate-950', 'border-slate-700');
-        }
-    });
-
-    const condSelect = tr.querySelector('.row-condition');
-    if (condSelect) updateConditionBadgeStyle(condSelect);
-
-    tr.querySelector('.action-edit-mode')?.classList.add('hidden');
-    tr.querySelector('.action-view-mode')?.classList.remove('hidden');
-}
-
-async function saveEditRow(itemId, btn) {
-    const tr = document.getElementById(`row-${itemId}`) || btn.closest('tr');
-    const payload = extractRowData(tr);
-
-    if (!payload) {
-        alert("⚠️ Vui lòng kiểm tra lại:\n- Số Serial không được để trống.\n- Tên khách hàng không được để trống.\n- Số điện thoại phải là số hợp lệ (9-11 chữ số).");
+    if (!category || !targetBrandNorm) {
+        policySelect.innerHTML = '<option value="">-- Chờ chọn Model thiết bị --</option>';
+        policySelect.disabled = true;
+        onInlinePolicyChange(policySelect);
         return;
     }
 
-    try {
-            const response = await fetch(`/warranty/api/update/${itemId}`, {            
-            method: 'POST',
-            headers: { 'Content-Type': 'application/json' },
-            body: JSON.stringify(payload)
+    policySelect.disabled = false;
+
+    const inputCategoryNorm = normalizeString(category);
+    const inputCondClean = simplifyCondition(condition);
+    
+    const matchedPolicies = allPolicies.filter(p => {
+        const pBrandNorm = normalizeString(p.brand_name);
+        const pCategoryNorm = normalizeString(p.category);
+        const pCondClean = simplifyCondition(p.condition);
+
+        const isMatchBrand = (
+            !pBrandNorm || 
+            pBrandNorm === targetBrandNorm ||
+            pBrandNorm === 'tatca' || 
+            pBrandNorm === 'all' || 
+            pBrandNorm === 'khac' ||
+            pBrandNorm.includes(targetBrandNorm) ||
+            targetBrandNorm.includes(pBrandNorm)
+        );
+
+        const isMatchCategory = (
+            !pCategoryNorm ||
+            pCategoryNorm === inputCategoryNorm || 
+            pCategoryNorm === 'tatca' || 
+            pCategoryNorm === 'all'
+        );
+
+        const isMatchCondition = (
+            !pCondClean ||
+            pCondClean === inputCondClean ||
+            pCondClean === 'tatca' ||
+            pCondClean === 'all'
+        );
+
+        return p.is_active !== false && isMatchBrand && isMatchCategory && isMatchCondition;
+    });
+
+    if (matchedPolicies.length === 0) {
+        policySelect.innerHTML = '<option value="">-- Không có gói phù hợp --</option>';
+    } else {
+        matchedPolicies.forEach(p => {
+            const opt = document.createElement('option');
+            opt.value = p.policy_name;
+            opt.textContent = `${p.policy_name} (${p.warranty_months}T - ${p.head_warranty_months}T)`;
+            
+            const hasPage = p.no_page_limit !== true && ((p.page_limit_body || 0) > 0 || (p.page_limit_head || 0) > 0);
+            const hasMeter = p.no_meter_limit !== true && ((p.meter_limit_body || 0) > 0 || (p.meter_limit_head || 0) > 0);
+            
+            opt.setAttribute('data-has-page', hasPage ? 'true' : 'false');
+            opt.setAttribute('data-has-meter', hasMeter ? 'true' : 'false');
+            policySelect.appendChild(opt);
         });
 
-        const result = await response.json();
-        if (response.ok && result.success) {
-            window.location.reload();
-        } else {
-            alert(result.message || 'Có lỗi xảy ra khi lưu dữ liệu!');
+        if (savedPolicyVal && Array.from(policySelect.options).some(o => o.value === savedPolicyVal)) {
+            policySelect.value = savedPolicyVal;
         }
-    } catch (err) {
-        console.error(err);
-        alert('Lỗi kết nối máy chủ!');
+    }
+    onInlinePolicyChange(policySelect);
+}
+
+function onInlinePolicyChange(selectEl) {
+    const tr = selectEl.closest('tr');
+    const counterInput = tr.querySelector('.row-counter');
+    const unitLabel = tr.querySelector('.row-counter-unit');
+    if (!counterInput || !unitLabel) return;
+
+    const opt = selectEl.options[selectEl.selectedIndex];
+    
+    if (!opt || !opt.value || opt.value === 'NULL') {
+        counterInput.disabled = true;
+        unitLabel.textContent = "#";
+        unitLabel.className = "row-counter-unit text-[11px] text-slate-500 font-bold shrink-0 mr-1 select-none";
+        return;
+    }
+
+    const hasPage = opt.getAttribute('data-has-page') === 'true';
+    const hasMeter = opt.getAttribute('data-has-meter') === 'true';
+
+    if (hasMeter) {
+        counterInput.disabled = false;
+        unitLabel.textContent = "m";
+        unitLabel.className = "row-counter-unit text-[11px] text-amber-400 font-bold shrink-0 mr-1 select-none";
+    } else if (hasPage) {
+        counterInput.disabled = false;
+        unitLabel.textContent = "#";
+        unitLabel.className = "row-counter-unit text-[11px] text-sky-400 font-bold shrink-0 mr-1 select-none";
+    } else {
+        counterInput.disabled = true;
+        unitLabel.textContent = "-";
+        unitLabel.className = "row-counter-unit text-[11px] text-slate-500 font-bold shrink-0 mr-1 select-none";
     }
 }
 
 // ==========================================
-// 5. XỬ LÝ THÊM HÀNG MỚI (INLINE ADD & BATCH)
+// 2. THÊM HÀNG MỚI & TRÍCH XUẤT DỮ LIỆU LƯU
 // ==========================================
+async function addInlineRow() {
+    await loadPrintersForInline();
 
-function getTodayString() {
-    return new Date().toISOString().split('T')[0];
-}
-
-function addInlineRow() {
     const emptyRow = document.getElementById('emptyRow');
     if (emptyRow) emptyRow.remove();
 
@@ -700,15 +794,14 @@ function addInlineRow() {
     const template = document.getElementById('inlineRowTemplate');
     const clone = template.content.cloneNode(true);
 
-    clone.querySelector('.row-date').value = getTodayString();
+    clone.querySelector('.row-date').value = new Date().toISOString().split('T')[0];
 
     tbody.insertBefore(clone, tbody.firstChild);
     updateBatchCount();
 }
 
 function removeInlineRow(btn) {
-    const row = btn.closest('tr');
-    row.remove();
+    btn.closest('tr').remove();
     updateBatchCount();
 }
 
@@ -719,12 +812,70 @@ function updateBatchCount() {
     
     if (countSpan) countSpan.innerText = count;
     if (btnBatch) {
-        if (count > 0) {
-            btnBatch.classList.remove('hidden');
-        } else {
-            btnBatch.classList.add('hidden');
-        }
+        if (count > 0) btnBatch.classList.remove('hidden');
+        else btnBatch.classList.add('hidden');
     }
+}
+
+function extractRowData(tr) {
+    const snInput = tr.querySelector('.row-sn');
+    const customerInput = tr.querySelector('.row-customer');
+    const phoneInput = tr.querySelector('.row-phone');
+    const modelInput = tr.querySelector('.row-model-input');
+
+    const snVal = snInput ? snInput.value.trim().toUpperCase() : '';
+    const customerVal = customerInput ? customerInput.value.trim() : '';
+    const phoneVal = phoneInput ? phoneInput.value.trim().replace(/\s+/g, '') : '';
+    
+    const policyVal = tr.querySelector('.row-policy')?.value;
+    const categoryVal = tr.querySelector('.row-category')?.value || tr.getAttribute('data-category') || '';
+    const conditionVal = tr.querySelector('.row-condition')?.value || tr.getAttribute('data-condition') || 'Máy mới';
+    
+    const inkTypeSelect = tr.querySelector('.row-ink-type');
+    const inkTypeVal = inkTypeSelect ? inkTypeSelect.value.trim() : (tr.getAttribute('data-ink-type') || '');
+    
+    const counterVal = parseInt(tr.querySelector('.row-counter')?.value || 0, 10);
+    const dateVal = tr.querySelector('.row-date')?.value;
+
+    let brandVal = modelInput ? modelInput.getAttribute('data-brand') : tr.getAttribute('data-brand');
+    let modelVal = modelInput ? modelInput.getAttribute('data-model') : tr.getAttribute('data-model');
+
+    if ((!brandVal || !modelVal) && modelInput && modelInput.value.trim()) {
+        const parts = modelInput.value.trim().split(/\s+/);
+        brandVal = parts[0];
+        modelVal = parts.slice(1).join(' ') || parts[0];
+    }
+
+    let isValid = true;
+
+    if (!snVal) { isValid = false; if (snInput) validateSerialInput(snInput); }
+    if (!customerVal) { isValid = false; if (customerInput) customerInput.classList.add('border-red-500'); }
+    if (!policyVal || policyVal === 'NULL') { isValid = false; tr.querySelector('.row-policy')?.classList.add('border-red-500'); }
+    if (!brandVal || !modelVal) { isValid = false; if (modelInput) modelInput.classList.add('border-red-500'); }
+    if (!inkTypeVal) { isValid = false; if (inkTypeSelect) inkTypeSelect.classList.add('border-red-500'); }
+    
+    const isPhoneValid = /^\d+$/.test(phoneVal) && phoneVal.length >= 9 && phoneVal.length <= 11;
+    if (!phoneVal || !isPhoneValid) {
+        isValid = false;
+        if (phoneInput) phoneInput.classList.add('border-red-500');
+    }
+
+    if (!isValid) return null;
+
+    return {
+        serial_number: snVal,
+        customer_name: customerVal,
+        phone_number: phoneVal,
+        brand_name: brandVal,
+        model_name: modelVal,
+        category: categoryVal,
+        condition: conditionVal,
+        ink_type: inkTypeVal,
+        applied_policy_name: policyVal,
+        initial_counter: counterVal,
+        current_counter: counterVal,
+        purchase_date: dateVal
+    };
 }
 
 async function saveSingleRow(btn) {
@@ -732,7 +883,7 @@ async function saveSingleRow(btn) {
     const payload = extractRowData(tr);
 
     if (!payload) {
-        alert("⚠️ Vui lòng điền đầy đủ Số Serial, Tên khách hàng và Số điện thoại hợp lệ!");
+        alert("⚠️ Vui lòng điền đầy đủ và đúng định dạng các ô yêu cầu!");
         return;
     }
 
@@ -744,11 +895,9 @@ async function saveSingleRow(btn) {
         });
         const result = await res.json();
 
-        if (res.ok && result.success) {
-            window.location.reload();
-        } else {
-            alert("❌ Lỗi: " + (result.message || result.detail || "Không thể lưu phiếu"));
-        }
+        // Fix: Đồng bộ hóa logic check API
+        if (res.ok && (result.success || result.status === 'success')) window.location.reload();
+        else alert("❌ Lỗi: " + (result.message || result.detail || "Không thể lưu phiếu"));
     } catch (err) {
         alert("❌ Lỗi kết nối máy chủ: " + err.message);
     }
@@ -762,13 +911,12 @@ async function saveBatchRows() {
     for (const tr of rows) {
         const data = extractRowData(tr);
         if (!data) {
-            alert("⚠️ Có dòng chưa điền đủ thông tin bắt buộc (Serial, Tên KH, SĐT hợp lệ)!");
+            alert("⚠️ Có dòng chưa điền đủ hoặc sai thông tin bắt buộc!");
             return;
         }
         items.push(data);
     }
 
-    // Kiểm tra trùng lặp Serial ngay trên giao diện
     const serialList = items.map(i => i.serial_number);
     if (new Set(serialList).size !== serialList.length) {
         alert("🚫 Có số Serial bị trùng lặp trong danh sách thêm mới!");
@@ -783,76 +931,218 @@ async function saveBatchRows() {
         });
         const result = await res.json();
 
-        if (res.ok && result.success) {
-            window.location.reload();
-        } else {
-            alert("❌ Lỗi: " + (result.message || result.detail || "Thất bại"));
-        }
+        // Fix: Đồng bộ hóa logic check API
+        if (res.ok && (result.success || result.status === 'success')) window.location.reload();
+        else alert("❌ Lỗi: " + (result.message || result.detail || "Thất bại"));
     } catch (err) {
         alert("❌ Lỗi kết nối máy chủ: " + err.message);
     }
 }
 
 // ==========================================
-// 6. TIỆN ÍCH & LIVE SEARCH
+// 3. CHI CHỈNH SỬA TRỰC TIẾP HÀNG CŨ (INLINE EDIT)
 // ==========================================
+async function enableEditRow(btn) {
+    const tr = btn.closest('tr');
+    if (!tr) return;
+    const rowId = tr.getAttribute('data-item-id') || tr.id;
 
-function copyToClipboard(text) {
-    navigator.clipboard.writeText(text).then(() => {
-        alert(`Đã sao chép S/N: ${text}`);
+    await loadPrintersForInline();
+
+    const viewInfo = tr.querySelector('.view-mode-info');
+    const editInputs = tr.querySelector('.edit-mode-inputs');
+    
+    const snInput = tr.querySelector('.row-sn');
+    const customerInput = tr.querySelector('.row-customer');
+    const phoneInput = tr.querySelector('.row-phone');
+    const modelInput = tr.querySelector('.row-model-input');
+    const categoryInput = tr.querySelector('.row-category');
+    const conditionSelect = tr.querySelector('.row-condition');
+    const inkTypeSelect = tr.querySelector('.row-ink-type');
+    const policySelect = tr.querySelector('.row-policy');
+    const counterInput = tr.querySelector('.row-counter');
+    const dateInput = tr.querySelector('.row-date');
+
+    originalRowData[rowId] = {
+        sn: snInput ? snInput.value : '',
+        customer: customerInput ? customerInput.value : '',
+        phone: phoneInput ? phoneInput.value : '',
+        modelInputVal: modelInput ? modelInput.value : '',
+        brand: tr.getAttribute('data-brand') || '',
+        model: tr.getAttribute('data-model') || '',
+        category: categoryInput ? categoryInput.value : '',
+        condition: conditionSelect ? conditionSelect.value : '',
+        inkType: inkTypeSelect ? inkTypeSelect.value : '',
+        policy: policySelect ? policySelect.value : '',
+        counter: counterInput ? counterInput.value : '',
+        date: dateInput ? dateInput.value : ''
+    };
+
+    if (viewInfo) viewInfo.classList.add('hidden');
+    if (editInputs) editInputs.classList.remove('hidden');
+
+    [snInput, customerInput, phoneInput, modelInput, conditionSelect, inkTypeSelect, policySelect, counterInput, dateInput].forEach(el => {
+        if (!el) return;
+        el.disabled = false;
+        el.classList.remove('pointer-events-none');
+        
+        if (el.classList.contains('row-customer') || el.classList.contains('row-phone') || el.classList.contains('row-model-input')) {
+            el.classList.remove('bg-transparent', 'border-transparent');
+            el.classList.add('bg-slate-950', 'border-slate-700');
+        } else {
+            el.classList.add('bg-transparent');
+        }
     });
+
+    // Fix UI: Thêm nền đen và viền cho khung bọc S/N và Counter
+    tr.querySelector('.serial-wrapper')?.classList.add('bg-slate-950', 'border-slate-700');
+    tr.querySelector('.counter-wrapper')?.classList.add('bg-slate-950', 'border-slate-700');
+
+    if (modelInput) {
+        if (!modelInput.getAttribute('data-brand')) {
+            modelInput.setAttribute('data-brand', tr.getAttribute('data-brand') || '');
+        }
+        if (!modelInput.getAttribute('data-model')) {
+            modelInput.setAttribute('data-model', tr.getAttribute('data-model') || '');
+        }
+        filterInlinePolicies(tr);
+        if (originalRowData[rowId].policy && policySelect) {
+            policySelect.value = originalRowData[rowId].policy;
+            onInlinePolicyChange(policySelect);
+        }
+    }
+
+    tr.querySelector('.action-view-mode')?.classList.add('hidden');
+    tr.querySelector('.action-edit-mode')?.classList.remove('hidden');
 }
 
-async function confirmDelete(warrantyId, identifier) {
-    if (!confirm(`Bạn có chắc chắn muốn xóa phiếu bảo hành: ${identifier}?`)) return;
+// Giữ 1 hàm cancel duy nhất, đã xóa hàm thừa
+function cancelEditRow(btn) {
+    const tr = btn.closest('tr');
+    if (!tr) return;
+    const rowId = tr.getAttribute('data-item-id') || tr.id;
+    const saved = originalRowData[rowId];
+
+    if (saved) {
+        const snInput = tr.querySelector('.row-sn');
+        const customerInput = tr.querySelector('.row-customer');
+        const phoneInput = tr.querySelector('.row-phone');
+        const modelInput = tr.querySelector('.row-model-input');
+        const categoryInput = tr.querySelector('.row-category');
+        const conditionSelect = tr.querySelector('.row-condition');
+        const inkTypeSelect = tr.querySelector('.row-ink-type');
+        const policySelect = tr.querySelector('.row-policy');
+        const counterInput = tr.querySelector('.row-counter');
+        const dateInput = tr.querySelector('.row-date');
+
+        if (snInput) snInput.value = saved.sn;
+        if (customerInput) customerInput.value = saved.customer;
+        if (phoneInput) phoneInput.value = saved.phone;
+        if (modelInput) {
+            modelInput.value = saved.modelInputVal;
+            modelInput.setAttribute('data-brand', saved.brand);
+            modelInput.setAttribute('data-model', saved.model);
+        }
+        if (categoryInput) categoryInput.value = saved.category;
+        if (conditionSelect) conditionSelect.value = saved.condition;
+        if (inkTypeSelect) inkTypeSelect.value = saved.inkType;
+        if (policySelect) policySelect.value = saved.policy;
+        if (counterInput) counterInput.value = saved.counter;
+        if (dateInput) dateInput.value = saved.date;
+
+        delete originalRowData[rowId];
+    }
+
+    tr.querySelector('.edit-mode-inputs')?.classList.add('hidden');
+    tr.querySelector('.view-mode-info')?.classList.remove('hidden');
+
+    const inputs = tr.querySelectorAll('input, select');
+    inputs.forEach(el => {
+        el.disabled = true;
+        if (el.classList.contains('row-customer') || el.classList.contains('row-phone') || el.classList.contains('row-model-input')) {
+            el.classList.add('bg-transparent', 'border-transparent');
+            el.classList.remove('bg-slate-950', 'border-slate-700');
+        } else {
+            el.classList.add('bg-transparent');
+        }
+    });
+
+    // Fix UI: Xóa nền đen và viền khỏi khung bọc S/N và Counter
+    tr.querySelector('.serial-wrapper')?.classList.remove('bg-slate-950', 'border-slate-700');
+    tr.querySelector('.counter-wrapper')?.classList.remove('bg-slate-950', 'border-slate-700');
+
+    tr.querySelector('.action-edit-mode')?.classList.add('hidden');
+    tr.querySelector('.action-view-mode')?.classList.remove('hidden');
+}
+
+async function saveEditRow(itemId, btn) {
+    const tr = document.getElementById(`row-${itemId}`) || btn.closest('tr');
+    const payload = extractRowData(tr);
+
+    if (!payload) {
+        alert("⚠️ Vui lòng điền đầy đủ thông tin bắt buộc!");
+        return;
+    }
 
     try {
-        const response = await fetch(`/warranty/api/delete/${warrantyId}`, {
-            method: 'DELETE',
-            headers: { 'Content-Type': 'application/json' }
+        const response = await fetch(`/warranty/api/update/${itemId}`, {            
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify(payload)
         });
-        const result = await response.json();
 
-        if (response.ok && result.success) {
-            alert('Xóa thành công!');
+        const result = await response.json();
+        if (response.ok && (result.success || result.status === 'success')) {
             window.location.reload();
         } else {
-            alert(result.message || 'Xóa thất bại');
+            alert("❌ " + (result.message || result.detail || 'Lỗi lưu thay đổi!'));
         }
-    } catch (error) {
-        alert('Lỗi kết nối máy chủ!');
+    } catch (err) { 
+        alert('❌ Lỗi kết nối máy chủ: ' + err.message); 
     }
 }
 
-document.addEventListener("DOMContentLoaded", () => {
-    document.querySelectorAll('.row-condition').forEach(selectEl => {
-        updateConditionBadgeStyle(selectEl);
-        selectEl.addEventListener('change', () => updateConditionBadgeStyle(selectEl));
-    });
+// ==========================================
+// 4. VALIDATION, UTILS & LIVE SEARCH
+// ==========================================
+function validateSerialInput(inputEl) {
+    const wrapper = inputEl.closest('.serial-wrapper');
+    if (!inputEl.value.trim()) wrapper?.classList.add('border-red-500');
+    else wrapper?.classList.remove('border-red-500');
+}
 
-    // Tự động xóa viền đỏ khi người dùng bắt đầu gõ lại dữ liệu
-    document.addEventListener('input', function(e) {
-        if (e.target.classList.contains('row-customer') || 
-            e.target.classList.contains('row-model') || 
-            e.target.classList.contains('row-sn') ||
-            e.target.classList.contains('row-phone')) {
-            if (e.target.value.trim() !== '') {
-                e.target.classList.remove('border-red-500', 'border-rose-500');
-                if (e.target.classList.contains('row-sn')) {
-                    e.target.closest('.serial-wrapper')?.classList.remove('border-red-500');
-                }
-            }
-        }
-        
-        // Gọi realtime validate cho phone và serial nếu có hàm tương ứng
-        if (e.target.classList.contains('row-phone')) {
-            validatePhoneInput(e.target);
-        }
-        if (e.target.classList.contains('row-sn')) {
-            validateSerialInput(e.target);
-            e.target.value = e.target.value.toUpperCase();
+function validatePhoneInput(inputEl) {
+    const val = inputEl.value.trim().replace(/\s+/g, '');
+    const isNumeric = /^\d+$/.test(val);
+    if (val && (!isNumeric || val.length < 9 || val.length > 11)) inputEl.classList.add('border-red-500');
+    else inputEl.classList.remove('border-red-500');
+}
+
+function copyToClipboard(text) {
+    navigator.clipboard.writeText(text).then(() => alert(`Đã sao chép S/N: ${text}`));
+}
+
+async function confirmDelete(warrantyId, identifier) {
+    if (!confirm(`Bạn có chắc chắn muốn xóa phiếu: ${identifier}?`)) return;
+    try {
+        const response = await fetch(`/warranty/api/delete/${warrantyId}`, { method: 'DELETE' });
+        const result = await response.json();
+        if (response.ok && result.success) window.location.reload();
+        else alert(result.message || 'Xóa thất bại');
+    } catch (error) { alert('Lỗi kết nối máy chủ!'); }
+}
+
+// Fix Event: Xóa viền đỏ bắt cả input và change cho thẻ Select
+['input', 'change'].forEach(evt => {
+    document.addEventListener(evt, function(e) {
+        if (e.target.tagName === 'INPUT' || e.target.tagName === 'SELECT') {
+            e.target.classList.remove('border-red-500');
         }
     });
+});
+
+document.addEventListener("DOMContentLoaded", () => {
+    loadPrintersForInline();
 
     const searchInput = document.getElementById("searchInput");
     const searchSpinner = document.getElementById("searchSpinner");
@@ -863,11 +1153,8 @@ document.addEventListener("DOMContentLoaded", () => {
 
     searchInput.addEventListener("input", () => {
         if (searchSpinner) searchSpinner.classList.remove("hidden");
-
         clearTimeout(debounceTimer);
-        debounceTimer = setTimeout(() => {
-            fetchLiveSearchResults();
-        }, 400);
+        debounceTimer = setTimeout(() => { fetchLiveSearchResults(); }, 400);
     });
 
     async function fetchLiveSearchResults() {
@@ -878,22 +1165,10 @@ document.addEventListener("DOMContentLoaded", () => {
         try {
             const response = await fetch(url);
             const htmlText = await response.text();
-
-            const parser = new DOMParser();
-            const doc = parser.parseFromString(htmlText, "text/html");
-
-            const newTbody = doc.getElementById("warrantyTbody") || doc.querySelector("tbody");
-            const currentTbody = document.getElementById("warrantyTbody") || document.querySelector("tbody");
+            const doc = new DOMParser().parseFromString(htmlText, "text/html");
+            const newTbody = doc.getElementById("warrantyTbody");
+            const currentTbody = document.getElementById("warrantyTbody");
             if (newTbody && currentTbody) currentTbody.innerHTML = newTbody.innerHTML;
-
-            const newPagination = doc.querySelector(".bg-slate-900.border-t");
-            const currentPagination = document.querySelector(".bg-slate-900.border-t");
-            if (newPagination && currentPagination) {
-                currentPagination.innerHTML = newPagination.innerHTML;
-            } else if (!newPagination && currentPagination) {
-                currentPagination.innerHTML = '';
-            }
-
             window.history.pushState({}, "", url);
         } catch (error) {
             console.error("Lỗi Live Search:", error);
@@ -902,5 +1177,82 @@ document.addEventListener("DOMContentLoaded", () => {
         }
     }
 });
+
+// ==========================================
+// 5. MODAL THÊM MÁY IN MỚI
+// ==========================================
+function openPrinterModal() {
+    const tr = btn.closest('tr');
+    currentActiveModelInput = tr ? tr.querySelector('.row-model-input') : null;
+    
+    document.getElementById('printerForm').reset();
+    document.getElementById('printerModalTitle').innerHTML = '<i class="fa-solid fa-print text-emerald-400"></i> Thêm Dòng Máy In Mới';
+    document.getElementById('printerModal').classList.remove('hidden');
+}
+
+function closePrinterModal() {
+    currentActiveModelInput = null;
+    document.getElementById('printerModal').classList.add('hidden');
+}
+
+async function savePrinter(e) {
+    e.preventDefault();
+    const form = e.target;
+    const btnSubmit = form.querySelector('button[type="submit"]');
+    
+    const payload = {
+        brand_name: form.brand_name.value.trim(),
+        model_code: form.model_code.value.trim().toUpperCase(),
+        category: form.category.value
+    };
+
+    if (!payload.brand_name || !payload.model_code) {
+        alert('⚠️ Vui lòng nhập đầy đủ Tên thương hiệu và Mã Model!');
+        return;
+    }
+
+    const originalBtnText = btnSubmit.innerHTML;
+    btnSubmit.innerHTML = '<i class="fa-solid fa-spinner fa-spin mr-1"></i> Đang lưu...';
+    btnSubmit.disabled = true;
+
+    try {
+        const res = await fetch('/warranty/api/danh-sach-may-in/save', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify(payload)
+        });
+
+        const data = await res.json();
+        
+        if (data.success || data.status === 'success') {
+            const newPrinter = (data.data && data.data.length > 0) ? data.data[0] : payload;
+
+            allPrinters.push(newPrinter);
+            
+            const datalist = document.getElementById('printerList');
+            if (datalist) {
+                const opt = document.createElement('option');
+                opt.value = `${newPrinter.brand_name} ${newPrinter.model_code}`;
+                datalist.appendChild(opt);
+            }
+
+            if (currentActiveModelInput) {
+                currentActiveModelInput.value = `${newPrinter.brand_name} ${newPrinter.model_code}`;
+                onInlineModelChange(currentActiveModelInput); 
+            }
+            
+            closePrinterModal();
+            alert('✅ Thêm máy in thành công!');
+        } else {
+            alert('❌ ' + (data.message || 'Không thể lưu thiết bị'));
+        }
+    } catch (err) {
+        console.error("Lỗi kết nối:", err);
+        alert('❌ Lỗi kết nối đến máy chủ khi lưu thiết bị!');
+    } finally {
+        btnSubmit.innerHTML = originalBtnText;
+        btnSubmit.disabled = false;
+    }
+}
 </script>
 {% endblock %}

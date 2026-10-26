@@ -17,22 +17,7 @@ api_router = APIRouter(prefix="/warranty/api/danh-sach-may-in", tags=["Admin API
 templates = Jinja2Templates(directory="app/templates")
 
 # --- DANH MỤC MẶC ĐỊNH PHỤC VỤ DROPDOWN ---
-DANH_SACH_LOAI_MAY = [
-    "In phun",
-    "In Laser",
-    "In kim",
-    "Cắt bế",
-    "Cán màng",
-    "Ép nhiệt",
-    "Thiết bị khác"
-]
-
-DANH_SACH_HINH_THUC = [
-    "Mới",
-    "Đã qua sử dụng",
-    "Like new",
-    "Khác"
-]
+DANH_SACH_LOAI_MAY = ["In phun", "In Laser", "In kim", "Cắt bế", "Cán màng", "Ép nhiệt","Máy Scan", "Thiết bị khác"]
 
 
 # =========================================================================
@@ -43,7 +28,6 @@ class PrinterItemSchema(BaseModel):
     brand_name: str = Field(..., description="Tên thương hiệu (Epson, Canon, Graphtec...)")
     model_code: str = Field(..., description="Mã Model (C5290, L18050, CE6000...)")
     category: str = Field(default="In phun", description="Loại thiết bị")
-    condition: str = Field(default="Mới", description="Hình thức máy")
 
 
 # =========================================================================
@@ -54,8 +38,7 @@ async def view_list_printers(
     request: Request,
     search: Optional[str] = Query(None),
     brand: Optional[str] = Query(None),
-    category: Optional[str] = Query(None),
-    condition: Optional[str] = Query(None)
+    category: Optional[str] = Query(None)
 ):
     user = await get_current_user_or_redirect(request)
     if not user:
@@ -69,9 +52,6 @@ async def view_list_printers(
 
         if category and category.strip():
             query = query.eq("category", category.strip())
-
-        if condition and condition.strip():
-            query = query.eq("condition", condition.strip())
 
         if search and search.strip():
             s = search.strip()
@@ -98,11 +78,9 @@ async def view_list_printers(
             "printers": printers,
             "existing_brands": existing_brands,
             "categories": DANH_SACH_LOAI_MAY,
-            "conditions": DANH_SACH_HINH_THUC,
             "search": search or "",
             "selected_brand": brand or "",
             "selected_category": category or "",
-            "selected_condition": condition or "",
         }
     )
 
@@ -115,7 +93,7 @@ async def view_list_printers(
 async def get_printer_options():
     """Trả về các danh mục gợi ý cho Dropdown chọn khi tạo phiếu bảo hành"""
     try:
-        res = supabase.table("list_printer").select("brand_name, model_code, category, condition").execute()
+        res = supabase.table("list_printer").select("brand_name, model_code, category").execute()
         all_data = res.data or []
 
         brands = sorted(list(set(item["brand_name"] for item in all_data if item.get("brand_name"))))
@@ -126,7 +104,6 @@ async def get_printer_options():
             "brands": brands,
             "models": models,
             "categories": DANH_SACH_LOAI_MAY,
-            "conditions": DANH_SACH_HINH_THUC,
             "raw_items": all_data
         }
     except Exception as e:
@@ -138,7 +115,7 @@ async def get_models_by_brand(brand_name: str = Query(...)):
     """Lấy danh sách Model thuộc Thương hiệu cụ thể (Dùng cho dropdown động khi lập Phiếu Bảo Hành)"""
     try:
         res = supabase.table("list_printer")\
-            .select("id, model_code, category, condition")\
+            .select("id, model_code, category")\
             .eq("brand_name", brand_name.strip())\
             .order("model_code", desc=False)\
             .execute()
@@ -158,13 +135,11 @@ async def save_printer(
         brand = payload.brand_name.strip()
         model = payload.model_code.strip().upper()
         category = payload.category.strip()
-        condition = payload.condition.strip()
 
         data = {
             "brand_name": brand,
             "model_code": model,
             "category": category,
-            "condition": condition
         }
 
         if payload.id:
@@ -178,7 +153,8 @@ async def save_printer(
 
         return {
             "success": True, 
-            "message": f"Đã {action_type} dòng máy [{brand} - {model} ({condition})] thành công!",
+            # ĐÃ SỬA: Xóa dấu ngắt dòng trong chuỗi f-string
+            "message": f"Đã {action_type} dòng máy [{brand} {model} ] thành công!",
             "data": res.data
         }
 
@@ -186,11 +162,12 @@ async def save_printer(
         err_msg = str(e)
         logger.error(f"Lỗi khi lưu máy in: {err_msg}")
         
-        # Bắt lỗi trùng lặp ràng buộc Unique (brand_name, model_code, condition)
+        # Bắt lỗi trùng lặp ràng buộc Unique
         if "23505" in err_msg or "unique" in err_msg.lower():
             return JSONResponse(
                 status_code=400, 
-                content={"success": False, "message": f"Dòng máy [{payload.brand_name} - {payload.model_code}] với hình thức [{payload.condition}] đã tồn tại trong hệ thống!"}
+                # ĐÃ SỬA: Xóa dấu ngắt dòng
+                content={"success": False, "message": f"Dòng máy [{payload.brand_name} {payload.model_code}] đã tồn tại trong hệ thống!"}
             )
 
         return JSONResponse(status_code=400, content={"success": False, "message": f"Lỗi lưu dữ liệu: {err_msg}"})

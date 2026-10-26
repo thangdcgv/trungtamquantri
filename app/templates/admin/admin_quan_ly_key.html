@@ -121,48 +121,55 @@
 
         <!-- CỘT PHẢI: NẠP KEY NHANH (5 CỘT) -->
         <div class="xl:col-span-5 2xl:col-span-4 space-y-6">
-            <section class="bg-slate-900/90 rounded-2xl border border-slate-800 p-5 shadow-xl space-y-4">
-                <div class="flex items-center justify-between border-b border-slate-800 pb-3">
-                    <h2 class="text-base font-bold text-white flex items-center gap-2.5">
+            <section class="bg-slate-900/90 rounded-2xl border border-slate-800 p-5 shadow-xl space-y-4 backdrop-blur-sm">
+                <!-- HEADER -->
+                <div class="flex items-center justify-between border-b border-slate-800/80 pb-3.5">
+                    <h2 class="text-sm sm:text-base font-bold text-white flex items-center gap-2.5">
                         <i class="fa-solid fa-bolt text-amber-400"></i>
-                        Nạp & Sử Dụng Key Nhanh
+                        <span>Nạp & Sử Dụng Key Nhanh</span>
                     </h2>
-                    <span class="text-[11px] text-amber-400 font-medium bg-amber-400/10 px-2 py-0.5 rounded-md border border-amber-400/20">
+                    <span class="inline-flex items-center text-[11px] font-semibold text-amber-400 bg-amber-400/10 px-2.5 py-1 rounded-lg border border-amber-400/20">
                         Có sẵn key
                     </span>
                 </div>
 
-                <form id="formNapKeyNhanh" onsubmit="handleNapKeyNhanh(event)" class="space-y-3">
+                <!-- FORM CÂN ĐỐI -->
+                <form id="formNapKeyNhanh" onsubmit="handleNapKeyNhanh(event)" class="space-y-3.5">
+                    <!-- Mã Key -->
                     <div>
-                        <label class="block text-xs text-slate-400 mb-1">Mã Key <span class="text-rose-400">*</span></label>
+                        <label class="block text-[11px] font-medium text-slate-400 mb-1">Mã Key <span class="text-rose-400">*</span></label>
                         <input type="text" id="nap_ma_key" required placeholder="Dán mã key tại đây..." 
-                            class="w-full bg-slate-950 border border-slate-800 rounded-xl px-3 py-2 text-xs text-amber-300 font-mono placeholder:text-slate-600 focus:border-amber-500 outline-none uppercase">
+                            class="w-full h-10 bg-slate-950 border border-slate-800 rounded-xl px-3 text-xs text-amber-300 font-mono placeholder:text-slate-600 focus:ring-1 focus:ring-amber-500 focus:border-amber-500 outline-none uppercase transition-all">
                     </div>
 
-                    <div class="grid grid-cols-2 gap-2">
+                    <!-- Loại thiết bị & Tên máy -->
+                    <div class="grid grid-cols-1 sm:grid-cols-2 gap-3">
                         <div>
-                            <label class="block text-xs text-slate-400 mb-1">Loại Thiết Bị <span class="text-rose-400">*</span></label>
-                            <select id="nap_loai_tb" required class="w-full bg-slate-950 border border-slate-800 rounded-xl px-2.5 py-2 text-xs text-slate-200 focus:border-indigo-500 outline-none cursor-pointer">
+                            <label class="block text-[11px] font-medium text-slate-400 mb-1">Loại Thiết Bị <span class="text-rose-400">*</span></label>
+                            <select id="nap_loai_tb" required class="w-full h-10 bg-slate-950 border border-slate-800 rounded-xl px-3 text-xs text-slate-200 focus:ring-1 focus:ring-amber-500 focus:border-amber-500 outline-none cursor-pointer transition-all">
                                 <option value="Máy in">Máy in</option>
                                 <option value="Máy cắt bế">Máy cắt bế</option>
                             </select>
                         </div>
                         <div>
-                            <label class="block text-xs text-slate-400 mb-1">Tên Máy <span class="text-rose-400">*</span></label>
+                            <label class="block text-[11px] font-medium text-slate-400 mb-1">Tên Máy <span class="text-rose-400">*</span></label>
                             <input type="text" id="nap_ten_may" required placeholder="VD: C5290, L18050..." 
-                                class="w-full bg-slate-950 border border-slate-800 rounded-xl px-3 py-2 text-xs text-slate-200 placeholder:text-slate-600 focus:border-indigo-500 outline-none uppercase font-semibold">
+                                class="w-full h-10 bg-slate-950 border border-slate-800 rounded-xl px-3 text-xs text-slate-200 placeholder:text-slate-600 focus:ring-1 focus:ring-amber-500 focus:border-amber-500 outline-none uppercase font-semibold transition-all">
                         </div>
                     </div>
 
+                    <!-- Ghi chú -->
                     <div>
-                        <label class="block text-xs text-slate-400 mb-1">Ghi chú xuất key</label>
+                        <label class="block text-[11px] font-medium text-slate-400 mb-1">Ghi chú xuất key</label>
                         <input type="text" id="nap_ghi_chu" placeholder="Tên khách hàng / Lý do nạp..." 
-                            class="w-full bg-slate-950 border border-slate-800 rounded-xl px-3 py-2 text-xs text-slate-200 placeholder:text-slate-600 focus:border-indigo-500 outline-none">
+                            class="w-full h-10 bg-slate-950 border border-slate-800 rounded-xl px-3 text-xs text-slate-200 placeholder:text-slate-600 focus:ring-1 focus:ring-amber-500 focus:border-amber-500 outline-none transition-all">
                     </div>
 
+                    <!-- Nút xác nhận -->
                     <button type="submit" id="btnNapKey" 
-                            class="w-full py-2.5 bg-emerald-600 hover:bg-emerald-500 text-white font-semibold text-xs rounded-xl transition cursor-pointer flex items-center justify-center gap-2 shadow-md shadow-emerald-600/20 active:scale-[0.98]">
-                        <i class="fa-solid fa-check"></i> Xác Nhận Sử Dụng Key
+                            class="w-full h-10 mt-1 bg-emerald-600 hover:bg-emerald-500 text-white font-semibold text-xs rounded-xl transition-all cursor-pointer flex items-center justify-center gap-2 shadow-sm shadow-emerald-900/30 active:scale-[0.98]">
+                        <i class="fa-solid fa-check text-xs"></i>
+                        <span>Xác Nhận Sử Dụng Key</span>
                     </button>
                 </form>
             </section>

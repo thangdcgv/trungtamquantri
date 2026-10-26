@@ -3,8 +3,10 @@ import io
 import logging
 from datetime import datetime
 from pathlib import Path
-from typing import Optional, List, Dict, Any
+from typing import Optional, Dict, Any
 from urllib.parse import quote
+from datetime import datetime, timedelta
+from zoneinfo import ZoneInfo
 
 import numpy as np
 import pandas as pd
@@ -29,6 +31,9 @@ TEMPLATES_DIR = (
 templates = Jinja2Templates(directory=str(TEMPLATES_DIR))
 
 router = APIRouter(prefix="/admin/report", tags=["Báo cáo & Thống kê"])
+
+# ZoneInfo cho Việt Nam
+VN_TZ = ZoneInfo("Asia/Ho_Chi_Minh")
 
 ALLOWED_ADMIN_ROLES = {"admin", "super admin", "system admin"}
 NUMERIC_COLS = [
@@ -387,20 +392,20 @@ def get_report_api_data(
     }
 
 
-@router.get("/api/employees")
+@router.get("/employees")
 def get_employee_list(
     month: str = Query(...),
     current_user: dict = Depends(require_login)
 ):
-    """API nạp danh sách nhân viên cho Dropdown lọc."""
+    """API nạp danh sách nhân viên cho Dropdown lọc (Phát sinh chấm công + Phòng KTLD)."""
     user_role = current_user.get("role", "User")
     if user_role not in ALLOWED_ADMIN_ROLES:
         return {"employees": []}
 
     start_ts, end_ts = _parse_month_range(month)
 
-    # Truy vấn tối giản chỉ lấy 2 cột ten và username
-    res = (
+    # 1. Lấy danh sách nhân viên có phát sinh dữ liệu chấm công trong tháng
+    cc_res = (
         supabase.table("cham_cong")
         .select("ten, username")
         .gte("thoi_gian", start_ts)
@@ -408,15 +413,27 @@ def get_employee_list(
         .limit(5000)
         .execute()
     )
-    
-    data = res.data or []
-    if not data:
+    cc_data = cc_res.data or []
+    names = {item.get("ten") or item.get("username") for item in cc_data if item.get("ten") or item.get("username")}
+
+    # 2. Lấy thêm danh sách tất cả nhân viên thuộc phòng KTLD
+    # (Lưu ý: Thay tên bảng "nhan_vien" và cột "phong_ban" / "ho_ten" nếu DB của bạn đặt tên khác)
+    ktld_res = (
+        supabase.table("quan_tri_vien")
+        .select("ho_ten, username")
+        .eq("department", "KTLD")
+        .execute()
+    )
+    ktld_data = ktld_res.data or []
+    for item in ktld_data:
+        name = item.get("ho_ten") or item.get("username")
+        if name:
+            names.add(name)
+
+    if not names:
         return {"employees": ["Tất cả"]}
 
-    # Trích xuất danh sách tên duy nhất
-    names = {item.get("ten") or item.get("username") for item in data if item.get("ten") or item.get("username")}
     return {"employees": ["Tất cả"] + sorted(list(names))}
-
 
 @router.get("/export-excel")
 def export_report_excel(
@@ -454,3 +471,225 @@ def export_report_excel(
             "Expires": "0"
         }
     )
+
+# ==========================================
+# BÁO CÁO TỔNG QUÁT SỐ LƯỢNG ĐƠN LẮP ĐẶT
+# ==========================================
+@router.get("/bao-cao-lap-dat", response_class=HTMLResponse)
+async def bao_cao_lap_dat(
+    request: Request,
+    start_date: Optional[str] = Query(None),
+    end_date: Optional[str] = Query(None),
+    username: Optional[str] = Query(None),
+    user_payload: dict = Depends(require_login)
+):
+    try:
+        user_role = str(user_payload.get("role") or "user").strip().lower()
+        if user_role not in ALLOWED_ADMIN_ROLES:
+            username = user_payload.get("username")  # Bắt buộc chỉ xem báo cáo cá nhân
+        # ==========================================
+        # 1. XỬ LÝ NGÀY MẶC ĐỊNH
+        # ==========================================
+        today = datetime.now(
+            ZoneInfo("Asia/Ho_Chi_Minh")
+        ).date()
+
+        if not end_date:
+            end_date = today.strftime("%Y-%m-%d")
+
+        if not start_date:
+            start_date = (
+                today - timedelta(days=30)
+            ).strftime("%Y-%m-%d")
+
+        # ==========================================
+        # 2. TRUY VẤN DỮ LIỆU CHẤM CÔNG
+        # ==========================================
+        query = (
+            supabase
+            .table("cham_cong")
+            .select("*")
+            .gte(
+                "thoi_gian",
+                f"{start_date}T00:00:00"
+            )
+            .lte(
+                "thoi_gian",
+                f"{end_date}T23:59:59"
+            )
+        )
+
+        if username:
+            query = query.eq("username", username)
+
+        res = query.execute()
+        records = res.data or []
+
+        # ==========================================
+        # 3. KHỞI TẠO THỐNG KÊ
+        # ==========================================
+        staff_summary: Dict[str, Dict[str, Any]] = {}
+        daily_trend: Dict[str, int] = {}
+
+        total_orders = len(records)
+        total_payout = 0.0
+        total_km = 0.0
+
+        # ==========================================
+        # 4. HÀM CHUYỂN SỐ AN TOÀN
+        # ==========================================
+        def to_float(value):
+            if value is None or value == "":
+                return 0.0
+
+            try:
+                return float(value)
+            except (TypeError, ValueError):
+                return 0.0
+
+        # ==========================================
+        # 5. GOM NHÓM DỮ LIỆU
+        # ==========================================
+        for item in records:
+
+            # Tên nhân viên
+            staff_name = (
+                item.get("ten")
+                or item.get("ho_ten")
+                or item.get("username")
+                or "Chưa rõ"
+            )
+
+            # Ngày
+            thoi_gian = item.get("thoi_gian")
+
+            if thoi_gian:
+                date_str = str(thoi_gian)[:10]
+            else:
+                date_str = "N/A"
+
+            # Tiền và km
+            money = to_float(
+                item.get("thanh_tien")
+            )
+
+            km = to_float(
+                item.get("quang_duong")
+            )
+
+            # Tổng toàn bộ
+            total_payout += money
+            total_km += km
+
+            # ======================================
+            # Gom theo nhân viên
+            # ======================================
+            if staff_name not in staff_summary:
+                staff_summary[staff_name] = {
+                    "count": 0,
+                    "total_money": 0.0,
+                    "total_km": 0.0
+                }
+
+            staff_summary[staff_name]["count"] += 1
+            staff_summary[staff_name]["total_money"] += money
+            staff_summary[staff_name]["total_km"] += km
+
+            # ======================================
+            # Gom theo ngày
+            # ======================================
+            daily_trend[date_str] = (
+                daily_trend.get(date_str, 0) + 1
+            )
+
+        # ==========================================
+        # 6. DANH SÁCH NHÂN VIÊN
+        # ==========================================
+        sorted_staff_list = []
+
+        for name, info in sorted(
+            staff_summary.items(),
+            key=lambda x: x[1]["count"],
+            reverse=True
+        ):
+            sorted_staff_list.append({
+                "name": name,
+                "count": info["count"],
+                "total_money": info["total_money"],
+                "total_km": info["total_km"]
+            })
+
+        # ==========================================
+        # 7. DỮ LIỆU BIỂU ĐỒ NHÂN VIÊN
+        # ==========================================
+        chart_staff_names = [
+            item["name"]
+            for item in sorted_staff_list
+        ]
+
+        chart_staff_counts = [
+            item["count"]
+            for item in sorted_staff_list
+        ]
+
+        # ==========================================
+        # 8. DỮ LIỆU BIỂU ĐỒ THEO NGÀY
+        # ==========================================
+        sorted_dates = sorted(daily_trend.keys())
+
+        chart_dates = sorted_dates
+
+        chart_date_counts = [
+            daily_trend[d]
+            for d in sorted_dates
+        ]
+
+        # ==========================================
+        # 9. DANH SÁCH USER CHO DROPDOWN
+        # ==========================================
+        users_res = (
+            supabase
+            .table("quan_tri_vien")
+            .select("username, ho_ten")
+            .execute()
+        )
+
+        all_users = users_res.data or []
+
+        # ==========================================
+        # 10. RENDER TEMPLATE
+        # ==========================================
+        return templates.TemplateResponse(
+            request=request,
+            name="admin/admin_report_cham_cong.html",
+            context={
+                "start_date": start_date,
+                "end_date": end_date,
+                "selected_user": username,
+                "current_user": user_payload,
+                "all_users": all_users,
+                "total_orders": total_orders,
+                "total_payout": total_payout,
+                "total_km": total_km,
+                "staff_list": sorted_staff_list,
+                "chart_data": {
+                    "staffNames": chart_staff_names,
+                    "staffCounts": chart_staff_counts,
+                    "dates": chart_dates,
+                    "dateCounts": chart_date_counts,
+                },
+            },
+        )
+
+    except Exception as e:
+        logger.error(
+            f"Lỗi truy vấn báo cáo chấm công: {str(e)}",
+            exc_info=True
+        )
+
+        return HTMLResponse(
+            content=(
+                f"Đã xảy ra lỗi khi tải báo cáo: {str(e)}"
+            ),
+            status_code=500
+        )

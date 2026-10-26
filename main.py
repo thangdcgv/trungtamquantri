@@ -51,7 +51,7 @@ ALLOWED_ORIGINS = [origin.strip() for origin in raw_origins.split(",") if origin
 
 app.add_middleware(
     CORSMiddleware,
-    allow_origins=["*"],  # Cho phép tất cả origin trên HF để tránh lỗi chặn WebSocket/Fetch
+    allow_origins=ALLOWED_ORIGINS,  # Cho phép tất cả origin trên HF để tránh lỗi chặn WebSocket/Fetch
     allow_credentials=True,
     allow_methods=["*"],
     allow_headers=["*"],
@@ -112,16 +112,18 @@ async def log_error_to_db(request: Request, exc: Exception, module: str = "Syste
 async def global_exception_handler(request: Request, exc: Exception):
     await log_error_to_db(request, exc)
 
-    if request.url.path.startswith("/api/"):
+    # Trả về JSON nếu URL chứa /api/ hoặc client yêu cầu JSON (Fetch/Axios)
+    accept = request.headers.get("accept", "")
+    if request.url.path.startswith("/api/") or "application/json" in accept:
         return JSONResponse(
             status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
             content={"detail": "Đã xảy ra lỗi hệ thống. Ban quản trị đã ghi nhận sự cố."}
         )
+
     return HTMLResponse(
         content=f"<h2>⚠️ Sự cố hệ thống (500)</h2><p>Đã xảy ra lỗi: {str(exc)}</p><a href='/admin'>Quay lại Admin</a>",
         status_code=status.HTTP_500_INTERNAL_SERVER_ERROR
     )
-
 # === ĐĂNG KÝ ROUTERS ===
 app.include_router(main_router)
 app.include_router(auth_router)

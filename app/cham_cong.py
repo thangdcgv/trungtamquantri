@@ -922,10 +922,6 @@ async def update_config_cham_cong(
             content={"success": False, "message": f"❌ Lỗi hệ thống: {str(e)}"}
         )
 
-
-
-@router.get("", response_class=HTMLResponse)
-@router.get("/", response_class=HTMLResponse)
 @router.get("/list", response_class=HTMLResponse)
 async def view_danh_sach_cham_cong(
     request: Request,
@@ -947,7 +943,6 @@ async def view_danh_sach_cham_cong(
             raw_role = getattr(current_user, "role", "User")
             current_username = getattr(current_user, "username", "")
 
-        # user_role_clean dùng để kiểm tra logic Python
         user_role_clean = str(raw_role).strip().lower()
         is_admin = user_role_clean in ADMIN_ROLES
 
@@ -1005,47 +1000,95 @@ async def view_danh_sach_cham_cong(
             except Exception as parse_err:
                 logger.warning(f"Lỗi parse datetime cho ID {item.get('id')}: {parse_err}")
 
-        # ✅ 9. LẤY DANH SÁCH KTV CHO BỘ LỌC (DẠNG TUPLE 2 PHẦN TỬ CHUẨN JINJA2)
+        # ✅ 9. LẤY DANH SÁCH KTV CHO BỘ LỌC (KTLD + CÓ PHÁT SINH CHẤM CÔNG TRONG THÁNG)
         danh_sach_ktv = []
         if is_admin:
             try:
-                cc_res = supabase.table("cham_cong").select("username").execute()
+                ktv_map = {}  # Map lưu dạng {username: display_name}
+
+                # 9.1 Lấy tất cả nhân viên thuộc phòng 'KTLD'
+                ktld_res = (
+                    supabase.table("quan_tri_vien")
+                    .select("username, ho_ten")
+                    .eq("department", "KTLD")
+                    .execute()
+                )
+                if ktld_res.data:
+                    for emp in ktld_res.data:
+                        u_val = emp.get("username") if isinstance(emp, dict) else getattr(emp, "username", None)
+                        h_val = emp.get("ho_ten") if isinstance(emp, dict) else getattr(emp, "ho_ten", None)
+                        if u_val:
+                            ktv_map[u_val] = h_val or u_val
+
+                # 9.2 Lấy các tài khoản có chấm công TRONG THÁNG/NĂM ĐANG LỌC
+                if selected_year > 0 and selected_month > 0:
+                    s_date = f"{selected_year}-{selected_month:02d}-01T00:00:00"
+                    e_date = f"{selected_year + 1}-01-01T00:00:00" if selected_month == 12 else f"{selected_year}-{selected_month + 1:02d}-01T00:00:00"
+                    
+                    cc_res = (
+                        supabase.table("cham_cong")
+                        .select("username")
+                        .gte("thoi_gian", s_date)
+                        .lt("thoi_gian", e_date)
+                        .execute()
+                    )
+                else:
+                    cc_res = supabase.table("cham_cong").select("username").execute()
+
+                attended_usernames = set()
                 if cc_res.data:
-                    # Trích xuất username an toàn bất kể Dict hay Object
-                    raw_usernames = []
                     for item in cc_res.data:
                         u = item.get("username") if isinstance(item, dict) else getattr(item, "username", None)
                         if u:
-                            raw_usernames.append(u)
+                            attended_usernames.add(u)
 
-                    attended_usernames = sorted(list(set(raw_usernames)))
-                    
-                    if attended_usernames:
-                        emp_res = (
-                            supabase.table("quan_tri_vien")
-                            .select("username, ho_ten")
-                            .in_("username", attended_usernames)
-                            .execute()
-                        )
-                        
-                        name_map = {}
-                        if emp_res.data:
-                            for emp in emp_res.data:
-                                u_val = emp.get("username") if isinstance(emp, dict) else getattr(emp, "username", None)
-                                h_val = emp.get("ho_ten") if isinstance(emp, dict) else getattr(emp, "ho_ten", None)
-                                if u_val:
-                                    name_map[u_val] = h_val or u_val
+                # 9.3 Bổ sung họ tên cho các KTV có chấm công nhưng chưa có trong map phòng KTLD
+                missing_usernames = [u for u in attended_usernames if u not in ktv_map]
+                if missing_usernames:
+                    emp_res = (
+                        supabase.table("quan_tri_vien")
+                        .select("username, ho_ten")
+                        .in_("username", missing_usernames)
+                        .execute()
+                    )
+                    if emp_res.data:
+                        for emp in emp_res.data:
+                            u_val = emp.get("username") if isinstance(emp, dict) else getattr(emp, "username", None)
+                            h_val = emp.get("ho_ten") if isinstance(emp, dict) else getattr(emp, "ho_ten", None)
+                            if u_val:
+                                ktv_map[u_val] = h_val or u_val
 
-                        # ✅ Trả về Tuple 2 phần tử: (username, display_name)
-                        for u in attended_usernames:
-                            display_name = name_map.get(u, u)
-                            danh_sach_ktv.append((u, display_name))
+                    # Trường hợp tài khoản chấm công không tìm thấy thông tin trong quan_tri_vien
+                    for u in missing_usernames:
+                        if u not in ktv_map:
+                            ktv_map[u] = u
+
+                # 9.4 Chuyển thành danh sách Tuple [(username, display_name)] & Sắp xếp A-Z theo tên
+                danh_sach_ktv = sorted(
+                    [(u, name) for u, name in ktv_map.items()],
+                    key=lambda x: str(x[1]).lower()
+                )
+
             except Exception as ktv_err:
                 logger.error(f"Lỗi tải danh sách KTV: {ktv_err}")
 
         error_message = request.session.pop("error_message", None)
-
-        # ✅ 10. RENDER TEMPLATE (TRUYỀN RAW_ROLE GỐC ĐỂ KHÔNG LỖI IF/ELSE Ở JINJA2)
+        #10 chuẩn hóa hình ảnh
+        # Bổ sung logic chuẩn hóa hình ảnh trước khi render
+        for item in danh_sach:
+            try:
+                # Chuẩn hóa trường hình ảnh (sửa tên cột 'hinh_anh' / 'image_url' đúng với DB của bạn)
+                img_path = item.get("hinh_anh") or item.get("image_url") or ""
+                
+                # Nếu đường dẫn không hợp lệ hoặc chứa chữ "null"/"undefined"
+                if not img_path or str(img_path).strip().lower() in ["none", "null", "undefined", ""]:
+                    item["hinh_anh_valid"] = None
+                else:
+                    item["hinh_anh_valid"] = str(img_path).strip()
+                    
+            except Exception as img_err:
+                item["hinh_anh_valid"] = None
+        # 10. RENDER TEMPLATE
         return templates.TemplateResponse(
             request=request,
             name="installation/danh_sach_cham_cong.html",
@@ -1054,8 +1097,8 @@ async def view_danh_sach_cham_cong(
                 "danh_sach": danh_sach,
                 "danh_sach_don": danh_sach,
                 "current_user": current_user,
-                "user_role": raw_role,     # ✅ Giữ nguyên chữ hoa (Admin) cho Jinja2 Template
-                "is_admin": is_admin,       # ✅ Truyền thêm cờ boolean tiện lợi
+                "user_role": raw_role,
+                "is_admin": is_admin,
                 "current_username": current_username,
                 "danh_sach_ktv": danh_sach_ktv,
                 "selected_month": selected_month,
@@ -1071,224 +1114,3 @@ async def view_danh_sach_cham_cong(
     except Exception as e:
         logger.error(f"Lỗi tải danh sách chấm công: {str(e)}")
         return HTMLResponse(content=f"<h3>Lỗi hệ thống: {str(e)}</h3>", status_code=500)
-# ==========================================
-# BÁO CÁO TỔNG QUÁT SỐ LƯỢNG ĐƠN LẮP ĐẶT
-# ==========================================
-@router.get("/bao-cao-lap-dat", response_class=HTMLResponse)
-async def bao_cao_lap_dat(
-    request: Request,
-    start_date: Optional[str] = Query(None),
-    end_date: Optional[str] = Query(None),
-    username: Optional[str] = Query(None),
-    user_payload: dict = Depends(require_login)
-):
-    try:
-        user_role = str(user_payload.get("role") or "user").strip().lower()
-        if user_role not in ADMIN_ROLES:
-            username = user_payload.get("username")  # Bắt buộc chỉ xem báo cáo cá nhân
-        # ==========================================
-        # 1. XỬ LÝ NGÀY MẶC ĐỊNH
-        # ==========================================
-        today = datetime.now(
-            ZoneInfo("Asia/Ho_Chi_Minh")
-        ).date()
-
-        if not end_date:
-            end_date = today.strftime("%Y-%m-%d")
-
-        if not start_date:
-            start_date = (
-                today - timedelta(days=30)
-            ).strftime("%Y-%m-%d")
-
-        # ==========================================
-        # 2. TRUY VẤN DỮ LIỆU CHẤM CÔNG
-        # ==========================================
-        query = (
-            supabase
-            .table("cham_cong")
-            .select("*")
-            .gte(
-                "thoi_gian",
-                f"{start_date}T00:00:00"
-            )
-            .lte(
-                "thoi_gian",
-                f"{end_date}T23:59:59"
-            )
-        )
-
-        if username:
-            query = query.eq("username", username)
-
-        res = query.execute()
-        records = res.data or []
-
-        # ==========================================
-        # 3. KHỞI TẠO THỐNG KÊ
-        # ==========================================
-        staff_summary: Dict[str, Dict[str, Any]] = {}
-        daily_trend: Dict[str, int] = {}
-
-        total_orders = len(records)
-        total_payout = 0.0
-        total_km = 0.0
-
-        # ==========================================
-        # 4. HÀM CHUYỂN SỐ AN TOÀN
-        # ==========================================
-        def to_float(value):
-            if value is None or value == "":
-                return 0.0
-
-            try:
-                return float(value)
-            except (TypeError, ValueError):
-                return 0.0
-
-        # ==========================================
-        # 5. GOM NHÓM DỮ LIỆU
-        # ==========================================
-        for item in records:
-
-            # Tên nhân viên
-            staff_name = (
-                item.get("ten")
-                or item.get("ho_ten")
-                or item.get("username")
-                or "Chưa rõ"
-            )
-
-            # Ngày
-            thoi_gian = item.get("thoi_gian")
-
-            if thoi_gian:
-                date_str = str(thoi_gian)[:10]
-            else:
-                date_str = "N/A"
-
-            # Tiền và km
-            money = to_float(
-                item.get("thanh_tien")
-            )
-
-            km = to_float(
-                item.get("quang_duong")
-            )
-
-            # Tổng toàn bộ
-            total_payout += money
-            total_km += km
-
-            # ======================================
-            # Gom theo nhân viên
-            # ======================================
-            if staff_name not in staff_summary:
-                staff_summary[staff_name] = {
-                    "count": 0,
-                    "total_money": 0.0,
-                    "total_km": 0.0
-                }
-
-            staff_summary[staff_name]["count"] += 1
-            staff_summary[staff_name]["total_money"] += money
-            staff_summary[staff_name]["total_km"] += km
-
-            # ======================================
-            # Gom theo ngày
-            # ======================================
-            daily_trend[date_str] = (
-                daily_trend.get(date_str, 0) + 1
-            )
-
-        # ==========================================
-        # 6. DANH SÁCH NHÂN VIÊN
-        # ==========================================
-        sorted_staff_list = []
-
-        for name, info in sorted(
-            staff_summary.items(),
-            key=lambda x: x[1]["count"],
-            reverse=True
-        ):
-            sorted_staff_list.append({
-                "name": name,
-                "count": info["count"],
-                "total_money": info["total_money"],
-                "total_km": info["total_km"]
-            })
-
-        # ==========================================
-        # 7. DỮ LIỆU BIỂU ĐỒ NHÂN VIÊN
-        # ==========================================
-        chart_staff_names = [
-            item["name"]
-            for item in sorted_staff_list
-        ]
-
-        chart_staff_counts = [
-            item["count"]
-            for item in sorted_staff_list
-        ]
-
-        # ==========================================
-        # 8. DỮ LIỆU BIỂU ĐỒ THEO NGÀY
-        # ==========================================
-        sorted_dates = sorted(daily_trend.keys())
-
-        chart_dates = sorted_dates
-
-        chart_date_counts = [
-            daily_trend[d]
-            for d in sorted_dates
-        ]
-
-        # ==========================================
-        # 9. DANH SÁCH USER CHO DROPDOWN
-        # ==========================================
-        users_res = (
-            supabase
-            .table("quan_tri_vien")
-            .select("username, ho_ten")
-            .execute()
-        )
-
-        all_users = users_res.data or []
-
-        # ==========================================
-        # 10. RENDER TEMPLATE
-        # ==========================================
-        return templates.TemplateResponse(
-            request=request,
-            name="admin/admin_report_cham_cong.html",
-            context={
-                "start_date": start_date,
-                "end_date": end_date,
-                "selected_user": username,
-                "current_user": user_payload,
-                "all_users": all_users,
-                "total_orders": total_orders,
-                "total_payout": total_payout,
-                "total_km": total_km,
-                "staff_list": sorted_staff_list,
-                "chart_data": {
-                    "staffNames": chart_staff_names,
-                    "staffCounts": chart_staff_counts,
-                    "dates": chart_dates,
-                    "dateCounts": chart_date_counts,
-                },
-            },
-        )
-
-    except Exception as e:
-        logger.error(
-            f"Lỗi truy vấn báo cáo chấm công: {str(e)}",
-            exc_info=True
-        )
-
-        return HTMLResponse(
-            content=(
-                f"Đã xảy ra lỗi khi tải báo cáo: {str(e)}"
-            ),
-            status_code=500
-        )

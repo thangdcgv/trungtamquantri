@@ -6,7 +6,7 @@
 <main class="admin-page px-4 sm:px-6 lg:px-8 max-w-7xl mx-auto space-y-6">
     
     <!-- HEADER HUB -->
-    <header class="welcome-shell p-4 sm:p-5 rounded-xl bg-slate-900/80 border border-slate-800 backdrop-blur-md">
+    <header class="welcome-shell p-4 sm:p-5 rounded-2xl bg-slate-900/90 border border-slate-800 backdrop-blur-md shadow-xl">
         <div class="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
             <div>
                 <h1 class="text-xl sm:text-2xl font-bold tracking-wide text-white flex items-center gap-2.5">
@@ -14,15 +14,19 @@
                     <span>Cấu Hình Chính Sách Bảo Hành</span>
                 </h1>
                 <p class="text-xs sm:text-sm text-slate-400 mt-1">
-                    Thiết lập thời hạn bảo hành thân máy, đầu phun, hộp mực và giới hạn trang in / số mét cho từng dòng máy
+                    Thiết lập thời hạn bảo hành thân máy, đầu phun, hộp mực và giới hạn trang in / số mét áp dụng cho từng dòng máy
                 </p>
             </div>
             <div class="flex items-center gap-2 shrink-0">
-                <button type="button" onclick="openPolicyModal()" class="inline-flex items-center gap-2 px-3.5 py-2 rounded-lg bg-cyan-600 hover:bg-cyan-500 text-white text-xs sm:text-sm font-medium transition-all shadow-sm shadow-cyan-900/30">
+                <button type="button" onclick="openPolicyModal()" class="inline-flex items-center gap-2 px-4 py-2.5 rounded-xl bg-cyan-600 hover:bg-cyan-500 text-white text-xs sm:text-sm font-semibold transition-all shadow-md shadow-cyan-900/30 cursor-pointer active:scale-95">
                     <i class="fa-solid fa-plus text-xs"></i>
-                    <span>Thêm Chính Sách Mới</span>
+                    <span>Thêm Chính Sách</span>
                 </button>
-                <a href="/admin" class="inline-flex items-center gap-2 px-3.5 py-2 rounded-lg bg-slate-800 hover:bg-slate-700 border border-slate-700 text-slate-200 text-xs sm:text-sm font-medium transition-all">
+                 <button type="button" onclick="openPrinterModal()" class="inline-flex items-center gap-2 px-3.5 py-2.5 rounded-xl bg-emerald-600 hover:bg-emerald-500 text-white text-xs sm:text-sm font-semibold transition-all shadow-md shadow-emerald-900/30 cursor-pointer active:scale-95">
+                    <i class="fa-solid fa-print text-xs"></i>
+                    <span>Thêm Máy In</span>
+                </button>
+                <a href="/admin" class="inline-flex items-center gap-2 px-4 py-2.5 rounded-xl bg-slate-800 hover:bg-slate-700 border border-slate-700 text-slate-200 text-xs sm:text-sm font-semibold transition-all">
                     <i class="fa-solid fa-arrow-left text-xs text-slate-400"></i>
                     <span>Quay lại</span>
                 </a>
@@ -31,46 +35,72 @@
     </header>
 
     <!-- BẢNG DANH SÁCH CHÍNH SÁCH -->
-    <section class="p-5 rounded-xl bg-slate-900/80 border border-slate-800 space-y-4">
-        <div class="overflow-x-auto rounded-lg border border-slate-800">
-            <table class="w-full text-left text-xs text-slate-300">
+    <section class="p-5 rounded-2xl bg-slate-900/80 border border-slate-800 space-y-4 shadow-xl">
+        <!-- Thanh Tìm Kiếm Nhanh Bảng -->
+        <div class="flex flex-col sm:flex-row items-stretch sm:items-center justify-between gap-3 pb-2 border-b border-slate-800/80">
+            <div class="flex items-center gap-2 text-xs font-semibold text-slate-300 uppercase tracking-wider">
+                <i class="fa-solid fa-list-check text-cyan-400"></i>
+                <span>Danh sách chính sách hiện có ({{ policies|length }})</span>
+            </div>
+            <div class="relative min-w-[240px]">
+                <i class="fa-solid fa-magnifying-glass absolute left-3 top-1/2 -translate-y-1/2 text-slate-500 text-xs"></i>
+                <input type="text" id="tableSearchInput" onkeyup="filterTablePolicies()" placeholder="Lọc nhanh chính sách..." 
+                    class="w-full h-9 pl-9 pr-3 bg-slate-950 border border-slate-800 rounded-xl text-xs text-slate-200 placeholder:text-slate-500 focus:ring-1 focus:ring-cyan-500 focus:border-cyan-500 outline-none transition-all">
+            </div>
+        </div>
+
+        <div class="overflow-x-auto rounded-xl border border-slate-800">
+            <table class="w-full text-left text-xs text-slate-300" id="policyTable">
                 <thead class="bg-slate-800/90 text-slate-400 uppercase text-[10px] font-semibold tracking-wider">
                     <tr>
-                        <th class="p-3">Tên Chính Sách / Phân Loại</th>
-                        <th class="p-3">Tình Trạng</th>
-                        <th class="p-3">Thời Hạn Bảo Hành</th>
-                        <th class="p-3">Giới Hạn Trang In / Số Mét</th>
-                        <th class="p-3 text-center">Trạng Thái</th>
-                        <th class="p-3 text-right">Thao Tác</th>
+                        <th class="p-3.5">Tên Chính Sách / Thương Hiệu</th>
+                        <th class="p-3.5">Tình Trạng</th>
+                        <th class="p-3.5">Thời Hạn Bảo Hành</th>
+                        <th class="p-3.5">Giới Hạn Trang In / Số Mét</th>
+                        <th class="p-3.5 text-center">Trạng Thái</th>
+                        <th class="p-3.5 text-right">Thao Tác</th>
                     </tr>
                 </thead>
-                <tbody class="divide-y divide-slate-800/60 bg-slate-900/40">
+                <tbody class="divide-y divide-slate-800/60 bg-slate-900/40" id="policyTableBody">
                     {% for p in policies %}
-                    <tr class="hover:bg-slate-800/40 transition-colors">
-                        <!-- Tên & Phân loại -->
-                        <td class="p-3">
-                            <div class="font-bold text-white text-sm">{{ p.policy_name or 'Chưa đặt tên' }}</div>
-                            <div class="text-[11px] text-cyan-400 font-medium mt-0.5"><i class="fa-solid fa-print text-[9px] mr-1"></i>{{ p.category }}</div>
+                    <tr class="policy-row hover:bg-slate-800/40 transition-colors">
+                        <!-- SỬA LỖI 1: Tên & Dòng máy (Dùng trực tiếp p.brand_name và p.category) -->
+                        <td class="p-3.5">
+                            <div class="font-bold text-white text-sm policy-search-target">
+                                {{ p.policy_name or 'Chưa đặt tên' }}
+                            </div>
+                            <div class="flex flex-wrap items-center gap-2 mt-1">
+                                <span class="text-[10px] font-semibold bg-slate-800 px-2 py-0.5 rounded-md text-cyan-300 border border-slate-700 inline-flex items-center gap-1">
+                                    <i class="fa-solid fa-copyright text-[9px]"></i>{{ p.brand_name }}
+                                </span>
+                                <span class="text-[11px] text-slate-400 font-medium">
+                                    {{ p.category }}
+                                </span>
+                            </div>
                         </td>
 
                         <!-- Tình trạng -->
-                        <td class="p-3">
-                            {% if p.condition == 'Mới' %}
-                                <span class="px-2 py-0.5 rounded text-[10px] font-bold bg-blue-500/10 text-blue-400 border border-blue-500/20">✨ Máy Mới</span>
+                        <td class="p-3.5">
+                            {% if p.condition == 'Máy mới' %}
+                                <span class="px-2.5 py-1 rounded-lg text-[10px] font-bold bg-blue-500/10 text-blue-400 border border-blue-500/20 inline-flex items-center gap-1">
+                                    <i class="fa-solid fa-sparkles text-[9px]"></i> Máy mới
+                                </span>
                             {% else %}
-                                <span class="px-2 py-0.5 rounded text-[10px] font-bold bg-amber-500/10 text-amber-400 border border-amber-500/20">Đã qua sử dụng</span>
+                                <span class="px-2.5 py-1 rounded-lg text-[10px] font-bold bg-amber-500/10 text-amber-400 border border-amber-500/20 inline-flex items-center gap-1">
+                                    <i class="fa-solid fa-rotate text-[9px]"></i> Đã qua sử dụng
+                                </span>
                             {% endif %}
                         </td>
 
                         <!-- Tháng bảo hành -->
-                        <td class="p-3 space-y-1">
+                        <td class="p-3.5 space-y-1">
                             <div class="text-slate-200"><span class="text-slate-500">Thân máy:</span> <strong class="text-white">{{ p.warranty_months }}</strong> tháng</div>
                             <div class="text-slate-300"><span class="text-slate-500">Đầu phun:</span> <strong class="text-cyan-300">{{ p.head_warranty_months }}</strong> tháng</div>
                             <div class="text-slate-300"><span class="text-slate-500">Hộp mực:</span> <strong class="text-emerald-300">{{ p.cartridge_warranty_months }}</strong> tháng</div>
                         </td>
 
                         <!-- Giới hạn trang & số mét -->
-                        <td class="p-3 space-y-1.5">
+                        <td class="p-3.5 space-y-1.5">
                             <!-- Trang in -->
                             <div class="text-[11px]">
                                 <span class="text-slate-500">📄 Trang in:</span>
@@ -94,7 +124,7 @@
                         </td>
 
                         <!-- Trạng thái Kích hoạt -->
-                        <td class="p-3 text-center">
+                        <td class="p-3.5 text-center">
                             <button type="button" 
                                     data-id="{{ p.id }}"
                                     data-active="{{ 'true' if p.is_active else 'false' }}"
@@ -106,18 +136,18 @@
                         </td>
 
                         <!-- Thao tác -->
-                        <td class="p-3 text-right">
+                        <td class="p-3.5 text-right">
                             <div class="flex items-center justify-end gap-1.5">
                                 <button type="button" 
                                         data-policy='{{ p | tojson | safe }}'
                                         onclick="handleEditClick(this)" 
-                                        class="p-1.5 rounded-lg bg-slate-800 hover:bg-cyan-600/20 text-slate-300 hover:text-cyan-400 border border-slate-700 transition-all">
+                                        class="p-2 rounded-xl bg-slate-800 hover:bg-cyan-600/20 text-slate-300 hover:text-cyan-400 border border-slate-700 transition-all cursor-pointer" title="Chỉnh sửa">
                                     <i class="fa-solid fa-pen-to-square text-xs"></i>
                                 </button>
                                 <button type="button" 
                                         data-id="{{ p.id }}"
                                         onclick="handleDeleteClick(this)" 
-                                        class="p-1.5 rounded-lg bg-slate-800 hover:bg-rose-600/20 text-slate-300 hover:text-rose-400 border border-slate-700 transition-all">
+                                        class="p-2 rounded-xl bg-slate-800 hover:bg-rose-600/20 text-slate-300 hover:text-rose-400 border border-slate-700 transition-all cursor-pointer" title="Xóa">
                                     <i class="fa-solid fa-trash-can text-xs"></i>
                                 </button>
                             </div>
@@ -135,113 +165,247 @@
         </div>
     </section>
 
-    <!-- MODAL THÊM / SỬA CHÍNH SÁCH -->
-    <div id="policyModal" class="fixed inset-0 z-50 hidden bg-slate-950/80 backdrop-blur-sm flex items-center justify-center p-4">
-        <div class="bg-slate-900 border border-slate-800 rounded-xl w-full max-w-2xl overflow-hidden shadow-2xl max-h-[90vh] flex flex-col">
+    <!-- 1. MODAL THÊM MÁY IN MỚI -->
+    <div id="printerModal" class="fixed inset-0 z-[60] hidden bg-slate-950/80 backdrop-blur-sm flex items-center justify-center p-4">
+        <div class="bg-slate-900 border border-slate-800 rounded-xl w-full max-w-md overflow-hidden shadow-2xl">
             
-            <div class="p-4 sm:p-5 border-b border-slate-800 flex items-center justify-between shrink-0">
-                <h3 id="modalTitle" class="text-base font-bold text-white flex items-center gap-2">
-                    <i class="fa-solid fa-sliders text-cyan-400"></i> Thêm Chính Sách Bảo Hành
+            <div class="p-4 sm:p-5 border-b border-slate-800 flex items-center justify-between">
+                <h3 id="printerModalTitle" class="text-base font-bold text-white flex items-center gap-2">
+                    <i class="fa-solid fa-print text-emerald-400"></i> Thêm Dòng Máy In Mới
                 </h3>
-                <button type="button" onclick="closePolicyModal()" class="text-slate-400 hover:text-white p-1">
-                    <i class="fa-solid fa-xmark text-base"></i>
+                <button type="button" onclick="closePrinterModal()" class="text-slate-400 hover:text-white p-1 cursor-pointer">
+                    <i class="fa-solid fa-xmark text-lg"></i>
                 </button>
             </div>
 
-            <form id="policyForm" onsubmit="savePolicy(event)" class="p-4 sm:p-6 space-y-5 overflow-y-auto">
+            <form id="printerForm" onsubmit="savePrinter(event)" class="p-4 sm:p-6 space-y-4">
+                <!-- Thương hiệu -->
+                <div>
+                    <label class="block text-[11px] font-medium text-slate-300 mb-1">Tên thương hiệu <span class="text-rose-400">*</span></label>
+                    <input type="text" id="brand_name_printer" name="brand_name" list="brand_list_printer" required placeholder="VD: Epson, Canon, Brother, Mimaki..." 
+                           class="w-full h-10 bg-slate-950 border border-slate-700 text-white text-xs rounded-lg px-3 focus:ring-1 focus:ring-emerald-500 outline-none transition-all">
+                    <datalist id="brand_list_printer">
+                        <option value="Epson"></option>
+                        <option value="Canon"></option>
+                        <option value="HP"></option>
+                        <option value="Brother"></option>
+                        <option value="Ricoh"></option>
+                        <option value="Refine"></option>
+                        <option value="Mimaki"></option>
+                        <option value="Graphtec"></option>
+                        <option value="Pantum"></option>
+                        {% for b in existing_brands %}
+                            <option value="{{ b }}"></option>
+                        {% endfor %}
+                    </datalist>
+                </div>
+
+                <!-- Model Máy -->
+                <div>
+                    <label class="block text-[11px] font-medium text-slate-300 mb-1">Mã Model máy <span class="text-rose-400">*</span></label>
+                    <input type="text" id="model_code" name="model_code" required placeholder="VD: C5290, L18050, CE6000..." 
+                           class="w-full h-10 bg-slate-950 border border-slate-700 text-white text-xs font-mono font-semibold uppercase rounded-lg px-3 focus:ring-1 focus:ring-emerald-500 outline-none transition-all">
+                </div>
+
+                <!-- Phân loại máy -->
+                <div>
+                    <label class="block text-[11px] font-medium text-slate-300 mb-1">Phân loại thiết bị <span class="text-rose-400">*</span></label>
+                    <select id="printer_category" name="category" class="w-full h-10 bg-slate-950 border border-slate-700 text-white text-xs rounded-lg px-3 focus:ring-1 focus:ring-emerald-500 outline-none cursor-pointer transition-all">
+                        {% for c in categories %}
+                            <option value="{{ c }}">{{ c }}</option>
+                        {% endfor %}
+                    </select>
+                </div>
+
+                <!-- Buttons -->
+                <div class="pt-4 border-t border-slate-800 flex justify-end gap-2.5">
+                    <button type="button" onclick="closePrinterModal()" class="h-10 px-4 rounded-lg bg-slate-800 hover:bg-slate-700 text-slate-300 text-xs font-semibold transition-all cursor-pointer">Hủy</button>
+                    <button type="submit" class="h-10 px-5 rounded-lg bg-emerald-600 hover:bg-emerald-500 text-white text-xs font-semibold transition-all cursor-pointer shadow-md shadow-emerald-900/20">
+                        Lưu Thiết Bị
+                    </button>
+                </div>
+            </form>
+        </div>
+    </div>
+
+    <!-- 2. MODAL THÊM / SỬA CHÍNH SÁCH -->
+    <div id="policyModal" class="fixed inset-0 z-50 hidden bg-slate-950/80 backdrop-blur-md flex items-center justify-center p-3 sm:p-4">
+        <div class="bg-slate-900 border border-slate-800 rounded-2xl w-full max-w-2xl overflow-hidden shadow-2xl max-h-[92vh] flex flex-col">
+            
+            <!-- Modal Header -->
+            <div class="p-4 sm:p-5 border-b border-slate-800/80 flex items-center justify-between shrink-0 bg-slate-900">
+                <h3 id="policyModalTitle" class="text-base font-bold text-white flex items-center gap-2.5">
+                    <i class="fa-solid fa-sliders text-cyan-400"></i> Thêm Chính Sách Bảo Hành
+                </h3>
+                <button type="button" onclick="closePolicyModal()" class="text-slate-400 hover:text-white p-1 rounded-lg hover:bg-slate-800 transition-all cursor-pointer">
+                    <i class="fa-solid fa-xmark text-lg"></i>
+                </button>
+            </div>
+
+            <!-- Modal Body Form -->
+            <form id="policyForm" onsubmit="savePolicy(event)" class="p-4 sm:p-6 space-y-4 overflow-y-auto custom-scrollbar">
                 <input type="hidden" id="policy_id" name="id">
 
-                <!-- 1. THÔNG TIN CHUNG -->
-                <div class="grid grid-cols-1 sm:grid-cols-2 gap-4">
-                    <div class="sm:col-span-2">
-                        <label class="block text-xs font-semibold text-slate-300 mb-1">Tên chính sách <span class="text-rose-400">*</span></label>
-                        <input type="text" id="policy_name" name="policy_name" required placeholder="VD: Bảo hành Epson C5290 / Cuộn Khổ Lớn" class="w-full bg-slate-800 border border-slate-700 text-white text-xs rounded-lg p-2.5 focus:ring-1 focus:ring-cyan-500 outline-none">
-                    </div>
+                <!-- 1. THƯƠNG HIỆU & NHẬN DIỆN CHÍNH SÁCH -->
+                <div class="bg-slate-950/50 p-4 rounded-xl border border-slate-800/80 space-y-3.5">
+                    <h4 class="text-xs font-bold text-cyan-400 uppercase tracking-wider flex items-center gap-1.5">
+                        <i class="fa-solid fa-copyright"></i> Thương hiệu & Nhận diện chính sách
+                    </h4>
 
-                    <div>
-                        <label class="block text-xs font-semibold text-slate-300 mb-1">Loại / Dòng máy <span class="text-rose-400">*</span></label>
-                        <input type="text" id="category" name="category" required placeholder="VD: Máy in Epson" class="w-full bg-slate-800 border border-slate-700 text-white text-xs rounded-lg p-2.5 focus:ring-1 focus:ring-cyan-500 outline-none">
-                    </div>
+                    <div class="grid grid-cols-1 sm:grid-cols-2 gap-3.5">
+                        <!-- Chọn Thương Hiệu -->
+                        <div>
+                            <label class="block text-[11px] font-medium text-slate-300 mb-1">
+                                Thương hiệu áp dụng <span class="text-rose-400">*</span>
+                            </label>
+                            <input type="text" id="brand_name" name="brand_name" list="brand_list" required placeholder="VD: Epson, Canon..." 
+                                oninput="autoSuggestPolicyName()"
+                                class="w-full h-10 bg-slate-900 border border-slate-700 text-white text-xs rounded-xl px-3 focus:ring-1 focus:ring-cyan-500 focus:border-cyan-500 outline-none transition-all">
+                            <datalist id="brand_list">
+                                <option value="Epson"></option>
+                                <option value="Canon"></option>
+                                <option value="HP"></option>
+                                <option value="Brother"></option>
+                                <option value="Graphtec"></option>
+                                {% for b in existing_brands %}
+                                    <option value="{{ b }}"></option>
+                                {% endfor %}
+                            </datalist>
+                            <p class="text-[9px] text-slate-500 mt-1 italic">Áp dụng cho mọi model thuộc hãng này.</p>
+                        </div>
 
-                    <div>
-                        <label class="block text-xs font-semibold text-slate-300 mb-1">Tình trạng máy <span class="text-rose-400">*</span></label>
-                        <select id="condition" name="condition" class="w-full bg-slate-800 border border-slate-700 text-white text-xs rounded-lg p-2.5 focus:ring-1 focus:ring-cyan-500 outline-none">
-                            <option value="Mới">Mới chính hãng</option>
-                            <option value="Đã qua sử dụng">Nội địa / Cũ</option>
-                        </select>
+                        <!-- Phân loại máy -->
+                        <div>
+                            <label class="block text-[11px] font-medium text-slate-300 mb-1">
+                                Phân loại thiết bị <span class="text-rose-400">*</span>
+                            </label>
+                            <select id="category" name="category" required onchange="autoSuggestPolicyName()"
+                                class="w-full h-10 bg-slate-900 border border-slate-700 text-white text-xs rounded-xl px-3 focus:ring-1 focus:ring-cyan-500 focus:border-cyan-500 outline-none cursor-pointer transition-all">
+                                {% for c in categories %}
+                                    <option value="{{ c }}">{{ c }}</option>
+                                {% endfor %}
+                            </select>
+                        </div>
+
+                        <!-- Tình trạng -->
+                        <div>
+                            <label class="block text-[11px] font-medium text-slate-300 mb-1">
+                                Tình trạng máy <span class="text-rose-400">*</span>
+                            </label>
+                            <select id="condition" name="condition" onchange="autoSuggestPolicyName()" 
+                                class="w-full h-10 bg-slate-900 border border-slate-700 text-white text-xs rounded-xl px-3 focus:ring-1 focus:ring-cyan-500 focus:border-cyan-500 outline-none cursor-pointer transition-all">
+                                <option value="Mới">Máy mới</option>
+                                <option value="Đã qua sử dụng">Đã qua sử dụng</option>
+                            </select>
+                        </div>
+
+                        <!-- Tên chính sách (Tự động sinh) -->
+                        <div>
+                            <label class="block text-[11px] font-medium text-slate-300 mb-1">
+                                Tên chính sách bảo hành <span class="text-rose-400">*</span>
+                            </label>
+                            <input type="text" id="policy_name" name="policy_name" required placeholder="VD: Bảo hành Epson In phun - Mới" 
+                                class="w-full h-10 bg-slate-950 border border-slate-700 text-cyan-300 font-semibold text-xs rounded-xl px-3 focus:ring-1 focus:ring-cyan-500 focus:border-cyan-500 outline-none transition-all">
+                        </div>
                     </div>
                 </div>
 
                 <!-- 2. THỜI HẠN BẢO HÀNH (THÁNG) -->
-                <div class="border-t border-slate-800/80 pt-4 space-y-3">
-                    <h4 class="text-xs font-bold text-cyan-400 uppercase tracking-wider"><i class="fa-solid fa-clock mr-1"></i> Thời hạn bảo hành (Tháng)</h4>
-                    <div class="grid grid-cols-1 sm:grid-cols-3 gap-4">
+                <div class="bg-slate-950/50 p-4 rounded-xl border border-slate-800/80 space-y-3">
+                    <h4 class="text-xs font-bold text-cyan-400 uppercase tracking-wider flex items-center gap-1.5">
+                        <i class="fa-solid fa-clock"></i> Thời hạn bảo hành (Tháng)
+                    </h4>
+                    <div class="grid grid-cols-1 sm:grid-cols-3 gap-3">
                         <div>
                             <label class="block text-[11px] font-medium text-slate-300 mb-1">Thân máy (tháng)</label>
-                            <input type="number" min="0" id="warranty_months" name="warranty_months" value="12" class="w-full bg-slate-800 border border-slate-700 text-white text-xs rounded-lg p-2.5 focus:ring-1 focus:ring-cyan-500 outline-none">
+                            <input type="number" min="0" id="warranty_months" name="warranty_months" value="12" required
+                                class="w-full h-10 bg-slate-900 border border-slate-700 text-white text-xs rounded-xl px-3 focus:ring-1 focus:ring-cyan-500 outline-none">
                         </div>
                         <div>
                             <label class="block text-[11px] font-medium text-slate-300 mb-1">Đầu phun (tháng)</label>
-                            <input type="number" min="0" id="head_warranty_months" name="head_warranty_months" value="1" class="w-full bg-slate-800 border border-slate-700 text-white text-xs rounded-lg p-2.5 focus:ring-1 focus:ring-cyan-500 outline-none">
+                            <input type="number" min="0" id="head_warranty_months" name="head_warranty_months" value="1" required
+                                class="w-full h-10 bg-slate-900 border border-slate-700 text-white text-xs rounded-xl px-3 focus:ring-1 focus:ring-cyan-500 outline-none">
                         </div>
                         <div>
                             <label class="block text-[11px] font-medium text-slate-300 mb-1">Hộp mực (tháng)</label>
-                            <input type="number" min="0" id="cartridge_warranty_months" name="cartridge_warranty_months" value="0" class="w-full bg-slate-800 border border-slate-700 text-white text-xs rounded-lg p-2.5 focus:ring-1 focus:ring-cyan-500 outline-none">
+                            <input type="number" min="0" id="cartridge_warranty_months" name="cartridge_warranty_months" value="0" required
+                                class="w-full h-10 bg-slate-900 border border-slate-700 text-white text-xs rounded-xl px-3 focus:ring-1 focus:ring-cyan-500 outline-none">
                         </div>
                     </div>
                 </div>
 
                 <!-- 3. GIỚI HẠN TRANG IN -->
-                <div class="border-t border-slate-800/80 pt-4 space-y-3">
+                <div class="bg-slate-950/50 p-4 rounded-xl border border-slate-800/80 space-y-3">
                     <div class="flex items-center justify-between">
-                        <h4 class="text-xs font-bold text-cyan-400 uppercase tracking-wider"><i class="fa-solid fa-file-lines mr-1"></i> Giới hạn Trang in</h4>
-                        <label class="flex items-center gap-2 cursor-pointer">
-                            <input type="checkbox" id="no_page_limit" name="no_page_limit" onchange="toggleLimitInputs()" class="w-4 h-4 rounded bg-slate-800 border-slate-700 text-cyan-500 focus:ring-0">
-                            <span class="text-xs font-medium text-slate-300">Không giới hạn trang in</span>
+                        <h4 class="text-xs font-bold text-cyan-400 uppercase tracking-wider flex items-center gap-1.5">
+                            <i class="fa-solid fa-file-lines"></i> Giới hạn Trang in
+                        </h4>
+                        <label class="flex items-center gap-2 cursor-pointer select-none">
+                            <input type="checkbox" id="no_page_limit" name="no_page_limit" onchange="toggleLimitInputs()" 
+                                class="w-4 h-4 rounded bg-slate-900 border-slate-700 text-cyan-500 focus:ring-0 cursor-pointer">
+                            <span class="text-xs font-medium text-slate-300">Không giới hạn</span>
                         </label>
                     </div>
-                    <div class="grid grid-cols-1 sm:grid-cols-2 gap-4">
+                    <div class="grid grid-cols-1 sm:grid-cols-2 gap-3">
                         <div class="page-limit-field">
                             <label class="block text-[11px] font-medium text-slate-300 mb-1">GH Trang - Thân máy</label>
-                            <input type="number" min="0" id="page_limit_body" name="page_limit_body" value="30000" class="w-full bg-slate-800 border border-slate-700 text-white text-xs rounded-lg p-2.5 focus:ring-1 focus:ring-cyan-500 outline-none">
+                            <input type="number" min="0" id="page_limit_body" name="page_limit_body" value="30000" 
+                                class="w-full h-10 bg-slate-900 border border-slate-700 text-white text-xs rounded-xl px-3 focus:ring-1 focus:ring-cyan-500 outline-none">
                         </div>
                         <div class="page-limit-field">
                             <label class="block text-[11px] font-medium text-slate-300 mb-1">GH Trang - Đầu phun</label>
-                            <input type="number" min="0" id="page_limit_head" name="page_limit_head" value="3000" class="w-full bg-slate-800 border border-slate-700 text-white text-xs rounded-lg p-2.5 focus:ring-1 focus:ring-cyan-500 outline-none">
+                            <input type="number" min="0" id="page_limit_head" name="page_limit_head" value="3000" 
+                                class="w-full h-10 bg-slate-900 border border-slate-700 text-white text-xs rounded-xl px-3 focus:ring-1 focus:ring-cyan-500 outline-none">
                         </div>
                     </div>
                 </div>
 
-                <!-- 4. GIỚI HẠN SỐ MÉT VUÔNG (M²) - MỚI BỔ SUNG -->
-                <div class="border-t border-slate-800/80 pt-4 space-y-3">
+                <!-- 4. GIỚI HẠN SỐ MÉT VUÔNG (M²) -->
+                <div class="bg-slate-950/50 p-4 rounded-xl border border-slate-800/80 space-y-3">
                     <div class="flex items-center justify-between">
-                        <h4 class="text-xs font-bold text-cyan-400 uppercase tracking-wider"><i class="fa-solid fa-ruler-horizontal mr-1"></i> Giới hạn Số mét vuông (m²)</h4>
-                        <label class="flex items-center gap-2 cursor-pointer">
-                            <input type="checkbox" id="no_meter_limit" name="no_meter_limit" onchange="toggleLimitInputs()" class="w-4 h-4 rounded bg-slate-800 border-slate-700 text-cyan-500 focus:ring-0">
-                            <span class="text-xs font-medium text-slate-300">Không giới hạn số mét</span>
+                        <h4 class="text-xs font-bold text-cyan-400 uppercase tracking-wider flex items-center gap-1.5">
+                            <i class="fa-solid fa-ruler-horizontal"></i> Giới hạn Số mét vuông (m²)
+                        </h4>
+                        <label class="flex items-center gap-2 cursor-pointer select-none">
+                            <input type="checkbox" id="no_meter_limit" name="no_meter_limit" onchange="toggleLimitInputs()" 
+                                class="w-4 h-4 rounded bg-slate-900 border-slate-700 text-cyan-500 focus:ring-0 cursor-pointer">
+                            <span class="text-xs font-medium text-slate-300">Không giới hạn</span>
                         </label>
                     </div>
-                    <div class="grid grid-cols-1 sm:grid-cols-2 gap-4">
+                    <div class="grid grid-cols-1 sm:grid-cols-2 gap-3">
                         <div class="meter-limit-field">
-                            <label class="block text-[11px] font-medium text-slate-300 mb-1">GH Mét vuông (m²) - Thân máy</label>
-                            <input type="number" min="0" id="meter_limit_body" name="meter_limit_body" value="0" class="w-full bg-slate-800 border border-slate-700 text-white text-xs rounded-lg p-2.5 focus:ring-1 focus:ring-cyan-500 outline-none">
+                            <label class="block text-[11px] font-medium text-slate-300 mb-1">GH Mét (m²) - Thân máy</label>
+                            <input type="number" min="0" id="meter_limit_body" name="meter_limit_body" value="0" 
+                                class="w-full h-10 bg-slate-900 border border-slate-700 text-white text-xs rounded-xl px-3 focus:ring-1 focus:ring-cyan-500 outline-none">
                         </div>
                         <div class="meter-limit-field">
-                            <label class="block text-[11px] font-medium text-slate-300 mb-1">GH Mét vuông (m²) - Đầu phun</label>
-                            <input type="number" min="0" id="meter_limit_head" name="meter_limit_head" value="0" class="w-full bg-slate-800 border border-slate-700 text-white text-xs rounded-lg p-2.5 focus:ring-1 focus:ring-cyan-500 outline-none">
+                            <label class="block text-[11px] font-medium text-slate-300 mb-1">GH Mét (m²) - Đầu phun</label>
+                            <input type="number" min="0" id="meter_limit_head" name="meter_limit_head" value="0" 
+                                class="w-full h-10 bg-slate-900 border border-slate-700 text-white text-xs rounded-xl px-3 focus:ring-1 focus:ring-cyan-500 outline-none">
                         </div>
                     </div>
                 </div>
 
-                <!-- KÍCH HOẠT -->
-                <div class="border-t border-slate-800/80 pt-3 flex items-center gap-2">
-                    <input type="checkbox" id="is_active" name="is_active" checked class="w-4 h-4 rounded bg-slate-800 border-slate-700 text-cyan-500 focus:ring-0">
-                    <label for="is_active" class="text-xs font-medium text-slate-200 cursor-pointer">Kích hoạt chính sách này</label>
-                </div>
-
-                <div class="pt-4 border-t border-slate-800 flex justify-end gap-2 shrink-0">
-                    <button type="button" onclick="closePolicyModal()" class="px-4 py-2 rounded-lg bg-slate-800 hover:bg-slate-700 text-slate-300 text-xs font-medium transition-all">Hủy</button>
-                    <button type="submit" class="px-4 py-2 rounded-lg bg-cyan-600 hover:bg-cyan-500 text-white text-xs font-medium transition-all">Lưu Chính Sách</button>
+                <!-- KÍCH HOẠT & BUTTONS -->
+                <div class="pt-4 border-t border-slate-800 flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4 shrink-0">
+                    <div class="flex items-center gap-2">
+                        <input type="checkbox" id="is_active" name="is_active" checked 
+                            class="w-4 h-4 rounded bg-slate-900 border-slate-700 text-cyan-500 focus:ring-0 cursor-pointer">
+                        <label for="is_active" class="text-xs font-medium text-slate-200 cursor-pointer select-none">
+                            Kích hoạt chính sách này
+                        </label>
+                    </div>
+                    
+                    <div class="flex items-center gap-2.5 w-full sm:w-auto">
+                        <button type="button" onclick="closePolicyModal()" 
+                            class="flex-1 sm:flex-none h-10 px-5 rounded-xl bg-slate-800 hover:bg-slate-700 text-slate-300 text-xs font-semibold transition-all cursor-pointer">
+                            Hủy
+                        </button>
+                        <button type="submit" 
+                            class="flex-1 sm:flex-none h-10 px-5 rounded-xl bg-cyan-600 hover:bg-cyan-500 text-white text-xs font-semibold transition-all cursor-pointer shadow-md shadow-cyan-900/30">
+                            Lưu Chính Sách
+                        </button>
+                    </div>
                 </div>
             </form>
         </div>
@@ -251,10 +415,17 @@
 
 {% block scripts %}
 <script>
+    // ==========================================
+    // 1. MODULE: MODAL THÊM CHÍNH SÁCH BẢO HÀNH
+    // ==========================================
+    
+    // Đóng/Mở Modal
     function openPolicyModal() {
         document.getElementById('policyForm').reset();
         document.getElementById('policy_id').value = '';
-        document.getElementById('modalTitle').innerHTML = '<i class="fa-solid fa-plus text-cyan-400"></i> Thêm Chính Sách Bảo Hành';
+        
+        // SỬA LỖI 2: Đồng bộ đúng ID policyModalTitle
+        document.getElementById('policyModalTitle').innerHTML = '<i class="fa-solid fa-plus text-cyan-400"></i> Thêm Chính Sách Bảo Hành';
         toggleLimitInputs();
         document.getElementById('policyModal').classList.remove('hidden');
     }
@@ -263,71 +434,67 @@
         document.getElementById('policyModal').classList.add('hidden');
     }
 
-    function editPolicy(p) {
-        document.getElementById('policy_id').value = p.id;
-        document.getElementById('policy_name').value = p.policy_name || '';
-        document.getElementById('category').value = p.category || '';
-        document.getElementById('condition').value = p.condition || 'Mới';
-        document.getElementById('warranty_months').value = p.warranty_months || 0;
-        document.getElementById('head_warranty_months').value = p.head_warranty_months || 0;
-        document.getElementById('cartridge_warranty_months').value = p.cartridge_warranty_months || 0;
+    // Tự động gợi ý tên chính sách khi người dùng nhập thông tin
+    function autoSuggestPolicyName() {
+        // Lấy giá trị từ các ô input. Nếu chưa nhập thì dùng giá trị mặc định.
+        const brand = document.getElementById('brand_name').value.trim();
+        const category = document.getElementById('category').value;
+        const condition = document.getElementById('condition').value;
+        const policyNameInput = document.getElementById('policy_name');
         
-        // Trang in
-        document.getElementById('page_limit_body').value = p.page_limit_body || 0;
-        document.getElementById('page_limit_head').value = p.page_limit_head || 0;
-        document.getElementById('no_page_limit').checked = p.no_page_limit || false;
-        
-        // Số mét (Bổ sung mới)
-        document.getElementById('meter_limit_body').value = p.meter_limit_body || 0;
-        document.getElementById('meter_limit_head').value = p.meter_limit_head || 0;
-        document.getElementById('no_meter_limit').checked = p.no_meter_limit || false;
-
-        document.getElementById('is_active').checked = p.is_active !== false;
-
-        document.getElementById('modalTitle').innerHTML = '<i class="fa-solid fa-pen-to-square text-cyan-400"></i> Chỉnh Sửa Chính Sách';
-        toggleLimitInputs();
-        document.getElementById('policyModal').classList.remove('hidden');
+        if (brand) {
+            // SỬA LỖI 3: Dùng dấu gạch nối, không dùng dấu xuống dòng (\n)
+            policyNameInput.value = `Bảo hành ${brand} ${category} - ${condition}`;
+        } else {
+            policyNameInput.value = ''; // Nếu chưa có hãng thì để trống tên chính sách
+        }
     }
 
-    // Bật/tắt các ô input tương ứng khi chọn "Không giới hạn"
+    // Bật/Tắt các ô giới hạn Trang/Mét
     function toggleLimitInputs() {
-        // Xử lý Trang in
         const noPageLimit = document.getElementById('no_page_limit').checked;
-        const pageFields = document.querySelectorAll('.page-limit-field input');
-        pageFields.forEach(el => {
+        document.querySelectorAll('.page-limit-field input').forEach(el => {
             el.disabled = noPageLimit;
             if (noPageLimit) el.classList.add('opacity-40', 'cursor-not-allowed');
             else el.classList.remove('opacity-40', 'cursor-not-allowed');
         });
 
-        // Xử lý Số mét
         const noMeterLimit = document.getElementById('no_meter_limit').checked;
-        const meterFields = document.querySelectorAll('.meter-limit-field input');
-        meterFields.forEach(el => {
+        document.querySelectorAll('.meter-limit-field input').forEach(el => {
             el.disabled = noMeterLimit;
             if (noMeterLimit) el.classList.add('opacity-40', 'cursor-not-allowed');
             else el.classList.remove('opacity-40', 'cursor-not-allowed');
         });
     }
 
+    // Gửi dữ liệu tạo/sửa chính sách lên Backend
     async function savePolicy(e) {
         e.preventDefault();
         const form = e.target;
+        
+        const brandNameVal = form.brand_name.value.trim();
+        if (!brandNameVal) {
+            alert('⚠️ Vui lòng nhập Thương hiệu áp dụng!');
+            form.brand_name.focus();
+            return;
+        }
+
+        // Payload gửi trực tiếp brand_name thay vì printer_id
         const payload = {
             id: form.id.value || null,
-            policy_name: form.policy_name.value,
-            category: form.category.value,
+            brand_name: brandNameVal,
+            category: form.category.value.trim(),
             condition: form.condition.value,
+            policy_name: form.policy_name.value.trim(),
+            
             warranty_months: parseInt(form.warranty_months.value) || 0,
             head_warranty_months: parseInt(form.head_warranty_months.value) || 0,
             cartridge_warranty_months: parseInt(form.cartridge_warranty_months.value) || 0,
             
-            // Trang in
             page_limit_body: parseInt(form.page_limit_body.value) || 0,
             page_limit_head: parseInt(form.page_limit_head.value) || 0,
             no_page_limit: form.no_page_limit.checked,
 
-            // Số mét (Bổ sung mới)
             meter_limit_body: parseInt(form.meter_limit_body.value) || 0,
             meter_limit_head: parseInt(form.meter_limit_head.value) || 0,
             no_meter_limit: form.no_meter_limit.checked,
@@ -335,21 +502,72 @@
             is_active: form.is_active.checked
         };
 
-        const res = await fetch('/admin/chinh-sach-bao-hanh/save', {
-            method: 'POST',
-            headers: { 'Content-Type': 'application/json' },
-            body: JSON.stringify(payload)
-        });
+        try {
+            const res = await fetch('/admin/chinh-sach-bao-hanh/save', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify(payload)
+            });
 
-        const data = await res.json();
-        if (data.success) {
-            window.location.reload();
-        } else {
-            alert('❌ Lỗi: ' + data.message);
+            const data = await res.json();
+            if (data.success) {
+                window.location.reload();
+            } else {
+                alert('❌ Lỗi: ' + data.message);
+            }
+        } catch (err) {
+            alert('❌ Lỗi kết nối máy chủ!');
         }
     }
 
-    // Xử lý bật/tắt trạng thái
+    // Đổ dữ liệu từ bảng vào Modal khi người dùng bấm Sửa
+    function editPolicy(p) {
+        document.getElementById('policy_id').value = p.id || '';
+        document.getElementById('policy_name').value = p.policy_name || '';
+        
+        // Điền Thương hiệu, Phân loại và Tình trạng
+        document.getElementById('brand_name').value = p.brand_name || '';
+        document.getElementById('category').value = p.category || '';
+        document.getElementById('condition').value = p.condition || 'Máy mới';
+        
+        document.getElementById('warranty_months').value = p.warranty_months || 0;
+        document.getElementById('head_warranty_months').value = p.head_warranty_months || 0;
+        document.getElementById('cartridge_warranty_months').value = p.cartridge_warranty_months || 0;
+        
+        document.getElementById('page_limit_body').value = p.page_limit_body || 0;
+        document.getElementById('page_limit_head').value = p.page_limit_head || 0;
+        document.getElementById('no_page_limit').checked = p.no_page_limit || false;
+        
+        document.getElementById('meter_limit_body').value = p.meter_limit_body || 0;
+        document.getElementById('meter_limit_head').value = p.meter_limit_head || 0;
+        document.getElementById('no_meter_limit').checked = p.no_meter_limit || false;
+
+        document.getElementById('is_active').checked = p.is_active !== false;
+
+        // SỬA LỖI 2: Đồng bộ đúng ID policyModalTitle
+        document.getElementById('policyModalTitle').innerHTML = '<i class="fa-solid fa-pen-to-square text-cyan-400"></i> Chỉnh Sửa Chính Sách';
+        toggleLimitInputs();
+        document.getElementById('policyModal').classList.remove('hidden');
+    }
+
+    // ==========================================
+    // 2. MODULE: THAO TÁC TRÊN BẢNG DỮ LIỆU
+    // ==========================================
+    
+    function filterTablePolicies() {
+        const query = document.getElementById('tableSearchInput').value.toLowerCase().trim();
+        const rows = document.querySelectorAll('#policyTableBody .policy-row');
+        
+        rows.forEach(row => {
+            const text = row.textContent.toLowerCase();
+            if (text.includes(query)) {
+                row.classList.remove('hidden');
+            } else {
+                row.classList.add('hidden');
+            }
+        });
+    }
+
     async function handleToggleStatus(btn) {
         const id = btn.getAttribute('data-id');
         const isCurrentActive = btn.getAttribute('data-active') === 'true';
@@ -360,7 +578,6 @@
         if (data.success) window.location.reload();
     }
 
-    // Xử lý mở Modal Sửa
     function handleEditClick(btn) {
         const rawJson = btn.getAttribute('data-policy');
         if (!rawJson) return;
@@ -368,7 +585,6 @@
         editPolicy(policy);
     }
 
-    // Xử lý Xóa
     async function handleDeleteClick(btn) {
         const id = btn.getAttribute('data-id');
         if (!confirm('Bạn có chắc chắn muốn xóa chính sách này?')) return;
@@ -376,6 +592,81 @@
         const data = await res.json();
         if (data.success) window.location.reload();
         else alert('❌ Lỗi: ' + data.message);
+    }
+
+    // ==========================================
+    // 3. MODULE: MODAL THÊM MÁY IN MỚI
+    // ==========================================
+    
+    function openPrinterModal() {
+        document.getElementById('printerForm').reset();
+        document.getElementById('printerModalTitle').innerHTML = '<i class="fa-solid fa-print text-emerald-400"></i> Thêm Dòng Máy In Mới';
+        document.getElementById('printerModal').classList.remove('hidden');
+    }
+
+    function closePrinterModal() {
+        document.getElementById('printerModal').classList.add('hidden');
+    }
+
+    async function savePrinter(e) {
+        e.preventDefault();
+        const form = e.target;
+        const btnSubmit = form.querySelector('button[type="submit"]');
+        
+        // Form the payload for the printer API
+        const payload = {
+            brand_name: document.getElementById('brand_name_printer').value.trim(),
+            model_code: form.model_code.value.trim().toUpperCase(),
+            category: form.category.value
+        };
+
+        if (!payload.brand_name || !payload.model_code) {
+            alert('⚠️ Vui lòng nhập đầy đủ Tên thương hiệu và Mã Model!');
+            return;
+        }
+
+        const originalBtnText = btnSubmit.innerHTML;
+        btnSubmit.innerHTML = '<i class="fa-solid fa-spinner fa-spin mr-1"></i> Đang lưu...';
+        btnSubmit.disabled = true;
+
+        try {
+            const res = await fetch('/warranty/api/danh-sach-may-in/save', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify(payload)
+            });
+
+            const data = await res.json();
+            
+            if (data.success) {
+                alert('✅ ' + data.message);
+                
+                const newPrinter = (data.data && data.data.length > 0) ? data.data[0] : null;
+
+                if (newPrinter) {
+                    closePrinterModal();
+                    
+                    // Tự động điền dữ liệu của máy in vừa tạo sang form Chính Sách
+                    document.getElementById('policyModal').classList.remove('hidden');
+                    document.getElementById('brand_name').value = newPrinter.brand_name;
+                    document.getElementById('category').value = newPrinter.category;
+                    
+                    // Gọi hàm tự động sinh tên chính sách
+                    autoSuggestPolicyName();
+                } else {
+                    window.location.reload();
+                }
+
+            } else {
+                alert('❌ ' + data.message);
+            }
+        } catch (err) {
+            console.error("Lỗi kết nối:", err);
+            alert('❌ Lỗi kết nối đến máy chủ khi lưu thiết bị!');
+        } finally {
+            btnSubmit.innerHTML = originalBtnText;
+            btnSubmit.disabled = false;
+        }
     }
 </script>
 {% endblock %}
