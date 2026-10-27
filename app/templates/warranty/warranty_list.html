@@ -19,6 +19,87 @@
         -moz-appearance: textfield;
         appearance: textfield;
     }
+
+    /* ---------- Gợi ý model máy in (live search) ---------- */
+    #modelSuggestPanel {
+        position: fixed;
+        z-index: 9999;
+        max-height: 288px;
+        overflow-y: auto;
+        padding: 4px;
+        font-size: 12px;
+        color: #e2e8f0;
+        background: #0b1220;
+        border: 1px solid #334155;
+        border-radius: 10px;
+        box-shadow: 0 12px 32px rgba(0, 0, 0, 0.55);
+        color-scheme: dark;
+    }
+    #modelSuggestPanel[hidden] { display: none; }
+    #modelSuggestPanel .ms-item {
+        display: flex;
+        align-items: center;
+        justify-content: space-between;
+        gap: 10px;
+        padding: 7px 10px;
+        border-radius: 7px;
+        cursor: pointer;
+    }
+    #modelSuggestPanel .ms-item.is-active { background: #164e63; color: #ffffff; }
+    #modelSuggestPanel .ms-name {
+        min-width: 0;
+        font-weight: 600;
+        white-space: nowrap;
+        overflow: hidden;
+        text-overflow: ellipsis;
+    }
+    #modelSuggestPanel .ms-name mark {
+        background: transparent;
+        color: #22d3ee;
+        font-weight: 800;
+    }
+    #modelSuggestPanel .ms-cat {
+        flex-shrink: 0;
+        padding: 1px 7px;
+        font-size: 10px;
+        color: #94a3b8;
+        background: #1e293b;
+        border: 1px solid #334155;
+        border-radius: 999px;
+    }
+    #modelSuggestPanel .ms-empty,
+    #modelSuggestPanel .ms-more { padding: 8px 10px; color: #94a3b8; }
+    #modelSuggestPanel .ms-add {
+        margin-top: 4px;
+        padding: 8px 10px;
+        font-weight: 600;
+        color: #34d399;
+        border-top: 1px solid #1e293b;
+        border-radius: 7px;
+        cursor: pointer;
+    }
+    #modelSuggestPanel .ms-add:hover { background: #064e3b; }
+
+    /* ---------- Dropdown của ô chọn: nền tối, chữ sáng, dễ nhìn ---------- */
+    select.row-policy,
+    select.row-condition,
+    select.row-ink-type { color-scheme: dark; }
+
+    select.row-policy option,
+    select.row-condition option,
+    select.row-ink-type option {
+        background-color: #0f172a;
+        color: #e2e8f0;
+        padding: 6px 8px;
+    }
+    select.row-policy option[value=""],
+    select.row-ink-type option[value=""] { color: #94a3b8; }
+    select.row-policy option:checked,
+    select.row-condition option:checked,
+    select.row-ink-type option:checked {
+        background-color: #155e75;
+        color: #ffffff;
+    }
 </style>
 {% endblock %}
 
@@ -622,25 +703,9 @@ function setBusy(btn, busy) {
 // 2. DỮ LIỆU MÁY IN
 // =========================================================
 function renderPrinterDatalist() {
-    let datalist = document.getElementById('printerList');
-    if (!datalist) {
-        datalist = document.createElement('datalist');
-        datalist.id = 'printerList';
-        document.body.appendChild(datalist);
-    }
-
-    const seen = new Set();
-    const frag = document.createDocumentFragment();
-    allPrinters.forEach(p => {
-        const value = printerFullName(p);
-        const key = normName(value);
-        if (!value || seen.has(key)) return;
-        seen.add(key);
-        const opt = document.createElement('option');
-        opt.value = value;
-        frag.appendChild(opt);
-    });
-    datalist.replaceChildren(frag);
+    // Không còn dùng <datalist> của trình duyệt (phải bấm 2 lần mới hiện); dùng panel gợi ý riêng
+    document.getElementById('printerList')?.remove();
+    if (suggestInput) renderSuggest();
 }
 
 function loadPrintersForInline(force = false) {
@@ -663,6 +728,311 @@ function loadPrintersForInline(force = false) {
 
     return printersPromise;
 }
+
+// =========================================================
+// 2B. GỢI Ý MODEL MÁY IN - LIVE SEARCH TỰ VIẾT
+// Thay cho <datalist> của trình duyệt: danh sách hiện ngay khi gõ,
+// lọc theo từng ký tự, không phân biệt hoa/thường và dấu tiếng Việt.
+// =========================================================
+const MODEL_SUGGEST_LIMIT = 40;
+
+let suggestPanel = null;     // phần tử danh sách (dùng chung cho mọi dòng)
+let suggestInput = null;     // ô model đang mở gợi ý
+let suggestItems = [];       // kết quả đang hiển thị
+let suggestActive = -1;      // mục đang được tô sáng
+let suggestLoading = false;
+let suggestIndexCache = { src: null, len: -1, rows: [] };
+
+const escHtml = s => String(s ?? '').replace(/[&<>"']/g, c => (
+    { '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[c]
+));
+
+// Chuẩn hóa để tìm kiếm: bỏ dấu, lower-case, ký tự đặc biệt thành khoảng trắng
+const searchNorm = s => String(s || '')
+    .normalize('NFD').replace(/[̀-ͯ]/g, '')
+    .replace(/đ/g, 'd').replace(/Đ/g, 'D')
+    .toLowerCase()
+    .replace(/[^a-z0-9]+/g, ' ')
+    .trim();
+
+// Bỏ datalist gốc của trình duyệt để không bị hai danh sách gợi ý chồng nhau
+function stripNativeDatalist(input) {
+    input.removeAttribute('list');
+    input.setAttribute('autocomplete', 'off');
+}
+
+function getSuggestIndex() {
+    if (suggestIndexCache.src !== allPrinters || suggestIndexCache.len !== allPrinters.length) {
+        const seen = new Set();
+        const rows = [];
+        allPrinters.forEach(p => {
+            const name = printerFullName(p);
+            const key = normName(name);
+            if (!name || seen.has(key)) return;
+            seen.add(key);
+            const s = searchNorm(name);
+            rows.push({ printer: p, name, s, c: s.replace(/ /g, ''), words: s.split(' ') });
+        });
+        rows.sort((a, b) => a.name.localeCompare(b.name, 'vi', { sensitivity: 'base' }));
+        suggestIndexCache = { src: allPrinters, len: allPrinters.length, rows };
+    }
+    return suggestIndexCache.rows;
+}
+
+// Điểm càng thấp càng khớp: 0 đúng hệt, 1 bắt đầu bằng, 2 mỗi từ khớp đầu từ,
+// 3 mỗi từ nằm trong tên, 4 khớp khi bỏ khoảng trắng (vd "ix 6770" ~ "ix6770")
+function searchPrinters(query) {
+    const rows = getSuggestIndex();
+    const q = searchNorm(query);
+    if (!q) return { items: rows.slice(0, MODEL_SUGGEST_LIMIT), total: rows.length };
+
+    const tokens = q.split(' ');
+    const compactQ = q.replace(/ /g, '');
+    const scored = [];
+    for (const r of rows) {
+        let score;
+        if (r.s === q) score = 0;
+        else if (r.s.startsWith(q)) score = 1;
+        else if (tokens.every(t => r.words.some(w => w.startsWith(t)))) score = 2;
+        else if (tokens.every(t => r.s.includes(t))) score = 3;
+        else if (r.c.includes(compactQ)) score = 4;
+        else continue;
+        scored.push({ score, row: r });
+    }
+    scored.sort((a, b) => a.score - b.score);   // sort ổn định: giữ thứ tự A-Z trong cùng điểm
+    return {
+        items: scored.slice(0, MODEL_SUGGEST_LIMIT).map(x => x.row),
+        total: scored.length
+    };
+}
+
+function highlightMatch(text, query) {
+    const tokens = String(query || '').trim().split(/\s+/).filter(Boolean)
+        .map(t => t.replace(/[.*+?^${}()|[\]\\]/g, '\\$&'));
+    if (!tokens.length) return escHtml(text);
+
+    const re = new RegExp(tokens.join('|'), 'gi');
+    let out = '';
+    let last = 0;
+    let m;
+    while ((m = re.exec(text)) !== null) {
+        if (m[0] === '') { re.lastIndex++; continue; }
+        out += escHtml(text.slice(last, m.index)) + '<mark>' + escHtml(m[0]) + '</mark>';
+        last = m.index + m[0].length;
+    }
+    return out + escHtml(text.slice(last));
+}
+
+function ensureSuggestPanel() {
+    if (suggestPanel) return suggestPanel;
+
+    const panel = document.createElement('div');
+    panel.id = 'modelSuggestPanel';
+    panel.setAttribute('role', 'listbox');
+    panel.hidden = true;
+
+    // Giữ focus ở ô nhập khi bấm vào danh sách: chỉ cần 1 lần bấm là chọn được
+    panel.addEventListener('mousedown', e => e.preventDefault());
+    panel.addEventListener('mouseover', e => {
+        const el = e.target.closest('[data-idx]');
+        if (el) setSuggestActive(Number(el.dataset.idx), false);
+    });
+    panel.addEventListener('click', e => {
+        const item = e.target.closest('[data-idx]');
+        if (item) { pickSuggest(Number(item.dataset.idx)); return; }
+        if (e.target.closest('[data-action="add-new"]')) addNewFromSuggest();
+    });
+
+    document.body.appendChild(panel);
+    suggestPanel = panel;
+    return panel;
+}
+
+function positionSuggest() {
+    if (!suggestInput || !suggestPanel || suggestPanel.hidden) return;
+    if (!document.body.contains(suggestInput)) { closeSuggest(); return; }
+
+    const r = suggestInput.getBoundingClientRect();
+    const width = Math.max(r.width, 340);
+    const left = Math.max(8, Math.min(r.left, window.innerWidth - width - 8));
+    suggestPanel.style.width = width + 'px';
+    suggestPanel.style.left = left + 'px';
+
+    // Đủ chỗ phía dưới thì mở xuống, không thì mở lên trên
+    const need = Math.min(suggestPanel.scrollHeight, 288) + 12;
+    const spaceBelow = window.innerHeight - r.bottom;
+    if (spaceBelow < need && r.top > spaceBelow) {
+        suggestPanel.style.top = 'auto';
+        suggestPanel.style.bottom = (window.innerHeight - r.top + 4) + 'px';
+    } else {
+        suggestPanel.style.bottom = 'auto';
+        suggestPanel.style.top = (r.bottom + 4) + 'px';
+    }
+}
+
+function setSuggestActive(i, scroll = true) {
+    suggestActive = i;
+    if (!suggestPanel) return;
+    suggestPanel.querySelectorAll('.ms-item').forEach((el, idx) => {
+        el.classList.toggle('is-active', idx === i);
+    });
+    if (scroll) suggestPanel.querySelector('.ms-item.is-active')?.scrollIntoView({ block: 'nearest' });
+}
+
+function renderSuggest() {
+    const input = suggestInput;
+    if (!input) return;
+    if (!document.body.contains(input)) { closeSuggest(); return; }
+
+    const panel = ensureSuggestPanel();
+    let html = '';
+
+    if (!isPrintersLoaded && !allPrinters.length) {
+        suggestItems = [];
+        suggestActive = -1;
+        html = suggestLoading
+            ? '<div class="ms-empty">Đang tải danh mục máy in...</div>'
+            : '<div class="ms-empty">Không tải được danh mục máy in, vui lòng tải lại trang.</div>';
+    } else {
+        const query = input.value;
+        const { items, total } = searchPrinters(query);
+        suggestItems = items;
+        suggestActive = items.length ? 0 : -1;
+
+        html = items.map((r, i) => {
+            const cat = r.printer.category ? `<span class="ms-cat">${escHtml(r.printer.category)}</span>` : '';
+            return `<div class="ms-item${i === suggestActive ? ' is-active' : ''}" role="option" data-idx="${i}">`
+                + `<span class="ms-name">${highlightMatch(r.name, query)}</span>${cat}</div>`;
+        }).join('');
+
+        if (!items.length) {
+            html += '<div class="ms-empty">Không có model nào khớp</div>';
+        } else if (total > items.length) {
+            html += `<div class="ms-more">Còn ${total - items.length} kết quả khác, gõ thêm để thu hẹp</div>`;
+        }
+
+        // Có model khớp đúng hệt thì không cần gợi ý thêm mới
+        const text = query.trim();
+        const hasExact = items.length && items[0].s === searchNorm(query);
+        if (text && !hasExact) {
+            html += `<div class="ms-add" data-action="add-new">+ Thêm "<b>${escHtml(text)}</b>" vào danh mục</div>`;
+        }
+    }
+
+    panel.innerHTML = html;
+    panel.hidden = false;
+    panel.scrollTop = 0;
+    positionSuggest();
+}
+
+function openSuggest(input) {
+    if (!input || input.disabled || input.readOnly) return;
+    suggestInput = input;
+
+    if (!isPrintersLoaded) {
+        suggestLoading = true;
+        loadPrintersForInline().finally(() => {
+            suggestLoading = false;
+            if (suggestInput === input) renderSuggest();
+        });
+    }
+    renderSuggest();
+}
+
+function closeSuggest() {
+    suggestInput = null;
+    suggestItems = [];
+    suggestActive = -1;
+    if (suggestPanel) suggestPanel.hidden = true;
+}
+
+function pickSuggest(idx) {
+    const input = suggestInput;
+    const row = suggestItems[idx];
+    if (!input || !row) return;
+
+    input.value = row.name;
+    input.classList.remove('border-red-500');
+    closeSuggest();
+    onInlineModelChange(input);   // điền danh mục + lọc gói bảo hành
+}
+
+// Model chưa có trong danh mục: mở modal thêm máy in, điền sẵn hãng/model đã đoán
+function addNewFromSuggest() {
+    const input = suggestInput;
+    if (!input) return;
+    closeSuggest();
+    onInlineModelChange(input);
+    openPrinterModal(input, {
+        brand: input.getAttribute('data-brand') || '',
+        model: input.getAttribute('data-model') || ''
+    });
+}
+
+// ---- Sự kiện (gắn một lần trên document, dùng được cho cả dòng thêm mới và dòng tải lại) ----
+document.addEventListener('focusin', e => {
+    const input = e.target.closest?.('.row-model-input');
+    if (!input) return;
+    stripNativeDatalist(input);
+    openSuggest(input);
+});
+
+document.addEventListener('click', e => {
+    const input = e.target.closest?.('.row-model-input');
+    if (input && suggestInput !== input) {
+        stripNativeDatalist(input);
+        openSuggest(input);
+    }
+});
+
+document.addEventListener('input', e => {
+    const input = e.target.closest?.('.row-model-input');
+    if (input) openSuggest(input);
+});
+
+document.addEventListener('focusout', e => {
+    if (suggestInput && e.target === suggestInput) closeSuggest();
+});
+
+document.addEventListener('keydown', e => {
+    if (e.isComposing) return;
+    const input = e.target.closest?.('.row-model-input');
+    if (!input) return;
+
+    const isOpen = suggestPanel && !suggestPanel.hidden && input === suggestInput;
+    if (!isOpen) {
+        if (e.key === 'ArrowDown') { e.preventDefault(); openSuggest(input); }
+        return;
+    }
+
+    const n = suggestItems.length;
+    switch (e.key) {
+        case 'ArrowDown':
+            e.preventDefault();
+            if (n) setSuggestActive((suggestActive + 1) % n);
+            break;
+        case 'ArrowUp':
+            e.preventDefault();
+            if (n) setSuggestActive((suggestActive - 1 + n) % n);
+            break;
+        case 'Enter':
+            if (n && suggestActive >= 0) { e.preventDefault(); pickSuggest(suggestActive); }
+            break;
+        case 'Escape':
+            e.preventDefault();
+            closeSuggest();
+            break;
+        case 'Tab':
+            closeSuggest();
+            break;
+    }
+});
+
+window.addEventListener('resize', positionSuggest);
+window.addEventListener('scroll', e => {
+    if (suggestPanel && e.target === suggestPanel) return;
+    positionSuggest();
+}, true);
 
 // =========================================================
 // 3. BỘ LỌC CHÍNH SÁCH BẢO HÀNH THEO MODEL / TÌNH TRẠNG
@@ -864,6 +1234,7 @@ async function addInlineRow() {
     if (!tbody || !template) return;
 
     const clone = template.content.cloneNode(true);
+    clone.querySelectorAll('.row-model-input').forEach(stripNativeDatalist);
     // Ngày theo giờ máy người dùng (toISOString dùng UTC nên có thể lệch 1 ngày)
     clone.querySelector('.row-date').value = new Date().toLocaleDateString('en-CA');
 
@@ -1236,6 +1607,7 @@ async function confirmDelete(warrantyId, identifier) {
 // =========================================================
 document.addEventListener('DOMContentLoaded', () => {
     loadPrintersForInline();
+    document.querySelectorAll('.row-model-input').forEach(stripNativeDatalist);
 
     const searchInput = document.getElementById('searchInput');
     const searchSpinner = document.getElementById('searchSpinner');
@@ -1296,11 +1668,16 @@ document.addEventListener('DOMContentLoaded', () => {
 // =========================================================
 // 8. MODAL THÊM MÁY IN MỚI
 // =========================================================
-function openPrinterModal(btn) {
+function openPrinterModal(btn, prefill) {
     const tr = btn ? btn.closest('tr') : null;
     currentActiveModelInput = tr ? tr.querySelector('.row-model-input') : null;
 
-    document.getElementById('printerForm').reset();
+    const printerForm = document.getElementById('printerForm');
+    printerForm.reset();
+    if (prefill) {
+        if (printerForm.brand_name) printerForm.brand_name.value = prefill.brand || '';
+        if (printerForm.model_code) printerForm.model_code.value = (prefill.model || '').toUpperCase();
+    }
     document.getElementById('printerModalTitle').innerHTML =
         '<i class="fa-solid fa-print text-emerald-400"></i> Thêm Dòng Máy In Mới';
     document.getElementById('printerModal').classList.remove('hidden');
