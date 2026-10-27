@@ -556,17 +556,26 @@
 </script>
 
 <script>
-const allPolicies = JSON.parse(document.getElementById('policies-data').textContent || '[]');
+// =========================================================
+// 0. TRẠNG THÁI TOÀN CỤC
+// =========================================================
+const allPolicies = (() => {
+    try { return JSON.parse(document.getElementById('policies-data').textContent || '[]'); }
+    catch (e) { console.error('Không đọc được danh sách gói bảo hành:', e); return []; }
+})();
+
 let allPrinters = [];
 let isPrintersLoaded = false;
+let printersPromise = null;              // Dùng chung để nhiều dòng không tải trùng
 const originalRowData = {};
 
-// Biến lưu trữ input model đang thao tác để tự điền sau khi tạo mới máy in từ Modal
+// Input model đang thao tác, để tự điền sau khi tạo máy in mới từ Modal
 let currentActiveModelInput = null;
 
 // =========================================================
-// HÀM CHUẨN HÓA CHUỖI TOÀN CỤC (Bỏ dấu, lower-case, xóa ký tự đặc biệt)
+// 1. HÀM TIỆN ÍCH
 // =========================================================
+// Bỏ dấu, lower-case, xóa ký tự đặc biệt (dùng để so khớp hãng/danh mục/tình trạng)
 function normalizeString(str) {
     if (!str) return '';
     return String(str)
@@ -580,47 +589,96 @@ function normalizeString(str) {
 }
 
 function simplifyCondition(condStr) {
-    const norm = normalizeString(condStr);
-    return norm.replace(/^may/, ''); 
+    return normalizeString(condStr).replace(/^may/, '');
 }
 
-// ==========================================
-// 1. DỮ LIỆU MÁY IN & BỘ LỌC CHÍNH SÁCH BẢO HÀNH
-// ==========================================
+// So khớp tên máy in: giữ khoảng trắng đơn, không phân biệt hoa thường
+const normName = s => String(s || '').toLowerCase().replace(/\s+/g, ' ').trim();
+const printerFullName = p => `${p.brand_name || ''} ${p.model_code || ''}`.trim();
 
-async function loadPrintersForInline() {
-    if (isPrintersLoaded) return;
-    try {
-        const res = await fetch('/warranty/api/danh-sach-may-in/options');
-        const json = await res.json();
-        if (json.status === 'success' || json.data) {
+// Kiểm tra phản hồi API thống nhất cho mọi hàm
+const isApiOk = (res, json) => res.ok && !!json && (json.success === true || json.status === 'success');
+
+async function postJson(url, body, method = 'POST') {
+    const res = await fetch(url, {
+        method,
+        headers: { 'Content-Type': 'application/json' },
+        body: body !== undefined ? JSON.stringify(body) : undefined
+    });
+    let json = {};
+    try { json = await res.json(); } catch (_) { /* phản hồi không phải JSON */ }
+    return { res, json };
+}
+
+// Khóa/mở nút trong lúc chờ API để tránh bấm đúp
+function setBusy(btn, busy) {
+    if (!btn) return;
+    btn.disabled = busy;
+    btn.classList.toggle('opacity-60', busy);
+    btn.classList.toggle('cursor-not-allowed', busy);
+}
+
+// =========================================================
+// 2. DỮ LIỆU MÁY IN
+// =========================================================
+function renderPrinterDatalist() {
+    let datalist = document.getElementById('printerList');
+    if (!datalist) {
+        datalist = document.createElement('datalist');
+        datalist.id = 'printerList';
+        document.body.appendChild(datalist);
+    }
+
+    const seen = new Set();
+    const frag = document.createDocumentFragment();
+    allPrinters.forEach(p => {
+        const value = printerFullName(p);
+        const key = normName(value);
+        if (!value || seen.has(key)) return;
+        seen.add(key);
+        const opt = document.createElement('option');
+        opt.value = value;
+        frag.appendChild(opt);
+    });
+    datalist.replaceChildren(frag);
+}
+
+function loadPrintersForInline(force = false) {
+    if (force) printersPromise = null;
+    if (printersPromise) return printersPromise;
+
+    printersPromise = (async () => {
+        try {
+            const res = await fetch('/warranty/api/danh-sach-may-in/options');
+            if (!res.ok) throw new Error(`HTTP ${res.status}`);
+            const json = await res.json();
             allPrinters = json.raw_items || json.data || [];
             isPrintersLoaded = true;
-
-            let datalist = document.getElementById('printerList');
-            if (!datalist) {
-                datalist = document.createElement('datalist');
-                datalist.id = 'printerList';
-                document.body.appendChild(datalist);
-            }
-            datalist.innerHTML = '';
-            
-            allPrinters.forEach(p => {
-                const opt = document.createElement('option');
-                opt.value = `${p.brand_name} ${p.model_code}`;
-                datalist.appendChild(opt);
-            });
+            renderPrinterDatalist();
+        } catch (err) {
+            console.error('Lỗi tải danh mục máy in:', err);
+            printersPromise = null;   // cho phép thử lại lần sau
         }
-    } catch (err) {
-        console.error("Lỗi tải danh mục máy in:", err);
-    }
+    })();
+
+    return printersPromise;
 }
 
+// =========================================================
+// 3. BỘ LỌC CHÍNH SÁCH BẢO HÀNH THEO MODEL / TÌNH TRẠNG
+// =========================================================
 function onInlineModelChange(inputEl) {
     const tr = inputEl.closest('tr');
+    if (!tr) return;
+
     const categoryInput = tr.querySelector('.row-category');
-    const rawVal = inputEl.value.trim();
-    const cleanVal = rawVal.toLowerCase().replace(/\s+/g, ' ');
+    const rawVal = inputEl.value.trim().replace(/\s+/g, ' ');
+    const cleanVal = normName(rawVal);
+
+    const setMeta = (brand, model) => {
+        inputEl.setAttribute('data-brand', brand);
+        inputEl.setAttribute('data-model', model);
+    };
 
     if (!cleanVal) {
         if (categoryInput) categoryInput.value = '';
@@ -629,39 +687,60 @@ function onInlineModelChange(inputEl) {
         filterInlinePolicies(tr);
         return;
     }
-    
-    const matchedPrinter = allPrinters.find(p => {
-        const fullName = `${p.brand_name} ${p.model_code}`.toLowerCase().replace(/\s+/g, ' ');
-        return fullName === cleanVal;
-    });
 
-    if (matchedPrinter) {
-        inputEl.setAttribute('data-brand', (matchedPrinter.brand_name || '').trim());
-        inputEl.setAttribute('data-model', (matchedPrinter.model_code || '').trim());
-        if (categoryInput) categoryInput.value = matchedPrinter.category || 'In phun';
+    const matched = allPrinters.find(p => normName(printerFullName(p)) === cleanVal);
+
+    if (matched) {
+        setMeta((matched.brand_name || '').trim(), (matched.model_code || '').trim());
+        if (categoryInput) categoryInput.value = matched.category || '';
     } else {
-        const firstSpaceIdx = rawVal.indexOf(' ');
-        if (firstSpaceIdx > 0) {
-            inputEl.setAttribute('data-brand', rawVal.substring(0, firstSpaceIdx).trim());
-            inputEl.setAttribute('data-model', rawVal.substring(firstSpaceIdx + 1).trim());
+        // Máy chưa có trong danh mục: xóa danh mục cũ, đoán hãng/model
+        if (categoryInput) categoryInput.value = '';
+
+        // Ưu tiên hãng đã biết (hãng dài trước) để hãng nhiều từ không bị cắt sai
+        const brands = [...new Set(allPrinters.map(p => (p.brand_name || '').trim()).filter(Boolean))]
+            .sort((a, b) => b.length - a.length);
+        const knownBrand = brands.find(b => cleanVal.startsWith(normName(b) + ' '));
+
+        if (knownBrand) {
+            setMeta(knownBrand, rawVal.substring(knownBrand.length).trim());
         } else {
-            inputEl.setAttribute('data-brand', rawVal);
-            inputEl.setAttribute('data-model', rawVal);
+            const i = rawVal.indexOf(' ');
+            if (i > 0) setMeta(rawVal.substring(0, i), rawVal.substring(i + 1).trim());
+            else setMeta(rawVal, '');
         }
     }
-    
+
     filterInlinePolicies(tr);
 }
 
 function onInlineConditionChange(selectEl) {
     const tr = selectEl.closest('tr');
     selectEl.classList.remove('text-amber-400', 'text-emerald-400');
-    if (selectEl.value === 'Đã qua sử dụng' || selectEl.value === 'Like new') {
-        selectEl.classList.add('text-amber-400');
-    } else {
-        selectEl.classList.add('text-emerald-400');
-    }
-    filterInlinePolicies(tr);
+    if (selectEl.value === 'Đã qua sử dụng') selectEl.classList.add('text-amber-400');
+    else selectEl.classList.add('text-emerald-400');
+    if (tr) filterInlinePolicies(tr);
+}
+
+function buildPolicyOption(p) {
+    const opt = document.createElement('option');
+    opt.value = p.policy_name;
+    opt.textContent = `${p.policy_name} (${p.warranty_months ?? 0}T - ${p.head_warranty_months ?? 0}T)`;
+
+    const hasPage = p.no_page_limit !== true && ((p.page_limit_body || 0) > 0 || (p.page_limit_head || 0) > 0);
+    const hasMeter = p.no_meter_limit !== true && ((p.meter_limit_body || 0) > 0 || (p.meter_limit_head || 0) > 0);
+
+    opt.setAttribute('data-has-page', hasPage ? 'true' : 'false');
+    opt.setAttribute('data-has-meter', hasMeter ? 'true' : 'false');
+    return opt;
+}
+
+// Đảm bảo gói đã lưu vẫn chọn được dù đã bị tắt hoặc không còn khớp bộ lọc
+function ensurePolicyOption(select, name) {
+    if (!select || !name) return;
+    if (Array.from(select.options).some(o => o.value === name)) return;
+    const p = allPolicies.find(x => x.policy_name === name);
+    select.appendChild(p ? buildPolicyOption(p) : new Option(name, name));
 }
 
 function filterInlinePolicies(tr) {
@@ -669,52 +748,52 @@ function filterInlinePolicies(tr) {
     const conditionSelect = tr.querySelector('.row-condition');
     const modelInput = tr.querySelector('.row-model-input');
     const policySelect = tr.querySelector('.row-policy');
-
     if (!policySelect) return;
 
     const category = categoryInput ? categoryInput.value.trim() : (tr.getAttribute('data-category') || '');
     const condition = conditionSelect ? conditionSelect.value.trim() : (tr.getAttribute('data-condition') || 'Máy mới');
     const brand = (modelInput ? modelInput.getAttribute('data-brand') : '') || tr.getAttribute('data-brand') || '';
-    
-    const targetBrandNorm = normalizeString(brand);
-    const savedPolicyVal = policySelect.value; 
 
-    policySelect.innerHTML = '<option value="">-- Chọn Gói Bảo Hành --</option>';
+    const targetBrandNorm = normalizeString(brand);
+    // Nhớ gói đã chọn gần nhất để khôi phục khi người dùng sửa model rồi gõ lại cho khớp
+    const savedPolicyVal = policySelect.value || policySelect.dataset.lastPolicy || '';
 
     if (!category || !targetBrandNorm) {
-        policySelect.innerHTML = '<option value="">-- Chờ chọn Model thiết bị --</option>';
+        const hasModelText = !!(modelInput && modelInput.value.trim());
+        policySelect.innerHTML = hasModelText
+            ? '<option value="">-- Máy chưa có trong danh mục, bấm "Thêm" --</option>'
+            : '<option value="">-- Chờ chọn Model thiết bị --</option>';
         policySelect.disabled = true;
         onInlinePolicyChange(policySelect);
         return;
     }
 
     policySelect.disabled = false;
+    policySelect.innerHTML = '<option value="">-- Chọn Gói Bảo Hành --</option>';
 
     const inputCategoryNorm = normalizeString(category);
     const inputCondClean = simplifyCondition(condition);
-    
+
     const matchedPolicies = allPolicies.filter(p => {
         const pBrandNorm = normalizeString(p.brand_name);
         const pCategoryNorm = normalizeString(p.category);
         const pCondClean = simplifyCondition(p.condition);
 
         const isMatchBrand = (
-            !pBrandNorm || 
+            !pBrandNorm ||
             pBrandNorm === targetBrandNorm ||
-            pBrandNorm === 'tatca' || 
-            pBrandNorm === 'all' || 
+            pBrandNorm === 'tatca' ||
+            pBrandNorm === 'all' ||
             pBrandNorm === 'khac' ||
             pBrandNorm.includes(targetBrandNorm) ||
             targetBrandNorm.includes(pBrandNorm)
         );
-
         const isMatchCategory = (
             !pCategoryNorm ||
-            pCategoryNorm === inputCategoryNorm || 
-            pCategoryNorm === 'tatca' || 
+            pCategoryNorm === inputCategoryNorm ||
+            pCategoryNorm === 'tatca' ||
             pCategoryNorm === 'all'
         );
-
         const isMatchCondition = (
             !pCondClean ||
             pCondClean === inputCondClean ||
@@ -728,19 +807,7 @@ function filterInlinePolicies(tr) {
     if (matchedPolicies.length === 0) {
         policySelect.innerHTML = '<option value="">-- Không có gói phù hợp --</option>';
     } else {
-        matchedPolicies.forEach(p => {
-            const opt = document.createElement('option');
-            opt.value = p.policy_name;
-            opt.textContent = `${p.policy_name} (${p.warranty_months}T - ${p.head_warranty_months}T)`;
-            
-            const hasPage = p.no_page_limit !== true && ((p.page_limit_body || 0) > 0 || (p.page_limit_head || 0) > 0);
-            const hasMeter = p.no_meter_limit !== true && ((p.meter_limit_body || 0) > 0 || (p.meter_limit_head || 0) > 0);
-            
-            opt.setAttribute('data-has-page', hasPage ? 'true' : 'false');
-            opt.setAttribute('data-has-meter', hasMeter ? 'true' : 'false');
-            policySelect.appendChild(opt);
-        });
-
+        matchedPolicies.forEach(p => policySelect.appendChild(buildPolicyOption(p)));
         if (savedPolicyVal && Array.from(policySelect.options).some(o => o.value === savedPolicyVal)) {
             policySelect.value = savedPolicyVal;
         }
@@ -749,17 +816,20 @@ function filterInlinePolicies(tr) {
 }
 
 function onInlinePolicyChange(selectEl) {
+    if (selectEl && selectEl.value) selectEl.dataset.lastPolicy = selectEl.value;
+
     const tr = selectEl.closest('tr');
+    if (!tr) return;
     const counterInput = tr.querySelector('.row-counter');
     const unitLabel = tr.querySelector('.row-counter-unit');
     if (!counterInput || !unitLabel) return;
 
     const opt = selectEl.options[selectEl.selectedIndex];
-    
+
     if (!opt || !opt.value || opt.value === 'NULL') {
         counterInput.disabled = true;
-        unitLabel.textContent = "#";
-        unitLabel.className = "row-counter-unit text-[11px] text-slate-500 font-bold shrink-0 mr-1 select-none";
+        unitLabel.textContent = '#';
+        unitLabel.className = 'row-counter-unit text-[11px] text-slate-500 font-bold shrink-0 mr-1 select-none';
         return;
     }
 
@@ -768,40 +838,41 @@ function onInlinePolicyChange(selectEl) {
 
     if (hasMeter) {
         counterInput.disabled = false;
-        unitLabel.textContent = "m";
-        unitLabel.className = "row-counter-unit text-[11px] text-amber-400 font-bold shrink-0 mr-1 select-none";
+        unitLabel.textContent = 'm';
+        unitLabel.className = 'row-counter-unit text-[11px] text-amber-400 font-bold shrink-0 mr-1 select-none';
     } else if (hasPage) {
         counterInput.disabled = false;
-        unitLabel.textContent = "#";
-        unitLabel.className = "row-counter-unit text-[11px] text-sky-400 font-bold shrink-0 mr-1 select-none";
+        unitLabel.textContent = '#';
+        unitLabel.className = 'row-counter-unit text-[11px] text-sky-400 font-bold shrink-0 mr-1 select-none';
     } else {
         counterInput.disabled = true;
-        unitLabel.textContent = "-";
-        unitLabel.className = "row-counter-unit text-[11px] text-slate-500 font-bold shrink-0 mr-1 select-none";
+        unitLabel.textContent = '-';
+        unitLabel.className = 'row-counter-unit text-[11px] text-slate-500 font-bold shrink-0 mr-1 select-none';
     }
 }
 
-// ==========================================
-// 2. THÊM HÀNG MỚI & TRÍCH XUẤT DỮ LIỆU LƯU
-// ==========================================
+// =========================================================
+// 4. THÊM HÀNG MỚI & TRÍCH XUẤT DỮ LIỆU LƯU
+// =========================================================
 async function addInlineRow() {
     await loadPrintersForInline();
 
-    const emptyRow = document.getElementById('emptyRow');
-    if (emptyRow) emptyRow.remove();
+    document.getElementById('emptyRow')?.remove();
 
     const tbody = document.getElementById('warrantyTbody');
     const template = document.getElementById('inlineRowTemplate');
-    const clone = template.content.cloneNode(true);
+    if (!tbody || !template) return;
 
-    clone.querySelector('.row-date').value = new Date().toISOString().split('T')[0];
+    const clone = template.content.cloneNode(true);
+    // Ngày theo giờ máy người dùng (toISOString dùng UTC nên có thể lệch 1 ngày)
+    clone.querySelector('.row-date').value = new Date().toLocaleDateString('en-CA');
 
     tbody.insertBefore(clone, tbody.firstChild);
     updateBatchCount();
 }
 
 function removeInlineRow(btn) {
-    btn.closest('tr').remove();
+    btn.closest('tr')?.remove();
     updateBatchCount();
 }
 
@@ -809,33 +880,34 @@ function updateBatchCount() {
     const count = document.querySelectorAll('.new-inline-row').length;
     const btnBatch = document.getElementById('btnSaveBatch');
     const countSpan = document.getElementById('newRowCount');
-    
+
     if (countSpan) countSpan.innerText = count;
-    if (btnBatch) {
-        if (count > 0) btnBatch.classList.remove('hidden');
-        else btnBatch.classList.add('hidden');
-    }
+    if (btnBatch) btnBatch.classList.toggle('hidden', count === 0);
 }
 
+// Trả về payload hợp lệ, hoặc null (đồng thời tô đỏ mọi ô sai)
 function extractRowData(tr) {
     const snInput = tr.querySelector('.row-sn');
     const customerInput = tr.querySelector('.row-customer');
     const phoneInput = tr.querySelector('.row-phone');
     const modelInput = tr.querySelector('.row-model-input');
+    const policySelect = tr.querySelector('.row-policy');
+    const inkTypeSelect = tr.querySelector('.row-ink-type');
+    const counterInput = tr.querySelector('.row-counter');
 
     const snVal = snInput ? snInput.value.trim().toUpperCase() : '';
     const customerVal = customerInput ? customerInput.value.trim() : '';
     const phoneVal = phoneInput ? phoneInput.value.trim().replace(/\s+/g, '') : '';
-    
-    const policyVal = tr.querySelector('.row-policy')?.value;
+
+    const policyVal = policySelect?.value;
     const categoryVal = tr.querySelector('.row-category')?.value || tr.getAttribute('data-category') || '';
     const conditionVal = tr.querySelector('.row-condition')?.value || tr.getAttribute('data-condition') || 'Máy mới';
-    
-    const inkTypeSelect = tr.querySelector('.row-ink-type');
     const inkTypeVal = inkTypeSelect ? inkTypeSelect.value.trim() : (tr.getAttribute('data-ink-type') || '');
-    
-    const counterVal = parseInt(tr.querySelector('.row-counter')?.value || 0, 10);
     const dateVal = tr.querySelector('.row-date')?.value;
+
+    // Ô counter bị khóa (gói không giới hạn) thì không gửi giá trị cũ
+    let counterVal = (counterInput && !counterInput.disabled) ? parseInt(counterInput.value, 10) : 0;
+    if (!Number.isFinite(counterVal) || counterVal < 0) counterVal = 0;
 
     let brandVal = modelInput ? modelInput.getAttribute('data-brand') : tr.getAttribute('data-brand');
     let modelVal = modelInput ? modelInput.getAttribute('data-model') : tr.getAttribute('data-model');
@@ -849,16 +921,13 @@ function extractRowData(tr) {
     let isValid = true;
 
     if (!snVal) { isValid = false; if (snInput) validateSerialInput(snInput); }
-    if (!customerVal) { isValid = false; if (customerInput) customerInput.classList.add('border-red-500'); }
-    if (!policyVal || policyVal === 'NULL') { isValid = false; tr.querySelector('.row-policy')?.classList.add('border-red-500'); }
-    if (!brandVal || !modelVal) { isValid = false; if (modelInput) modelInput.classList.add('border-red-500'); }
-    if (!inkTypeVal) { isValid = false; if (inkTypeSelect) inkTypeSelect.classList.add('border-red-500'); }
-    
+    if (!customerVal) { isValid = false; customerInput?.classList.add('border-red-500'); }
+    if (!policyVal || policyVal === 'NULL') { isValid = false; policySelect?.classList.add('border-red-500'); }
+    if (!brandVal || !modelVal) { isValid = false; modelInput?.classList.add('border-red-500'); }
+    if (!inkTypeVal) { isValid = false; inkTypeSelect?.classList.add('border-red-500'); }
+
     const isPhoneValid = /^\d+$/.test(phoneVal) && phoneVal.length >= 9 && phoneVal.length <= 11;
-    if (!phoneVal || !isPhoneValid) {
-        isValid = false;
-        if (phoneInput) phoneInput.classList.add('border-red-500');
-    }
+    if (!phoneVal || !isPhoneValid) { isValid = false; phoneInput?.classList.add('border-red-500'); }
 
     if (!isValid) return null;
 
@@ -883,75 +952,78 @@ async function saveSingleRow(btn) {
     const payload = extractRowData(tr);
 
     if (!payload) {
-        alert("⚠️ Vui lòng điền đầy đủ và đúng định dạng các ô yêu cầu!");
+        alert('⚠️ Vui lòng điền đầy đủ và đúng định dạng các ô yêu cầu!');
         return;
     }
 
+    setBusy(btn, true);
     try {
-        const res = await fetch('/warranty/api/batch-create', {
-            method: 'POST',
-            headers: { 'Content-Type': 'application/json' },
-            body: JSON.stringify({ items: [payload] })
-        });
-        const result = await res.json();
-
-        // Fix: Đồng bộ hóa logic check API
-        if (res.ok && (result.success || result.status === 'success')) window.location.reload();
-        else alert("❌ Lỗi: " + (result.message || result.detail || "Không thể lưu phiếu"));
+        const { res, json } = await postJson('/warranty/api/batch-create', { items: [payload] });
+        if (isApiOk(res, json)) {
+            window.location.reload();
+            return;
+        }
+        alert('❌ Lỗi: ' + (json.message || json.detail || 'Không thể lưu phiếu'));
     } catch (err) {
-        alert("❌ Lỗi kết nối máy chủ: " + err.message);
+        alert('❌ Lỗi kết nối máy chủ: ' + err.message);
     }
+    setBusy(btn, false);
 }
 
 async function saveBatchRows() {
     const rows = document.querySelectorAll('.new-inline-row');
     if (rows.length === 0) return;
 
+    // Chạy hết mọi dòng để tô đỏ tất cả ô sai, không dừng ở dòng đầu
     const items = [];
-    for (const tr of rows) {
+    let hasInvalid = false;
+    rows.forEach(tr => {
         const data = extractRowData(tr);
-        if (!data) {
-            alert("⚠️ Có dòng chưa điền đủ hoặc sai thông tin bắt buộc!");
-            return;
-        }
-        items.push(data);
+        if (data) items.push(data);
+        else hasInvalid = true;
+    });
+
+    if (hasInvalid) {
+        alert('⚠️ Có dòng chưa điền đủ hoặc sai thông tin bắt buộc!');
+        return;
     }
 
     const serialList = items.map(i => i.serial_number);
     if (new Set(serialList).size !== serialList.length) {
-        alert("🚫 Có số Serial bị trùng lặp trong danh sách thêm mới!");
+        alert('🚫 Có số Serial bị trùng lặp trong danh sách thêm mới!');
         return;
     }
 
+    const btnBatch = document.getElementById('btnSaveBatch');
+    setBusy(btnBatch, true);
     try {
-        const res = await fetch('/warranty/api/batch-create', {
-            method: 'POST',
-            headers: { 'Content-Type': 'application/json' },
-            body: JSON.stringify({ items: items })
-        });
-        const result = await res.json();
-
-        // Fix: Đồng bộ hóa logic check API
-        if (res.ok && (result.success || result.status === 'success')) window.location.reload();
-        else alert("❌ Lỗi: " + (result.message || result.detail || "Thất bại"));
+        const { res, json } = await postJson('/warranty/api/batch-create', { items });
+        if (isApiOk(res, json)) {
+            window.location.reload();
+            return;
+        }
+        alert('❌ Lỗi: ' + (json.message || json.detail || 'Thất bại'));
     } catch (err) {
-        alert("❌ Lỗi kết nối máy chủ: " + err.message);
+        alert('❌ Lỗi kết nối máy chủ: ' + err.message);
     }
+    setBusy(btnBatch, false);
 }
 
-// ==========================================
-// 3. CHI CHỈNH SỬA TRỰC TIẾP HÀNG CŨ (INLINE EDIT)
-// ==========================================
+// =========================================================
+// 5. CHỈNH SỬA TRỰC TIẾP HÀNG CŨ (INLINE EDIT)
+// =========================================================
+const getRowKey = tr => tr.getAttribute('data-item-id') || tr.id;
+
 async function enableEditRow(btn) {
     const tr = btn.closest('tr');
     if (!tr) return;
-    const rowId = tr.getAttribute('data-item-id') || tr.id;
+    const rowId = getRowKey(tr);
 
     await loadPrintersForInline();
 
     const viewInfo = tr.querySelector('.view-mode-info');
     const editInputs = tr.querySelector('.edit-mode-inputs');
-    
+
     const snInput = tr.querySelector('.row-sn');
     const customerInput = tr.querySelector('.row-customer');
     const phoneInput = tr.querySelector('.row-phone');
@@ -978,14 +1050,14 @@ async function enableEditRow(btn) {
         date: dateInput ? dateInput.value : ''
     };
 
-    if (viewInfo) viewInfo.classList.add('hidden');
-    if (editInputs) editInputs.classList.remove('hidden');
+    viewInfo?.classList.add('hidden');
+    editInputs?.classList.remove('hidden');
 
     [snInput, customerInput, phoneInput, modelInput, conditionSelect, inkTypeSelect, policySelect, counterInput, dateInput].forEach(el => {
         if (!el) return;
         el.disabled = false;
         el.classList.remove('pointer-events-none');
-        
+
         if (el.classList.contains('row-customer') || el.classList.contains('row-phone') || el.classList.contains('row-model-input')) {
             el.classList.remove('bg-transparent', 'border-transparent');
             el.classList.add('bg-slate-950', 'border-slate-700');
@@ -994,33 +1066,33 @@ async function enableEditRow(btn) {
         }
     });
 
-    // Fix UI: Thêm nền đen và viền cho khung bọc S/N và Counter
     tr.querySelector('.serial-wrapper')?.classList.add('bg-slate-950', 'border-slate-700');
     tr.querySelector('.counter-wrapper')?.classList.add('bg-slate-950', 'border-slate-700');
 
     if (modelInput) {
-        if (!modelInput.getAttribute('data-brand')) {
-            modelInput.setAttribute('data-brand', tr.getAttribute('data-brand') || '');
-        }
-        if (!modelInput.getAttribute('data-model')) {
-            modelInput.setAttribute('data-model', tr.getAttribute('data-model') || '');
-        }
-        filterInlinePolicies(tr);
-        if (originalRowData[rowId].policy && policySelect) {
-            policySelect.value = originalRowData[rowId].policy;
-            onInlinePolicyChange(policySelect);
-        }
+        if (!modelInput.getAttribute('data-brand')) modelInput.setAttribute('data-brand', tr.getAttribute('data-brand') || '');
+        if (!modelInput.getAttribute('data-model')) modelInput.setAttribute('data-model', tr.getAttribute('data-model') || '');
+    }
+
+    filterInlinePolicies(tr);
+
+    // Gói đang dùng có thể đã bị tắt/không còn khớp bộ lọc: vẫn phải chọn được
+    const savedPolicy = originalRowData[rowId].policy;
+    if (policySelect && savedPolicy) {
+        ensurePolicyOption(policySelect, savedPolicy);
+        policySelect.disabled = false;
+        policySelect.value = savedPolicy;
+        onInlinePolicyChange(policySelect);
     }
 
     tr.querySelector('.action-view-mode')?.classList.add('hidden');
     tr.querySelector('.action-edit-mode')?.classList.remove('hidden');
 }
 
-// Giữ 1 hàm cancel duy nhất, đã xóa hàm thừa
 function cancelEditRow(btn) {
     const tr = btn.closest('tr');
     if (!tr) return;
-    const rowId = tr.getAttribute('data-item-id') || tr.id;
+    const rowId = getRowKey(tr);
     const saved = originalRowData[rowId];
 
     if (saved) {
@@ -1046,9 +1118,16 @@ function cancelEditRow(btn) {
         if (categoryInput) categoryInput.value = saved.category;
         if (conditionSelect) conditionSelect.value = saved.condition;
         if (inkTypeSelect) inkTypeSelect.value = saved.inkType;
-        if (policySelect) policySelect.value = saved.policy;
         if (counterInput) counterInput.value = saved.counter;
         if (dateInput) dateInput.value = saved.date;
+
+        // Dựng lại danh sách gói theo model/tình trạng ban đầu rồi mới chọn lại gói cũ
+        if (policySelect) {
+            policySelect.dataset.lastPolicy = saved.policy;
+            filterInlinePolicies(tr);
+            ensurePolicyOption(policySelect, saved.policy);
+            policySelect.value = saved.policy;
+        }
 
         delete originalRowData[rowId];
     }
@@ -1056,9 +1135,9 @@ function cancelEditRow(btn) {
     tr.querySelector('.edit-mode-inputs')?.classList.add('hidden');
     tr.querySelector('.view-mode-info')?.classList.remove('hidden');
 
-    const inputs = tr.querySelectorAll('input, select');
-    inputs.forEach(el => {
+    tr.querySelectorAll('input, select').forEach(el => {
         el.disabled = true;
+        el.classList.remove('border-red-500');
         if (el.classList.contains('row-customer') || el.classList.contains('row-phone') || el.classList.contains('row-model-input')) {
             el.classList.add('bg-transparent', 'border-transparent');
             el.classList.remove('bg-slate-950', 'border-slate-700');
@@ -1067,8 +1146,7 @@ function cancelEditRow(btn) {
         }
     });
 
-    // Fix UI: Xóa nền đen và viền khỏi khung bọc S/N và Counter
-    tr.querySelector('.serial-wrapper')?.classList.remove('bg-slate-950', 'border-slate-700');
+    tr.querySelector('.serial-wrapper')?.classList.remove('bg-slate-950', 'border-slate-700', 'border-red-500');
     tr.querySelector('.counter-wrapper')?.classList.remove('bg-slate-950', 'border-slate-700');
 
     tr.querySelector('.action-edit-mode')?.classList.add('hidden');
@@ -1080,113 +1158,151 @@ async function saveEditRow(itemId, btn) {
     const payload = extractRowData(tr);
 
     if (!payload) {
-        alert("⚠️ Vui lòng điền đầy đủ thông tin bắt buộc!");
+        alert('⚠️ Vui lòng điền đầy đủ thông tin bắt buộc!');
         return;
     }
 
+    setBusy(btn, true);
     try {
-        const response = await fetch(`/warranty/api/update/${itemId}`, {            
-            method: 'POST',
-            headers: { 'Content-Type': 'application/json' },
-            body: JSON.stringify(payload)
-        });
-
-        const result = await response.json();
-        if (response.ok && (result.success || result.status === 'success')) {
+        const { res, json } = await postJson(`/warranty/api/update/${itemId}`, payload);
+        if (isApiOk(res, json)) {
             window.location.reload();
-        } else {
-            alert("❌ " + (result.message || result.detail || 'Lỗi lưu thay đổi!'));
+            return;
         }
-    } catch (err) { 
-        alert('❌ Lỗi kết nối máy chủ: ' + err.message); 
+        alert('❌ ' + (json.message || json.detail || 'Lỗi lưu thay đổi!'));
+    } catch (err) {
+        alert('❌ Lỗi kết nối máy chủ: ' + err.message);
     }
+    setBusy(btn, false);
 }
 
-// ==========================================
-// 4. VALIDATION, UTILS & LIVE SEARCH
-// ==========================================
+// =========================================================
+// 6. VALIDATION & TIỆN ÍCH GIAO DIỆN
+// =========================================================
 function validateSerialInput(inputEl) {
     const wrapper = inputEl.closest('.serial-wrapper');
-    if (!inputEl.value.trim()) wrapper?.classList.add('border-red-500');
-    else wrapper?.classList.remove('border-red-500');
+    wrapper?.classList.toggle('border-red-500', !inputEl.value.trim());
 }
 
 function validatePhoneInput(inputEl) {
     const val = inputEl.value.trim().replace(/\s+/g, '');
-    const isNumeric = /^\d+$/.test(val);
-    if (val && (!isNumeric || val.length < 9 || val.length > 11)) inputEl.classList.add('border-red-500');
-    else inputEl.classList.remove('border-red-500');
+    const bad = val && (!/^\d+$/.test(val) || val.length < 9 || val.length > 11);
+    inputEl.classList.toggle('border-red-500', !!bad);
 }
 
-function copyToClipboard(text) {
-    navigator.clipboard.writeText(text).then(() => alert(`Đã sao chép S/N: ${text}`));
+async function copyToClipboard(text) {
+    try {
+        if (navigator.clipboard && window.isSecureContext) {
+            await navigator.clipboard.writeText(text);
+        } else {
+            // Dự phòng cho HTTP (clipboard API chỉ có trên HTTPS/localhost)
+            const ta = document.createElement('textarea');
+            ta.value = text;
+            ta.style.cssText = 'position:fixed;opacity:0;top:0;left:0';
+            document.body.appendChild(ta);
+            ta.select();
+            const ok = document.execCommand('copy');
+            ta.remove();
+            if (!ok) throw new Error('execCommand thất bại');
+        }
+        alert(`Đã sao chép S/N: ${text}`);
+    } catch (_) {
+        alert('Không thể sao chép tự động, vui lòng sao chép thủ công.');
+    }
 }
 
 async function confirmDelete(warrantyId, identifier) {
     if (!confirm(`Bạn có chắc chắn muốn xóa phiếu: ${identifier}?`)) return;
     try {
-        const response = await fetch(`/warranty/api/delete/${warrantyId}`, { method: 'DELETE' });
-        const result = await response.json();
-        if (response.ok && result.success) window.location.reload();
-        else alert(result.message || 'Xóa thất bại');
-    } catch (error) { alert('Lỗi kết nối máy chủ!'); }
+        const { res, json } = await postJson(`/warranty/api/delete/${warrantyId}`, undefined, 'DELETE');
+        if (isApiOk(res, json)) window.location.reload();
+        else alert(json.message || json.detail || 'Xóa thất bại');
+    } catch (error) {
+        alert('Lỗi kết nối máy chủ!');
+    }
 }
 
-// Fix Event: Xóa viền đỏ bắt cả input và change cho thẻ Select
+// Xóa viền đỏ khi người dùng sửa lại (bắt cả input và change cho thẻ select)
 ['input', 'change'].forEach(evt => {
-    document.addEventListener(evt, function(e) {
+    document.addEventListener(evt, e => {
         if (e.target.tagName === 'INPUT' || e.target.tagName === 'SELECT') {
             e.target.classList.remove('border-red-500');
         }
     });
 });
 
-document.addEventListener("DOMContentLoaded", () => {
+// =========================================================
+// 7. LIVE SEARCH
+// =========================================================
+document.addEventListener('DOMContentLoaded', () => {
     loadPrintersForInline();
 
-    const searchInput = document.getElementById("searchInput");
-    const searchSpinner = document.getElementById("searchSpinner");
-    const filterForm = searchInput?.closest("form");
-    let debounceTimer;
-
+    const searchInput = document.getElementById('searchInput');
+    const searchSpinner = document.getElementById('searchSpinner');
+    const filterForm = searchInput?.closest('form');
     if (!searchInput || !filterForm) return;
 
-    searchInput.addEventListener("input", () => {
-        if (searchSpinner) searchSpinner.classList.remove("hidden");
+    let debounceTimer;
+    let searchController = null;
+
+    searchInput.addEventListener('input', () => {
+        searchSpinner?.classList.remove('hidden');
         clearTimeout(debounceTimer);
-        debounceTimer = setTimeout(() => { fetchLiveSearchResults(); }, 400);
+        debounceTimer = setTimeout(fetchLiveSearchResults, 400);
     });
 
     async function fetchLiveSearchResults() {
-        const formData = new FormData(filterForm);
-        const params = new URLSearchParams(formData).toString();
+        // Hủy request cũ để phản hồi đến muộn không ghi đè kết quả mới
+        if (searchController) searchController.abort();
+        const controller = new AbortController();
+        searchController = controller;
+
+        const params = new URLSearchParams(new FormData(filterForm)).toString();
         const url = `${filterForm.action}?${params}`;
 
         try {
-            const response = await fetch(url);
-            const htmlText = await response.text();
-            const doc = new DOMParser().parseFromString(htmlText, "text/html");
-            const newTbody = doc.getElementById("warrantyTbody");
-            const currentTbody = document.getElementById("warrantyTbody");
-            if (newTbody && currentTbody) currentTbody.innerHTML = newTbody.innerHTML;
-            window.history.pushState({}, "", url);
+            const response = await fetch(url, { signal: controller.signal });
+            if (!response.ok) throw new Error(`HTTP ${response.status}`);
+
+            const doc = new DOMParser().parseFromString(await response.text(), 'text/html');
+            const newTbody = doc.getElementById('warrantyTbody');
+            const currentTbody = document.getElementById('warrantyTbody');
+            if (!newTbody || !currentTbody) return;
+
+            // Đang sửa một dòng cũ thì không làm mới, tránh mất thay đổi
+            if (currentTbody.querySelector('.edit-mode-inputs:not(.hidden)')) return;
+
+            // Giữ lại các dòng thêm mới chưa lưu
+            const keepRows = Array.from(currentTbody.querySelectorAll('.new-inline-row'));
+            currentTbody.innerHTML = newTbody.innerHTML;
+            if (keepRows.length) {
+                currentTbody.querySelector('#emptyRow')?.remove();
+                keepRows.reverse().forEach(r => currentTbody.insertBefore(r, currentTbody.firstChild));
+            }
+            updateBatchCount();
+
+            window.history.replaceState({}, '', url);
         } catch (error) {
-            console.error("Lỗi Live Search:", error);
+            if (error.name !== 'AbortError') console.error('Lỗi Live Search:', error);
         } finally {
-            if (searchSpinner) searchSpinner.classList.add("hidden");
+            if (searchController === controller) {
+                searchSpinner?.classList.add('hidden');
+                searchController = null;
+            }
         }
     }
 });
 
-// ==========================================
-// 5. MODAL THÊM MÁY IN MỚI
-// ==========================================
+// =========================================================
+// 8. MODAL THÊM MÁY IN MỚI
+// =========================================================
 function openPrinterModal(btn) {
     const tr = btn ? btn.closest('tr') : null;
     currentActiveModelInput = tr ? tr.querySelector('.row-model-input') : null;
-    
+
     document.getElementById('printerForm').reset();
-    document.getElementById('printerModalTitle').innerHTML = '<i class="fa-solid fa-print text-emerald-400"></i> Thêm Dòng Máy In Mới';
+    document.getElementById('printerModalTitle').innerHTML =
+        '<i class="fa-solid fa-print text-emerald-400"></i> Thêm Dòng Máy In Mới';
     document.getElementById('printerModal').classList.remove('hidden');
 }
 
@@ -1195,11 +1311,17 @@ function closePrinterModal() {
     document.getElementById('printerModal').classList.add('hidden');
 }
 
+function fillModelInput(printer) {
+    if (!currentActiveModelInput) return;
+    currentActiveModelInput.value = printerFullName(printer);
+    onInlineModelChange(currentActiveModelInput);
+}
+
 async function savePrinter(e) {
     e.preventDefault();
     const form = e.target;
     const btnSubmit = form.querySelector('button[type="submit"]');
-    
+
     const payload = {
         brand_name: form.brand_name.value.trim(),
         model_code: form.model_code.value.trim().toUpperCase(),
@@ -1211,47 +1333,43 @@ async function savePrinter(e) {
         return;
     }
 
+    // Máy đã có trong danh mục thì chọn luôn, không tạo trùng
+    await loadPrintersForInline();
+    const dup = allPrinters.find(p => normName(printerFullName(p)) === normName(printerFullName(payload)));
+    if (dup) {
+        fillModelInput(dup);
+        closePrinterModal();
+        alert('ℹ️ Máy in này đã có trong danh mục, đã chọn giúp bạn.');
+        return;
+    }
+
     const originalBtnText = btnSubmit.innerHTML;
     btnSubmit.innerHTML = '<i class="fa-solid fa-spinner fa-spin mr-1"></i> Đang lưu...';
-    btnSubmit.disabled = true;
+    setBusy(btnSubmit, true);
 
     try {
-        const res = await fetch('/warranty/api/danh-sach-may-in/save', {
-            method: 'POST',
-            headers: { 'Content-Type': 'application/json' },
-            body: JSON.stringify(payload)
-        });
+        const { res, json } = await postJson('/warranty/api/danh-sach-may-in/save', payload);
 
-        const data = await res.json();
-        
-        if (data.success || data.status === 'success') {
-            const newPrinter = (data.data && data.data.length > 0) ? data.data[0] : payload;
+        if (isApiOk(res, json)) {
+            const saved = Array.isArray(json.data) ? json.data[0] : json.data;
+            const newPrinter = { ...payload, ...(saved && typeof saved === 'object' ? saved : {}) };
 
             allPrinters.push(newPrinter);
-            
-            const datalist = document.getElementById('printerList');
-            if (datalist) {
-                const opt = document.createElement('option');
-                opt.value = `${newPrinter.brand_name} ${newPrinter.model_code}`;
-                datalist.appendChild(opt);
-            }
+            renderPrinterDatalist();
 
-            if (currentActiveModelInput) {
-                currentActiveModelInput.value = `${newPrinter.brand_name} ${newPrinter.model_code}`;
-                onInlineModelChange(currentActiveModelInput); 
-            }
-            
+            // Điền model TRƯỚC khi đóng modal (closePrinterModal xóa currentActiveModelInput)
+            fillModelInput(newPrinter);
             closePrinterModal();
             alert('✅ Thêm máy in thành công!');
         } else {
-            alert('❌ ' + (data.message || 'Không thể lưu thiết bị'));
+            alert('❌ ' + (json.message || json.detail || 'Không thể lưu thiết bị'));
         }
     } catch (err) {
-        console.error("Lỗi kết nối:", err);
+        console.error('Lỗi kết nối:', err);
         alert('❌ Lỗi kết nối đến máy chủ khi lưu thiết bị!');
     } finally {
         btnSubmit.innerHTML = originalBtnText;
-        btnSubmit.disabled = false;
+        setBusy(btnSubmit, false);
     }
 }
 </script>
