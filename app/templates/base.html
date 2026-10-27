@@ -302,50 +302,6 @@
             background-color: rgba(10, 15, 29, 0.9);
         }
 
-        /* ==========================================
-        6. RESPONSIVE CHO LAPTOP / PC (MỞ RỘNG TOÀN MÀN HÌNH)
-        ========================================== */
-        @media (min-width: 1024px) {
-        .app-content {
-            max-width: 1560px;
-            padding-left: 2rem;
-            padding-right: 2rem;
-            padding-top: calc(var(--top-header-height) + 1.5rem);
-            padding-bottom: 2rem;
-        }
-    
-        /* Đưa thanh điều hướng ra giữa Header trên PC */
-        .bottom-nav {
-            position: absolute;
-            top: 0;
-            left: 50%;
-            transform: translateX(-50%);
-            bottom: auto;
-            height: var(--top-header-height);
-            background: transparent;
-            border: none;
-            backdrop-filter: none;
-            gap: 1.5rem;
-            padding: 0;
-            width: auto;
-        }
-    
-        .nav-item {
-            flex: 0 0 auto;
-            height: var(--top-header-height);
-            flex-direction: row;
-            gap: 6px;
-            font-size: 0.8rem;
-            padding: 0 0.75rem;
-        }
-    
-        .nav-item.active::after {
-            top: auto;
-            bottom: 0;
-            width: 100%;
-        }
-    }
-
         @media (min-width: 1440px) {
             .app-content {
                 max-width: 1780px; /* Màn hình PC lớn (Full HD / 2K) trải rộng thoải mái */
