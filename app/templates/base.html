@@ -306,45 +306,45 @@
         6. RESPONSIVE CHO LAPTOP / PC (MỞ RỘNG TOÀN MÀN HÌNH)
         ========================================== */
         @media (min-width: 1024px) {
-            .app-content {
-                /* Mở rộng không gian rộng rãi cho Laptop/PC, tận dụng tối đa màn hình */
-                max-width: 1560px; 
-                padding-left: 2rem;
-                padding-right: 2rem;
-                padding-top: calc(var(--top-header-height) + 1.5rem);
-                padding-bottom: 2rem; /* Không bị vướng bottom-nav trên PC */
-            }
-
-            /* Biến thanh điều hướng dưới mobile thành dạng Menu ngang ở Header trên PC */
-            .bottom-nav {
-                position: fixed;
-                top: 0;
-                left: auto;
-                right: 220px; /* Đặt cạnh khu vực user greeting/logout ở góc phải */
-                bottom: auto;
-                height: var(--top-header-height);
-                background: transparent;
-                border: none;
-                backdrop-filter: none;
-                gap: 1.5rem;
-                padding: 0;
-            }
-
-            .nav-item {
-                flex: 0 0 auto;
-                height: var(--top-header-height);
-                flex-direction: row;
-                gap: 6px;
-                font-size: 0.8rem;
-                padding: 0 0.5rem;
-            }
-
-            .nav-item.active::after {
-                top: auto;
-                bottom: 0;
-                width: 100%;
-            }
+        .app-content {
+            max-width: 1560px;
+            padding-left: 2rem;
+            padding-right: 2rem;
+            padding-top: calc(var(--top-header-height) + 1.5rem);
+            padding-bottom: 2rem;
         }
+    
+        /* Đưa thanh điều hướng ra giữa Header trên PC */
+        .bottom-nav {
+            position: absolute;
+            top: 0;
+            left: 50%;
+            transform: translateX(-50%);
+            bottom: auto;
+            height: var(--top-header-height);
+            background: transparent;
+            border: none;
+            backdrop-filter: none;
+            gap: 1.5rem;
+            padding: 0;
+            width: auto;
+        }
+    
+        .nav-item {
+            flex: 0 0 auto;
+            height: var(--top-header-height);
+            flex-direction: row;
+            gap: 6px;
+            font-size: 0.8rem;
+            padding: 0 0.75rem;
+        }
+    
+        .nav-item.active::after {
+            top: auto;
+            bottom: 0;
+            width: 100%;
+        }
+    }
 
         @media (min-width: 1440px) {
             .app-content {
