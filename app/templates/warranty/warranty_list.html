@@ -408,7 +408,7 @@
                         oninput="onInlineModelChange(this); this.classList.remove('border-red-500')">
                 </div>
                 
-                <button type="button" onclick="openPrinterModal()" 
+                <button type="button" onclick="openPrinterModal(this)" 
                     class="h-8 px-2.5 bg-slate-800 hover:bg-slate-700 text-cyan-400 hover:text-cyan-300 border border-slate-700 rounded-lg text-[11px] font-semibold flex items-center justify-center gap-1.5 shrink-0 transition-all cursor-pointer" 
                     title="Thêm model mới vào danh mục">
                     <i class="fa-solid fa-plus text-[10px]"></i> Thêm
@@ -1181,8 +1181,8 @@ document.addEventListener("DOMContentLoaded", () => {
 // ==========================================
 // 5. MODAL THÊM MÁY IN MỚI
 // ==========================================
-function openPrinterModal() {
-    const tr = btn.closest('tr');
+function openPrinterModal(btn) {
+    const tr = btn ? btn.closest('tr') : null;
     currentActiveModelInput = tr ? tr.querySelector('.row-model-input') : null;
     
     document.getElementById('printerForm').reset();
