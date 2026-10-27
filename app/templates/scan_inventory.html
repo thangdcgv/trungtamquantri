@@ -1251,7 +1251,6 @@ body {
         if (!val) return;
         processNewSerial(val);
         input.value = '';
-        input.focus();
     };
 
     function processNewSerial(serialNumber) {
@@ -1386,7 +1385,9 @@ body {
             showFlashFeedback("Hoàn tất! Đã lưu " + successCount + "/" + pendingItems.length + " mã", "success");
         } else {
             AudioEngine.playErrorBuzz();
-            showFlashFeedback("Thành công " + successCount + ", lỗi " + failCount + ". Kiểm tra lại các mã lỗi.", "danger");
+            // Thay vì chỉ báo chung chung, hãy alert cho họ biết chi tiết lỗi
+            alert("Cảnh báo: Có " + failCount + " mã không thể đồng bộ!\n\nChi tiết:\n" + failMessages.join('\n'));
+            showFlashFeedback("Thành công " + successCount + ", lỗi " + failCount, "danger");
         }
     };
 
@@ -1433,8 +1434,10 @@ body {
             tr.innerHTML = `
                 <td class="serial-cell">${escapeHtml(item.serial_number)}</td>
                 <td style="font-size:0.78rem;">
-                    <span style="font-weight:700;color:var(--accent-dark);">${escapeHtml(printer.brand_name || '—')}</span><br>
-                    <span style="color:var(--text-muted);">${escapeHtml(printer.model_code || '—')}</span>
+                    <div class="text-truncate-mobile">
+                        <span style="font-weight:700;color:var(--accent-dark);">${escapeHtml(printer.brand_name || '—')}</span><br>
+                        <span style="color:var(--text-muted);">${escapeHtml(printer.model_code || '—')}</span>
+                    </div>
                 </td>
                 <td class="text-center"><span class="badge-status badge-${status}">${statusLabel(status)}</span></td>
                 <td style="font-size:0.72rem;color:var(--text-muted);">${formatDate(item.created_at)}</td>
