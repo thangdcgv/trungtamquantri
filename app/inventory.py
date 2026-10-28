@@ -1,13 +1,14 @@
 import logging
 import re
 from pathlib import Path
-from typing import Optional, Dict, Any
+from typing import Optional, Dict, Any,List
 
 from fastapi import APIRouter, Request, Query, HTTPException, Depends, status, Path as FastAPIPath
 from fastapi.responses import HTMLResponse, JSONResponse
 from fastapi.templating import Jinja2Templates
 from pydantic import BaseModel, Field, HttpUrl, field_validator
 import uuid # <-- Đã thêm thư viện UUID
+
 
 # Imports đồng bộ với hệ thống hiện tại
 from config import supabase
@@ -329,3 +330,114 @@ def get_inventory_stats(current_user: dict = Depends(require_login)):
         return {"status": "success", "data": {"total": total, "by_status": counts, "is_admin": admin_mode}}
     except Exception:
         raise HTTPException(status_code=500, detail="Lỗi hệ thống khi lấy thống kê.")
+    
+@router.get("/admin/review", response_class=HTMLResponse)
+def get_admin_review_page(
+    request: Request,
+    current_user: dict = Depends(get_current_user_or_redirect)
+):
+    """Render giao diện Dashboard Duyệt kiểm kê cho Admin"""
+    if not is_admin_user(current_user):
+        from fastapi.responses import RedirectResponse
+        return RedirectResponse(url="/", status_code=303)
+
+    return templates.TemplateResponse(
+        request=request,
+        name="admin/admin_inventory_review.html",  # Cập nhật đường dẫn thư mục ở đây
+        context={
+            "current_user": current_user,
+        }
+    )
+
+# ==========================================
+# 3. API BATCH (THEO LÔ) — ĐÃ SỬA HOÀN CHỈNH
+# ==========================================
+
+class BatchStatusRequest(BaseModel):
+    ids: List[str] = Field(..., min_length=1, max_length=5000, description="Danh sách ID cần cập nhật")
+    status: str = Field(..., description="Trạng thái mới")
+    note: Optional[str] = Field(None, max_length=500)
+
+    @field_validator("status")
+    @classmethod
+    def validate_batch_status(cls, v: str) -> str:
+        normalized = v.strip().lower()
+        if normalized not in ("verified", "rejected", "pending"):
+            raise ValueError("Trạng thái batch chỉ cho phép: verified, rejected, pending")
+        return normalized
+
+class BatchDeleteRequest(BaseModel):
+    ids: List[str] = Field(..., min_length=1, max_length=5000, description="Danh sách ID cần xóa")
+
+
+@api_router.patch("/records/batch-status", status_code=status.HTTP_200_OK)
+def batch_update_status(
+    payload: BatchStatusRequest,
+    current_user: dict = Depends(require_login)
+):
+    """Cập nhật trạng thái hàng loạt theo lô (chỉ admin)."""
+    if not is_admin_user(current_user):
+        raise HTTPException(status_code=403, detail="Yêu cầu quyền quản trị.")
+
+    # Validate tất cả ID là UUID
+    invalid_ids = [uid for uid in payload.ids if not validate_uuid(uid)]
+    if invalid_ids:
+        raise HTTPException(status_code=400, detail=f"Có {len(invalid_ids)} ID không hợp lệ (không phải UUID).")
+
+    try:
+        update_data: Dict[str, Any] = {"status": payload.status}
+        if payload.note is not None:
+            update_data["note"] = payload.note.strip()
+
+        response = supabase.table("inventory_serials") \
+            .update(update_data) \
+            .in_("id", payload.ids) \
+            .execute()
+
+        updated_count = len(response.data or [])
+        return {
+            "status": "success",
+            "message": f"Đã cập nhật {updated_count}/{len(payload.ids)} bản ghi",
+            "updated": updated_count,
+            "requested": len(payload.ids)
+        }
+    except Exception as e:
+        logger.exception("Lỗi batch update status: %s", str(e))
+        raise HTTPException(status_code=500, detail="Lỗi hệ thống khi cập nhật hàng loạt.")
+
+
+@api_router.post("/records/batch-delete", status_code=status.HTTP_200_OK)
+def batch_delete_records(
+    payload: BatchDeleteRequest,
+    current_user: dict = Depends(require_login)
+):
+    """Xóa hàng loạt theo lô (chỉ admin). Dùng POST thay vì DELETE để tránh bị bỏ body."""
+    if not is_admin_user(current_user):
+        raise HTTPException(status_code=403, detail="Yêu cầu quyền quản trị.")
+
+    invalid_ids = [uid for uid in payload.ids if not validate_uuid(uid)]
+    if invalid_ids:
+        raise HTTPException(status_code=400, detail=f"Có {len(invalid_ids)} ID không hợp lệ.")
+
+    try:
+        # Lấy danh sách serial để trả về (log)
+        existing = supabase.table("inventory_serials") \
+            .select("id, serial_number") \
+            .in_("id", payload.ids) \
+            .execute()
+        existing_ids = [r["id"] for r in (existing.data or [])]
+        missing = len(payload.ids) - len(existing_ids)
+
+        if existing_ids:
+            supabase.table("inventory_serials").delete().in_("id", existing_ids).execute()
+
+        return {
+            "status": "success",
+            "message": f"Đã xóa {len(existing_ids)} bản ghi" + (f", {missing} ID không tồn tại" if missing else ""),
+            "deleted": len(existing_ids),
+            "requested": len(payload.ids),
+            "missing": missing
+        }
+    except Exception as e:
+        logger.exception("Lỗi batch delete: %s", str(e))
+        raise HTTPException(status_code=500, detail="Lỗi hệ thống khi xóa hàng loạt.")

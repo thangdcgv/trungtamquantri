@@ -44,7 +44,7 @@ templates.env.filters["vn_time"] = format_vn_time
 # === 🏠 TRANG CHỦ DASHBOARD ===
 # ==========================================
 @router.get("/")
-def index(  # ✅ Chuyển từ `async def` sang `def` để FastAPI chạy trên Thread Pool riêng
+def index(
     request: Request,
     current_user: Optional[Dict[str, Any]] = Depends(get_current_user_or_redirect)
 ):
@@ -56,10 +56,10 @@ def index(  # ✅ Chuyển từ `async def` sang `def` để FastAPI chạy trê
 
     try:
         if supabase:
-            # Truy vấn 1: Lấy 5 bảo hành mới nhất
+            # Truy vấn 1: Lấy 5 bảo hành mới nhất (Đã bổ sung brand_name và ink_type)
             res_warranty = (
                 supabase.table('warranty_records')
-                .select('id, serial_number, customer_name, model_name, created_at, category')
+                .select('id, serial_number, customer_name, brand_name, model_name, ink_type, created_at, category')
                 .order('created_at', desc=True)
                 .limit(5)
                 .execute()

@@ -1,0 +1,572 @@
+{% extends "base.html" %}
+
+{% block title %}Admin - Kiểm Duyệt Kho | WMS Đại Thành{% endblock %}
+
+{% block head %}
+<style>
+.admin-wrapper { max-width: 1400px; margin: 0 auto; padding-bottom: 2rem; }
+
+.page-header-custom {
+  display: flex; align-items: center; justify-content: space-between;
+  padding: 1.25rem 1.5rem; background: rgba(15, 23, 42, 0.85);
+  border: 1px solid var(--border-color); border-radius: 16px 16px 0 0;
+}
+.page-title-custom {
+  font-size: 1.05rem; font-weight: 700; margin: 0; color: var(--text-main);
+  text-transform: uppercase; letter-spacing: 0.02em; display: flex; align-items: center; gap: 8px;
+}
+
+.inventory-card {
+  background: var(--bg-card); backdrop-filter: blur(12px);
+  border: 1px solid var(--border-color); border-top: none;
+  border-radius: 0 0 16px 16px; box-shadow: 0 8px 24px -6px rgba(0, 0, 0, 0.4);
+  overflow: hidden; margin-bottom: 2rem;
+}
+
+.toolbar {
+  padding: 1.25rem 1.5rem; background: rgba(10, 15, 29, 0.4);
+  border-bottom: 1px solid var(--border-color);
+  display: flex; gap: 12px; flex-wrap: wrap; align-items: center; justify-content: space-between;
+}
+.filter-group { display: flex; gap: 10px; flex-grow: 1; max-width: 650px; flex-wrap: wrap; }
+
+.table-custom { color: var(--text-main) !important; margin-bottom: 0; width: 100%; }
+.table-custom th {
+  background: rgba(15, 23, 42, 0.6); font-size: 0.75rem; text-transform: uppercase;
+  color: var(--text-muted); font-weight: 700; padding: 1rem 1.25rem;
+  border-bottom: 1px solid var(--border-color); white-space: nowrap;
+}
+.table-custom td {
+  padding: 1rem 1.25rem; vertical-align: middle;
+  border-bottom: 1px solid var(--border-color); color: var(--text-sub);
+}
+.table-custom tbody tr:hover { background-color: rgba(56, 189, 248, 0.04); }
+
+.serial-cell { font-family: monospace; font-weight: 700; color: var(--primary-light); font-size: 0.9rem; }
+.badge-status { padding: 4px 10px; border-radius: 20px; font-size: 0.7rem; font-weight: 600; display: inline-block; }
+.bg-pending { background: rgba(251, 191, 36, 0.15); color: #fbbf24; border: 1px solid rgba(251, 191, 36, 0.3); }
+.bg-verified { background: rgba(52, 211, 153, 0.15); color: #34d399; border: 1px solid rgba(52, 211, 153, 0.3); }
+.bg-rejected { background: rgba(248, 113, 113, 0.15); color: #f87171; border: 1px solid rgba(248, 113, 113, 0.3); }
+
+.btn-action {
+  width: 32px; height: 32px; padding: 0;
+  display: inline-flex; align-items: center; justify-content: center;
+  border-radius: 8px; border: 1px solid transparent; transition: all 0.2s; cursor: pointer;
+}
+.btn-verify { background: rgba(52, 211, 153, 0.1); color: #34d399; border-color: rgba(52, 211, 153, 0.2); }
+.btn-verify:hover { background: #34d399; color: #fff; }
+.btn-reject { background: rgba(251, 191, 36, 0.1); color: #fbbf24; border-color: rgba(251, 191, 36, 0.2); }
+.btn-reject:hover { background: #fbbf24; color: #000; }
+.btn-delete { background: rgba(248, 113, 113, 0.1); color: #f87171; border-color: rgba(248, 113, 113, 0.2); }
+.btn-delete:hover { background: #f87171; color: #fff; }
+
+.batch-actions {
+  display: none; padding: 12px 1.5rem; background: rgba(2, 132, 199, 0.12);
+  border-bottom: 1px solid rgba(56, 189, 248, 0.25);
+  align-items: center; gap: 12px;
+}
+
+/* Đảm bảo Bootstrap input khớp theme tối */
+.form-select, .form-control {
+  background-color: rgba(10, 15, 29, 0.6) !important;
+  border: 1px solid var(--border-color) !important;
+  color: var(--text-main) !important;
+}
+.form-select:focus, .form-control:focus {
+  border-color: var(--primary-light) !important;
+  box-shadow: 0 0 0 3px var(--primary-glow) !important;
+}
+.page-link {
+  background: rgba(10, 15, 29, 0.6) !important;
+  border-color: var(--border-color) !important;
+  color: var(--text-sub) !important;
+}
+.page-item.active .page-link {
+  background: var(--primary) !important; border-color: var(--primary) !important; color: #fff !important;
+}
+</style>
+{% endblock %}
+
+{% block content %}
+<div class="admin-wrapper">
+  <div class="page-header-custom">
+    <h1 class="page-title-custom">
+      <i class="fa-solid fa-boxes-stacked" style="color: var(--primary-light);"></i> Kiểm Duyệt Kho & Seri Máy In
+    </h1>
+    <span style="background: rgba(255,255,255,0.06); border: 1px solid var(--border-color); color: var(--text-sub); padding: 6px 12px; border-radius: 8px; font-size: 0.85rem;">
+      <i class="fa-solid fa-user-shield me-1"></i> {{ current_user.name | default('Admin') }}
+    </span>
+  </div>
+
+  <div class="inventory-card">
+    <div class="toolbar">
+      <div class="filter-group">
+        <select class="form-select" id="filter-status" style="width: 160px;">
+          <option value="">Tất cả trạng thái</option>
+          <option value="pending">Chờ xử lý</option>
+          <option value="verified">Đã xác minh</option>
+          <option value="rejected">Bị từ chối</option>
+        </select>
+        <input type="text" id="filter-search" class="form-control" placeholder="Tìm kiếm Số Seri, Model..." style="flex: 1; min-width: 200px;">
+        <button class="btn btn-primary px-3" style="background-color: var(--primary); border:none; min-height: 40px;" onclick="loadData(1)">
+          <i class="fa-solid fa-magnifying-glass"></i>
+        </button>
+      </div>
+      <div>
+        <button class="btn btn-sm btn-outline-secondary px-3" style="border-color: var(--border-color); color: var(--text-sub); min-height: 40px;" onclick="loadData(1)">
+          <i class="fa-solid fa-rotate me-1"></i> Làm mới
+        </button>
+      </div>
+    </div>
+    <!-- THANH TÁC VỤ THEO LÔ (LOT ACTIONS) -->
+    <div class="lot-actions" id="lot-toolbar" style="display:none; padding: 12px 1.5rem; background: rgba(251, 191, 36, 0.1); border-bottom: 1px solid rgba(251, 191, 36, 0.3); align-items: center; gap: 12px; flex-wrap: wrap;">
+    <span style="font-size: 0.85rem; color: #fbbf24; font-weight: 700;">
+        <i class="fa-solid fa-layer-group me-1"></i>
+        Đang chọn theo LÔ: <span id="lot-count">0</span> mã (toàn bộ kết quả lọc)
+    </span>
+    <button class="btn btn-sm btn-success" onclick="processLot('verified')" id="btn-lot-verify">
+        <i class="fa-solid fa-check-double me-1"></i> Duyệt toàn lô
+    </button>
+    <button class="btn btn-sm btn-warning" onclick="processLot('rejected')" id="btn-lot-reject">
+        <i class="fa-solid fa-ban me-1"></i> Từ chối toàn lô
+    </button>
+    <button class="btn btn-sm btn-danger ms-auto" onclick="deleteLot()" id="btn-lot-delete">
+        <i class="fa-solid fa-trash-can me-1"></i> Xóa toàn lô
+    </button>
+    <button class="btn btn-sm btn-outline-secondary" onclick="cancelLotSelection()">
+        <i class="fa-solid fa-xmark me-1"></i> Hủy chọn lô
+    </button>
+    </div>
+
+    <!-- Thanh chọn lô (nút kích hoạt) -->
+    <div style="padding: 8px 1.5rem; background: rgba(10, 15, 29, 0.5); border-bottom: 1px solid var(--border-color); display: flex; align-items: center; gap: 10px;">
+    <button class="btn btn-sm" style="background: rgba(251, 191, 36, 0.15); color: #fbbf24; border: 1px solid rgba(251, 191, 36, 0.3);" onclick="selectAllByFilter()">
+        <i class="fa-solid fa-layer-group me-1"></i> Chọn toàn bộ theo bộ lọc
+    </button>
+    <span class="text-muted" style="font-size: 0.75rem;">
+        <i class="fa-solid fa-circle-info me-1"></i>
+        Chọn tất cả mã phù hợp với bộ lọc hiện tại (mọi trang) để duyệt/xóa cùng lúc
+    </span>
+    </div>
+    <div class="batch-actions" id="batch-toolbar">
+      <span class="fw-bold text-info" style="font-size: 0.85rem;">Đã chọn: <span id="selected-count">0</span> mã</span>
+      <button class="btn btn-sm btn-success" onclick="processBatch('verified')"><i class="fa-solid fa-check-double me-1"></i> Duyệt tất cả</button>
+      <button class="btn btn-sm btn-warning" onclick="processBatch('rejected')"><i class="fa-solid fa-ban me-1"></i> Từ chối tất cả</button>
+      <button class="btn btn-sm btn-danger ms-auto" onclick="deleteBatch()"><i class="fa-solid fa-trash-can me-1"></i> Xóa tất cả</button>
+    </div>
+
+    <div class="table-responsive" style="min-height: 400px;">
+      <table class="table table-custom mb-0">
+        <thead>
+          <tr>
+            <th style="width: 40px;" class="text-center">
+              <input class="form-check-input" type="checkbox" id="check-all" onclick="toggleCheckAll(this)">
+            </th>
+            <th>Số Seri</th>
+            <th>Model Máy</th>
+            <th>Thời Gian</th>
+            <th class="text-center">Trạng Thái</th>
+            <th class="text-end">Thao Tác</th>
+          </tr>
+        </thead>
+        <tbody id="table-body">
+          <tr><td colspan="6" class="text-center py-5 text-muted"><i class="fa-solid fa-spinner fa-spin me-2"></i> Đang tải dữ liệu...</td></tr>
+        </tbody>
+      </table>
+    </div>
+
+    <div class="p-3 border-top d-flex justify-content-between align-items-center" style="background: rgba(10, 15, 29, 0.3); border-color: var(--border-color) !important;">
+      <span class="text-muted" style="font-size: 0.8rem;" id="page-info">Tổng: 0 bản ghi</span>
+      <ul class="pagination pagination-sm mb-0" id="pagination"></ul>
+    </div>
+  </div>
+</div>
+{% endblock %}
+
+{% block scripts %}
+<script>
+let currentPage = 1;
+let isProcessing = false;
+
+document.addEventListener("DOMContentLoaded", () => {
+  loadData(1);
+  document.getElementById('filter-search').addEventListener('keypress', function (e) {
+    if (e.key === 'Enter') loadData(1);
+  });
+});
+
+async function loadData(page) {
+  currentPage = page;
+  const status = document.getElementById('filter-status').value;
+  const search = document.getElementById('filter-search').value.trim();
+  const tbody = document.getElementById('table-body');
+  tbody.innerHTML = `<tr><td colspan="6" class="text-center py-5 text-muted"><i class="fa-solid fa-spinner fa-spin me-2"></i> Đang tải...</td></tr>`;
+  try {
+    let url = `/api/inventory/history?page=${page}&page_size=15`;
+    if (status) url += `&status_filter=${encodeURIComponent(status)}`;
+    if (search) url += `&serial_search=${encodeURIComponent(search)}`;
+
+    const res = await fetch(url);
+    const data = await res.json();
+    if (data.status === "success") {
+      renderTable(data.data);
+      renderPagination(data.pagination);
+      resetCheckboxes();
+    } else {
+      tbody.innerHTML = `<tr><td colspan="6" class="text-center py-5 text-danger">${data.detail || 'Lỗi tải dữ liệu'}</td></tr>`;
+    }
+  } catch (error) {
+    console.error("Lỗi:", error);
+    tbody.innerHTML = `<tr><td colspan="6" class="text-center py-5 text-danger">Lỗi kết nối máy chủ!</td></tr>`;
+  }
+}
+
+function renderTable(items) {
+  const tbody = document.getElementById('table-body');
+  if (!items || items.length === 0) {
+    tbody.innerHTML = `<tr><td colspan="6" class="text-center py-5 text-muted"><i class="fa-solid fa-folder-open fs-3 mb-2 opacity-50 d-block"></i>Không có dữ liệu phù hợp</td></tr>`;
+    return;
+  }
+  let html = "";
+  items.forEach(item => {
+    const printer = item.list_printer || {};
+    const st = (item.status || 'pending').toLowerCase();
+    let statusBadge = "";
+    if (st === 'pending') statusBadge = '<span class="badge-status bg-pending">Chờ xử lý</span>';
+    else if (st === 'verified') statusBadge = '<span class="badge-status bg-verified">Đã duyệt</span>';
+    else if (st === 'rejected') statusBadge = '<span class="badge-status bg-rejected">Từ chối</span>';
+    html += `
+      <tr>
+        <td class="text-center">
+          <input class="form-check-input row-checkbox" type="checkbox" value="${item.id}" onclick="checkSelection()">
+        </td>
+        <td class="serial-cell">${escapeHtml(item.serial_number)}</td>
+        <td>
+          <div class="fw-bold" style="color: var(--primary-light);">${escapeHtml(printer.brand_name || '')}</div>
+          <div class="text-muted" style="font-size: 0.8rem;">${escapeHtml(printer.model_code || 'Không rõ model')}</div>
+        </td>
+        <td style="font-size: 0.8rem; color: var(--text-muted);">${formatDate(item.created_at)}</td>
+        <td class="text-center">${statusBadge}</td>
+        <td class="text-end">
+          <button class="btn-action btn-verify me-1" title="Duyệt" onclick="updateSingleStatus('${item.id}', 'verified')"><i class="fa-solid fa-check"></i></button>
+          <button class="btn-action btn-reject me-1" title="Từ chối" onclick="updateSingleStatus('${item.id}', 'rejected')"><i class="fa-solid fa-ban"></i></button>
+          <button class="btn-action btn-delete" title="Xóa" onclick="deleteSingleRecord('${item.id}')"><i class="fa-solid fa-trash-can"></i></button>
+        </td>
+      </tr>
+    `;
+  });
+  tbody.innerHTML = html;
+}
+
+async function updateSingleStatus(id, status) {
+  if (isProcessing) return;
+  const actionText = status === 'verified' ? 'DUYỆT' : 'TỪ CHỐI';
+  if (!confirm(`Bạn chắc chắn muốn ${actionText} mã này?`)) return;
+  isProcessing = true;
+  try {
+    const res = await fetch(`/api/inventory/records/${id}/status`, {
+      method: 'PATCH', headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ status: status })
+    });
+    if (res.ok) loadData(currentPage);
+    else { const err = await res.json(); alert("Lỗi: " + (err.detail || err.message)); }
+  } catch (e) { alert("Lỗi mạng!"); }
+  finally { isProcessing = false; }
+}
+
+async function deleteSingleRecord(id) {
+  if (isProcessing) return;
+  if (!confirm(`CẢNH BÁO: Xóa vĩnh viễn bản ghi kiểm kê này?\nHành động này không thể hoàn tác!`)) return;
+  isProcessing = true;
+  try {
+    const res = await fetch(`/api/inventory/records/${id}`, { method: 'DELETE' });
+    if (res.ok) loadData(currentPage);
+    else alert("Lỗi khi xóa!");
+  } catch (e) { alert("Lỗi mạng!"); }
+  finally { isProcessing = false; }
+}
+
+function toggleCheckAll(source) {
+  document.querySelectorAll('.row-checkbox').forEach(cb => cb.checked = source.checked);
+  checkSelection();
+}
+
+function checkSelection() {
+  const checkedBoxes = document.querySelectorAll('.row-checkbox:checked');
+  const toolbar = document.getElementById('batch-toolbar');
+  const countSpan = document.getElementById('selected-count');
+  if (checkedBoxes.length > 0) {
+    toolbar.style.display = 'flex';
+    countSpan.textContent = checkedBoxes.length;
+  } else {
+    toolbar.style.display = 'none';
+    document.getElementById('check-all').checked = false;
+  }
+}
+
+function resetCheckboxes() {
+  document.getElementById('check-all').checked = false;
+  document.getElementById('batch-toolbar').style.display = 'none';
+}
+
+function getSelectedIds() {
+  return Array.from(document.querySelectorAll('.row-checkbox:checked')).map(cb => cb.value);
+}
+
+async function processBatch(newStatus) {
+  if (isProcessing) return;
+  const ids = getSelectedIds();
+  if (ids.length === 0) return;
+  const actionText = newStatus === 'verified' ? 'DUYỆT' : 'TỪ CHỐI';
+  if (!confirm(`Xác nhận ${actionText} ${ids.length} mã đã chọn?`)) return;
+  isProcessing = true;
+  try {
+    // ✅ Gọi song song thay vì tuần tự → nhanh hơn
+    await Promise.all(ids.map(id =>
+      fetch(`/api/inventory/records/${id}/status`, {
+        method: 'PATCH', headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ status: newStatus })
+      })
+    ));
+    loadData(currentPage);
+  } catch (e) { alert("Lỗi khi xử lý hàng loạt!"); }
+  finally { isProcessing = false; }
+}
+
+async function deleteBatch() {
+  if (isProcessing) return;
+  const ids = getSelectedIds();
+  if (ids.length === 0) return;
+  if (!confirm(`CẢNH BÁO ĐỎ: Xóa vĩnh viễn ${ids.length} bản ghi?\nKhông thể hoàn tác!`)) return;
+  isProcessing = true;
+  try {
+    await Promise.all(ids.map(id => fetch(`/api/inventory/records/${id}`, { method: 'DELETE' })));
+    loadData(currentPage);
+  } catch (e) { alert("Lỗi khi xóa hàng loạt!"); }
+  finally { isProcessing = false; }
+}
+
+function renderPagination(pageInfo) {
+  document.getElementById('page-info').textContent = `Tổng: ${pageInfo.total} bản ghi (Trang ${pageInfo.page}/${pageInfo.total_pages})`;
+  const ul = document.getElementById('pagination');
+  ul.innerHTML = "";
+  if (pageInfo.total_pages <= 1) return;
+
+  const total = pageInfo.total_pages;
+  const current = pageInfo.page;
+
+  ul.innerHTML += `<li class="page-item ${current === 1 ? 'disabled' : ''}"><a class="page-link" href="#" onclick="loadData(${current - 1}); return false;">Trước</a></li>`;
+
+  // ✅ Chỉ hiển thị tối đa 7 trang (tránh dài)
+  let start = Math.max(1, current - 3);
+  let end = Math.min(total, start + 6);
+  if (end - start < 6) start = Math.max(1, end - 6);
+
+  if (start > 1) {
+    ul.innerHTML += `<li class="page-item"><a class="page-link" href="#" onclick="loadData(1); return false;">1</a></li>`;
+    if (start > 2) ul.innerHTML += `<li class="page-item disabled"><span class="page-link">...</span></li>`;
+  }
+
+  for (let i = start; i <= end; i++) {
+    ul.innerHTML += `<li class="page-item ${i === current ? 'active' : ''}"><a class="page-link" href="#" onclick="loadData(${i}); return false;">${i}</a></li>`;
+  }
+
+  if (end < total) {
+    if (end < total - 1) ul.innerHTML += `<li class="page-item disabled"><span class="page-link">...</span></li>`;
+    ul.innerHTML += `<li class="page-item"><a class="page-link" href="#" onclick="loadData(${total}); return false;">${total}</a></li>`;
+  }
+
+  ul.innerHTML += `<li class="page-item ${current === total ? 'disabled' : ''}"><a class="page-link" href="#" onclick="loadData(${current + 1}); return false;">Sau</a></li>`;
+}
+
+function escapeHtml(str) {
+  if (!str) return '';
+  return String(str).replace(/[&<>"'`=\/]/g, s => ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;','/':'&#x2F;','=':'&#x3D;','`':'&#x60;'})[s]);
+}
+
+function formatDate(iso) {
+  if (!iso) return '';
+  const d = new Date(iso);
+  return d.toLocaleDateString('vi-VN') + ' ' + d.toLocaleTimeString('vi-VN', { hour: '2-digit', minute: '2-digit' });
+}
+// ==========================================
+// CHỨC NĂNG THEO LÔ (LOT / BATCH TOÀN BỘ)
+// ==========================================
+let lotSelectedIds = [];
+let isLotMode = false;
+
+// Lấy tất cả ID theo bộ lọc hiện tại (không phân trang)
+async function fetchAllIdsByFilter() {
+  const status = document.getElementById('filter-status').value;
+  const search = document.getElementById('filter-search').value.trim();
+  let allIds = [];
+  let page = 1;
+  const pageSize = 100; // Lấy 100 mỗi lần để nhanh
+
+  while (true) {
+    let url = `/api/inventory/history?page=${page}&page_size=${pageSize}`;
+    if (status) url += `&status_filter=${encodeURIComponent(status)}`;
+    if (search) url += `&serial_search=${encodeURIComponent(search)}`;
+    try {
+      const res = await fetch(url);
+      const data = await res.json();
+      if (data.status !== "success" || !data.data || data.data.length === 0) break;
+      allIds = allIds.concat(data.data.map(item => item.id));
+      if (data.data.length < pageSize) break; // Hết dữ liệu
+      page++;
+      if (page > 50) break; // Tránh loop vô hạn (tối đa 5000 bản ghi)
+    } catch (e) {
+      console.error("Lỗi lấy danh sách lô:", e);
+      break;
+    }
+  }
+  return allIds;
+}
+
+async function selectAllByFilter() {
+  if (isProcessing) return;
+  if (!confirm(`Bạn có muốn chọn TOÀN BỘ mã phù hợp với bộ lọc hiện tại?\nHệ thống sẽ lấy tất cả (không giới hạn trang).`)) return;
+
+  isProcessing = true;
+  const btn = event.target.closest('button');
+  const originalText = btn.innerHTML;
+  btn.innerHTML = '<i class="fa-solid fa-spinner fa-spin me-1"></i> Đang lấy danh sách...';
+  btn.disabled = true;
+
+  try {
+    lotSelectedIds = await fetchAllIdsByFilter();
+    if (lotSelectedIds.length === 0) {
+      alert("Không có bản ghi nào phù hợp với bộ lọc!");
+      return;
+    }
+    isLotMode = true;
+    document.getElementById('lot-toolbar').style.display = 'flex';
+    document.getElementById('lot-count').textContent = lotSelectedIds.length;
+    // Ẩn thanh batch thường để tránh nhầm lẫn
+    document.getElementById('batch-toolbar').style.display = 'none';
+    alert(`✅ Đã chọn ${lotSelectedIds.length} mã theo lô!\nBây giờ bạn có thể Duyệt / Từ chối / Xóa toàn bộ cùng lúc.`);
+  } catch (e) {
+    alert("Lỗi khi lấy danh sách lô!");
+  } finally {
+    isProcessing = false;
+    btn.innerHTML = originalText;
+    btn.disabled = false;
+  }
+}
+
+function cancelLotSelection() {
+  lotSelectedIds = [];
+  isLotMode = false;
+  document.getElementById('lot-toolbar').style.display = 'none';
+}
+
+// ==========================================
+// CHỨC NĂNG THEO LÔ — DÙNG ENDPOINT BATCH (1 REQUEST)
+// ==========================================
+
+// Thực hiện duyệt/từ chối theo lô — GỌI 1 LẦN DUY NHẤT
+async function processLot(newStatus) {
+  if (isProcessing || lotSelectedIds.length === 0) return;
+
+  const actionText = newStatus === 'verified' ? 'DUYỆT' : 'TỪ CHỐI';
+  if (!confirm(
+    `CẢNH BÁO THEO LÔ:\n` +
+    `Sẽ ${actionText} TOÀN BỘ ${lotSelectedIds.length} mã.\n` +
+    `Hành động này KHÔNG thể hoàn tác!\n\n` +
+    `Bạn có chắc chắn?`
+  )) return;
+
+  isProcessing = true;
+  const btn = document.getElementById(newStatus === 'verified' ? 'btn-lot-verify' : 'btn-lot-reject');
+  const originalText = btn.innerHTML;
+  btn.disabled = true;
+  btn.innerHTML = '<i class="fa-solid fa-spinner fa-spin me-1"></i> Đang xử lý toàn lô...';
+
+  try {
+    const res = await fetch('/api/inventory/records/batch-status', {
+      method: 'PATCH',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ ids: lotSelectedIds, status: newStatus })
+    });
+    const data = await res.json();
+
+    if (res.ok && data.status === 'success') {
+      alert(
+        `✅ HOÀN THÀNH THEO LÔ (${actionText})\n\n` +
+        `Đã cập nhật: ${data.updated || 0}/${data.requested || lotSelectedIds.length} mã\n` +
+        (data.message ? `\n${data.message}` : '')
+      );
+    } else {
+      alert(`❌ Lỗi: ${data.detail || data.message || 'Không thể cập nhật hàng loạt'}`);
+    }
+  } catch (e) {
+    console.error("Lỗi batch status:", e);
+    alert("❌ Lỗi kết nối máy chủ khi xử lý hàng loạt!");
+  } finally {
+    btn.innerHTML = originalText;
+    btn.disabled = false;
+    isProcessing = false;
+    cancelLotSelection();
+    loadData(currentPage);
+  }
+}
+
+// Xóa theo lô — GỌI 1 LẦN DUY NHẤT (POST thay vì DELETE)
+async function deleteLot() {
+  if (isProcessing || lotSelectedIds.length === 0) return;
+
+  // Xác nhận lần 1
+  if (!confirm(
+    `CẢNH BÁO TOÀN BỘ LÔ:\n` +
+    `Sẽ XÓA VĨNH VIỄN TOÀN BỘ ${lotSelectedIds.length} mã.\n` +
+    `KHÔNG thể hoàn tác!\n\n` +
+    `Bạn có chắc chắn 100%?`
+  )) return;
+
+  // Xác nhận lần 2 — gõ "ĐỒNG Ý"
+  const confirmText = prompt(
+    `XÁC NHẬN LẦN CUỐI:\n` +
+    `Gõ chính xác "DELETE" để xóa ${lotSelectedIds.length} mã:`
+  );
+  if (confirmText !== 'DELETE') {
+    alert("Đã hủy thao tác xóa toàn lô.");
+    return;
+  }
+
+  isProcessing = true;
+  const btn = document.getElementById('btn-lot-delete');
+  const originalText = btn.innerHTML;
+  btn.disabled = true;
+  btn.innerHTML = '<i class="fa-solid fa-spinner fa-spin me-1"></i> Đang xóa toàn lô...';
+
+  try {
+    const res = await fetch('/api/inventory/records/batch-delete', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ ids: lotSelectedIds })
+    });
+    const data = await res.json();
+
+    if (res.ok && data.status === 'success') {
+      alert(
+        `✅ ĐÃ XÓA TOÀN LÔ\n\n` +
+        `Đã xóa: ${data.deleted || 0}/${data.requested || lotSelectedIds.length} mã` +
+        (data.missing ? `\nKhông tồn tại: ${data.missing} mã` : '') +
+        (data.message ? `\n\n${data.message}` : '')
+      );
+    } else {
+      alert(`❌ Lỗi: ${data.detail || data.message || 'Không thể xóa hàng loạt'}`);
+    }
+  } catch (e) {
+    console.error("Lỗi batch delete:", e);
+    alert("❌ Lỗi kết nối máy chủ khi xóa hàng loạt!");
+  } finally {
+    btn.innerHTML = originalText;
+    btn.disabled = false;
+    isProcessing = false;
+    cancelLotSelection();
+    loadData(currentPage);
+  }
+}
+</script>
+{% endblock %}

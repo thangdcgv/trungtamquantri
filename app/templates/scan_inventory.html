@@ -464,6 +464,9 @@ body {
     font-size: 0.82rem;
     letter-spacing: 0.02em;
     word-break: break-all;
+    /* BỔ SUNG 2 DÒNG DƯỚI ĐỂ ĐIỆN THOẠI CÓ THỂ BÔI ĐEN COPY */
+    user-select: text;
+    -webkit-user-select: text;
 }
 .text-truncate-mobile { max-width: 130px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
 @media (min-width: 576px) { .text-truncate-mobile { max-width: 200px; } }
@@ -1165,6 +1168,7 @@ body {
 
     // ===== CAMERA =====
     window.toggleCameraStream = async function() {
+        AudioEngine.init();
         const wrapper = document.getElementById('scanner-wrapper');
         const btn = document.getElementById('btn-toggle-camera');
         if (isCameraActive) {
@@ -1246,6 +1250,7 @@ body {
     };
 
     window.submitManualSerial = function() {
+        AudioEngine.init();
         const input = document.getElementById('serial_number_input');
         const val = input.value.trim();
         if (!val) return;
@@ -1566,6 +1571,7 @@ body {
                 const data = result.data || [];
                 if (data.length === 0) break;
                 allData = allData.concat(data);
+                await new Promise(r => setTimeout(r, 150));
                 const totalPages = (result.pagination && result.pagination.total_pages) || 1;
                 if (page >= totalPages) break;
                 page++;

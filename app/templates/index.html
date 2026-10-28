@@ -431,41 +431,47 @@
                 </a>
             </div>
             <div class="feed-list">
-                {% if recent_warranties %}
-                    {% for item in recent_warranties %}
-                    <a href="/warranty/{{ item.id }}" class="feed-item">
-                        <div class="feed-info">
-                            <!-- Dòng 1: Khách hàng (linh hoạt co giãn) + Model Máy (cố định, không bị bóp méo) -->
-                            <div class="feed-title">
-                                <span class="feed-title-name">{{ item.customer_name | default('Khách hàng') }}</span>
-                                <span class="status-pill green">{{ item.model_name | default('N/A') }}</span>
-                            </div>
+            {% if recent_warranties %}
+                {% for item in recent_warranties %}
+                <a href="/warranty/{{ item.id }}" class="feed-item">
+                    <div class="feed-info">
+                        <!-- Dòng 1: Khách hàng + Hãng & Model Máy -->
+                        <div class="feed-title">
+                            <span class="feed-title-name">{{ item.customer_name | default('Khách hàng') }}</span>
+                            <span class="status-pill green">
+                                {% if item.brand_name %}{{ item.brand_name }} {% endif %}{{ item.model_name | default('N/A') }}
+                            </span>
+                        </div>
 
-                            <!-- Dòng 2: Meta info tự động xuống dòng (flex-wrap) nếu màn hình quá chật -->
-                            <div class="feed-meta">
-                                <span>S/N: {{ item.serial_number | default('N/A') }}</span>
+                        <!-- Dòng 2: Meta info (S/N, Danh mục, Loại Mực, Thời gian) -->
+                        <div class="feed-meta">
+                            <span class="meta-divider">•</span>
+                            <span>{{ item.category | default('Máy in') }}</span>
+                            
+                            {% if item.ink_type and item.ink_type != 'N/A' %}
                                 <span class="meta-divider">•</span>
-                                <span>{{ item.category | default('Máy in') }}</span>
-                                <span class="meta-divider">•</span>
-                                <span>
-                                    {% if item.created_at %}
-                                        <!-- Rút gọn năm để tối ưu mobile: DD/MM HH:MM -->
-                                        <td>{{ item.created_at | vn_time }}</td>
-                                    {% else %}
-                                        N/A
-                                    {% endif %}
-                                </span>
-                            </div>
+                                <span>{{ item.ink_type }}</span>
+                            {% endif %}
+
+                            <span class="meta-divider">•</span>
+                            <span>
+                                {% if item.created_at %}
+                                    {{ item.created_at | vn_time }}
+                                {% else %}
+                                    N/A
+                                {% endif %}
+                            </span>
                         </div>
-                        <div class="action-icon-link">
-                            <i class="fa-solid fa-chevron-right"></i>
-                        </div>
-                    </a>
-                    {% endfor %}
-                {% else %}
-                    <div class="feed-empty">Chưa có phiếu bảo hành nào gần đây.</div>
-                {% endif %}
-            </div>
+                    </div>
+                    <div class="action-icon-link">
+                        <i class="fa-solid fa-chevron-right"></i>
+                    </div>
+                </a>
+                {% endfor %}
+            {% else %}
+                <div class="feed-empty">Chưa có phiếu bảo hành nào gần đây.</div>
+            {% endif %}
+        </div>
         </div>
 
         <!-- 2. Card Chấm Công Lắp Đặt -->
