@@ -57,6 +57,7 @@ async def list_policies(request: Request):
             supabase.table("warranty_policy")
             .select("*")
             .order("brand_name", desc=True)
+            .order("policy_name", desc=False)
             .execute()
         )
         policies = res_policies.data if res_policies.data else []

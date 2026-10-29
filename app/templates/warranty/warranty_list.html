@@ -229,7 +229,7 @@
                     <tr class="bg-slate-800/80 border-b border-slate-700/80 text-slate-400 uppercase tracking-wider text-[10px] font-bold">
                         <th class="py-3.5 px-3 min-w-[130px]">Số Serial (S/N)</th>
                         <th class="py-3.5 px-3 min-w-[180px]">Khách Hàng & SĐT</th>
-                        <th class="py-3.5 px-3 min-w-[320px]">Model / Loại Mực / Tình Trạng</th>
+                        <th class="py-3.5 px-3 min-w-[340px]">Model / Loại Mực / Tình Trạng</th>
                         <th class="py-3.5 px-3 min-w-[185px]">Gói Bảo Hành Áp Dụng</th>
                         <th class="py-3.5 px-3 min-w-[110px]">Counter</th>
                         <th class="py-3.5 px-3 min-w-[150px]">KTV & Ngày Tạo</th>
@@ -276,7 +276,7 @@
                             data-ink-type="{{ item.ink_type or 'DYE UV' }}"
                             data-condition="{{ item.condition or 'Máy mới' }}">
 
-                            <!-- 1. Serial Number (ĐÃ FIX: Thêm border-0 p-0 focus:ring-0 vào thẻ input) -->
+                            <!-- 1. Serial Number -->
                             <td class="py-2.5 px-3 align-middle min-w-[140px]">
                                 <div class="serial-wrapper flex items-center gap-1 bg-slate-900/60 border border-slate-700/50 rounded-lg px-2.5 h-8 focus-within:border-indigo-500 transition">
                                     <input 
@@ -302,8 +302,8 @@
                                 <input type="text" class="row-phone min-w-0 w-full bg-transparent border border-transparent focus:border-indigo-500 rounded px-1 py-0.5 text-[11px] text-slate-400 font-mono outline-none disabled:bg-transparent disabled:text-slate-400 disabled:opacity-100" value="{{ item.phone_number or '' }}" disabled required>
                             </td>
 
-                            <!-- 3. Model / Loại Mực / Tình Trạng (Chế độ Xem vs Chế độ Sửa) -->
-                            <td class="py-2.5 px-3 align-middle min-w-[320px]">
+                            <!-- 3. Model / Loại Mực / Tình Trạng -->
+                            <td class="py-2.5 px-3 align-middle min-w-[340px]">
                                 <!-- CHẾ ĐỘ XEM TĨNH -->
                                 <div class="view-mode-info flex flex-col justify-center gap-1 min-h-[56px]">
                                     <div class="flex items-center font-bold text-xs text-slate-100 truncate">
@@ -312,7 +312,7 @@
                                         </span>
                                         {% if item.ink_type and item.ink_type != 'N/A' %}
                                             <span class="text-emerald-400 font-medium ml-1.5">
-- {{ item.ink_type }}
+                                                - {{ item.ink_type }}
                                             </span>
                                         {% endif %}
                                     </div>
@@ -321,31 +321,54 @@
                                         <span class="bg-slate-800/90 text-indigo-300 text-[10px] font-semibold px-2 py-1 rounded-md border border-indigo-700/50 text-center truncate">
                                             {{ item.category or 'In phun' }}
                                         </span>
-                                        <span class="text-[10px] font-semibold px-2 py-1 rounded-md border text-center truncate {% if (item.condition or '')|trim == 'Đã qua sử dụng' %}bg-amber-950/60 text-amber-300 border-amber-800/60{% else %}bg-emerald-950/60 text-emerald-300 border-emerald-800/60{% endif %}">
-                                            {{ item.condition or 'Máy mới' }}
+
+                                        {% set cond_val = (item.condition or 'Máy mới') | trim %}
+                                        <span class="text-[10px] font-semibold px-2 py-1 rounded-md border text-center truncate 
+                                            {% if cond_val == 'Đã qua sử dụng' %}
+                                                bg-amber-950/60 text-amber-300 border-amber-800/60
+                                            {% elif cond_val == 'Không phân biệt' %}
+                                                bg-purple-950/60 text-purple-300 border-purple-800/60
+                                            {% else %}
+                                                bg-emerald-950/60 text-emerald-300 border-emerald-800/60
+                                            {% endif %}">
+                                            {{ cond_val }}
                                         </span>
                                     </div>
                                 </div>
 
                                 <!-- CHẾ ĐỘ SỬA NĂNG ĐỘNG -->
                                 <div class="edit-mode-inputs hidden space-y-1.5">
-                                    <div class="relative flex-1">
-                                        <i class="fa-solid fa-magnifying-glass absolute left-2.5 top-1/2 -translate-y-1/2 text-slate-500 text-[10px]"></i>
-                                        <input type="text" list="printerList" 
-                                            class="row-model-input w-full h-8 bg-slate-950 border border-slate-700 focus:border-cyan-500 rounded-lg pl-7 pr-2 text-xs text-slate-100 font-semibold outline-none" 
-                                            value="{% if item.brand_name %}{{ item.brand_name }} {{ item.model_name }}{% else %}{{ item.model_name }}{% endif %}"
-                                            data-brand="{{ item.brand_name or '' }}"
-                                            data-model="{{ item.model_name or '' }}"
-                                            placeholder="Gõ tìm model..." 
-                                            oninput="onInlineModelChange(this)">
+                                    <div class="flex items-center gap-1.5">
+                                        <div class="relative flex-1">
+                                            <i class="fa-solid fa-magnifying-glass absolute left-2.5 top-1/2 -translate-y-1/2 text-slate-500 text-[10px]"></i>
+                                            <input type="text" list="printerList" 
+                                                class="row-model-input w-full h-8 bg-slate-950 border border-slate-700 focus:border-cyan-500 rounded-lg pl-7 pr-2 text-xs text-slate-100 font-semibold outline-none" 
+                                                value="{% if item.brand_name %}{{ item.brand_name }} {{ item.model_name }}{% else %}{{ item.model_name }}{% endif %}"
+                                                data-brand="{{ item.brand_name or '' }}"
+                                                data-model="{{ item.model_name or '' }}"
+                                                placeholder="Gõ tìm model..." 
+                                                oninput="onInlineModelChange(this)">
+                                        </div>
+
+                                        <!-- YÊU CẦU 2: Checkbox Đầu Phun Mới ở Chế Độ Sửa -->
+                                        <label class="flex items-center gap-1 px-2 h-8 bg-slate-950 border border-slate-700 rounded-lg shrink-0 cursor-pointer select-none hover:border-amber-500/50 transition-all" title="Lắp Đầu Phun Mới (Tự động ghép '- Đầu phun mới')">
+                                            <input type="checkbox" class="row-new-head w-3.5 h-3.5 rounded bg-slate-900 border-slate-700 text-cyan-500 focus:ring-0 cursor-pointer" 
+                                                {% if '- Đầu phun mới' in (item.model_name or '') %}checked{% endif %}
+                                                onchange="onInlineHeadChange(this)">
+                                            <span class="text-[10px] font-semibold text-amber-300 flex items-center gap-1">
+                                                <i class="fa-solid fa-sparkles text-[9px]"></i> Đầu phun mới
+                                            </span>
+                                        </label>
                                     </div>
                                     
                                     <div class="grid grid-cols-3 gap-1">
                                         <input type="text" class="row-category w-full h-7 bg-slate-900/60 border border-slate-800 text-slate-400 text-[10px] font-medium px-1.5 rounded outline-none pointer-events-none select-none truncate" readonly value="{{ item.category or 'In phun' }}">
 
+                                        <!-- YÊU CẦU 3: Thêm Không Phân Biệt -->
                                         <select class="row-condition w-full h-7 bg-slate-950 border border-slate-700 text-emerald-400 text-[10px] font-medium px-1 rounded outline-none" onchange="onInlineConditionChange(this)">
                                             <option value="Máy mới" {% if item.condition == 'Máy mới' %}selected{% endif %}>Máy mới</option>
                                             <option value="Đã qua sử dụng" {% if item.condition == 'Đã qua sử dụng' %}selected{% endif %}>Đã qua sử dụng</option>
+                                            <option value="Không phân biệt" {% if item.condition == 'Không phân biệt' %}selected{% endif %}>Không phân biệt</option>
                                         </select>
 
                                         <select class="row-ink-type w-full h-7 bg-slate-950 border border-slate-700 text-cyan-300 text-[10px] font-semibold px-1 rounded outline-none truncate" required>
@@ -365,7 +388,7 @@
                                         <span class="text-[9px] font-bold text-slate-400 uppercase tracking-wider truncate">Gói bảo hành</span>
                                     </div>
                                     <select class="row-policy w-full h-7 min-w-0 bg-amber-500/10 text-amber-300 border border-amber-500/30 text-[10px] font-semibold px-2 rounded-md outline-none appearance-none disabled:bg-amber-500/10 disabled:border-amber-500/20 disabled:text-amber-300 disabled:opacity-100 disabled:cursor-default focus:border-amber-400 transition truncate" onchange="onInlinePolicyChange(this)" disabled>
-                                        <option value="NULL" class="bg-slate-900 text-slate-300" data-brand="" data-category="" data-condition="" data-has-page="false" data-has-meter="false">-- Chưa áp dụng --</option>
+                                        <option value="NULL" class="bg-slate-900 text-slate-300" data-id="" data-brand="" data-category="" data-condition="" data-has-page="false" data-has-meter="false">-- Chưa áp dụng --</option>
                                         {% if policies %}
                                             {% for p in policies %}
                                                 {% if p.is_active != False %}
@@ -373,12 +396,13 @@
                                                     {% set has_meter = p.no_meter_limit != True and ((p.meter_limit_body or 0) > 0 or (p.meter_limit_head or 0) > 0) %}
                                                     <option value="{{ p.policy_name }}" 
                                                             class="bg-slate-900 text-slate-100 py-1"
+                                                            data-id="{{ p.id }}"
                                                             data-brand="{{ p.brand_name or '' }}"
                                                             data-category="{{ p.category or '' }}" 
                                                             data-condition="{{ p.condition or '' }}"
                                                             data-has-page="{{ 'true' if has_page else 'false' }}"
                                                             data-has-meter="{{ 'true' if has_meter else 'false' }}"
-                                                            {% if item.applied_policy_name == p.policy_name %}selected{% endif %}>
+                                                            {% if item.applied_policy_name == p.policy_name or item.policy_id == p.id %}selected{% endif %}>
                                                         {{ p.policy_name }} ({{ p.warranty_months }}T - {{ p.head_warranty_months }}T)
                                                     </option>
                                                 {% endif %}
@@ -388,7 +412,7 @@
                                 </div>
                             </td>
 
-                            <!-- 5. Counter Hiện Tại (ĐÃ FIX: Thêm class counter-wrapper, thêm border-0 p-0 focus:ring-0 vào input) -->
+                            <!-- 5. Counter Hiện Tại -->
                             <td class="py-2.5 px-3 align-middle min-w-[115px]">
                                 <div class="flex flex-col justify-center gap-1 h-[56px]">
                                     <div class="h-5 flex items-center min-w-0 justify-end px-0.5">
@@ -460,7 +484,7 @@
 </div>
 
 <!-- ========================================== -->
-<!-- TEMPLATE HÀNG MỚI (Chỉ chứa thẻ <tr>) -->
+<!-- TEMPLATE HÀNG MỚI (Thêm dòng mới) -->
 <!-- ========================================== -->
 <template id="inlineRowTemplate">
     <tr class="bg-indigo-950/40 border-b border-indigo-900/60 new-inline-row">
@@ -478,7 +502,7 @@
             <input type="text" class="row-phone w-full h-8 bg-slate-950 border border-slate-700 focus:border-indigo-500 focus:ring-1 focus:ring-indigo-500 rounded-lg px-2.5 text-xs text-slate-300 font-mono outline-none transition" placeholder="Số điện thoại *" required oninput="validatePhoneInput(this)">
         </td>
 
-        <!-- BƯỚC 2: Chọn Model + (Danh mục & Tình trạng) -->
+        <!-- BƯỚC 2: Chọn Model + Checkbox "Đầu Phun Mới" + (Danh mục & Tình trạng) -->
         <td class="py-2.5 px-2.5 align-top space-y-1.5">
             <div class="flex items-center gap-1.5">
                 <div class="relative flex-1">
@@ -489,11 +513,13 @@
                         oninput="onInlineModelChange(this); this.classList.remove('border-red-500')">
                 </div>
                 
-                <button type="button" onclick="openPrinterModal(this)" 
-                    class="h-8 px-2.5 bg-slate-800 hover:bg-slate-700 text-cyan-400 hover:text-cyan-300 border border-slate-700 rounded-lg text-[11px] font-semibold flex items-center justify-center gap-1.5 shrink-0 transition-all cursor-pointer" 
-                    title="Thêm model mới vào danh mục">
-                    <i class="fa-solid fa-plus text-[10px]"></i> Thêm
-                </button>
+                <!-- YÊU CẦU 2: Ô Checkbox "Đầu Phun Mới" (Thay thế cho nút "Thêm") -->
+                <label class="flex items-center gap-1 px-2 h-8 bg-slate-950 border border-slate-700 rounded-lg shrink-0 cursor-pointer select-none hover:border-amber-500/50 transition-all" title="Lắp Đầu Phun Mới (Tự động ghép '- Đầu phun mới')">
+                    <input type="checkbox" class="row-new-head w-3.5 h-3.5 rounded bg-slate-900 border-slate-700 text-cyan-500 focus:ring-0 cursor-pointer" onchange="onInlineHeadChange(this)">
+                    <span class="text-[10px] font-semibold text-amber-300 flex items-center gap-1">
+                        <i class="fa-solid fa-sparkles text-[9px]"></i> Đầu phun mới
+                    </span>
+                </label>
             </div>
             
             <div class="grid grid-cols-2 gap-1.5">
@@ -505,16 +531,18 @@
                 </div>
 
                 <div>
+                    <!-- YÊU CẦU 3: Thêm Không Phân Biệt -->
                     <select class="row-condition w-full h-8 bg-slate-950 border border-slate-700 text-emerald-400 focus:border-cyan-500 text-xs font-medium px-2 rounded-lg outline-none cursor-pointer transition" 
                         onchange="onInlineConditionChange(this)">
                         <option value="Máy mới">Máy mới</option>
                         <option value="Đã qua sử dụng">Đã qua sử dụng</option>
+                        <option value="Không phân biệt">Không phân biệt</option>
                     </select>
                 </div>
             </div>
         </td>
 
-        <!-- BƯỚC 3: Loại Mực & Gói Bảo Hành (ĐÃ FIX: Xóa các thuộc tính selected thừa) -->
+        <!-- BƯỚC 3: Loại Mực & Gói Bảo Hành -->
         <td class="py-2.5 px-2.5 align-top space-y-1.5">
             <select class="row-ink-type w-full h-8 bg-slate-950 border border-slate-700 text-cyan-300 focus:border-cyan-500 text-xs font-semibold px-2.5 rounded-lg outline-none cursor-pointer transition truncate" required>
                 <option value="" disabled selected>-- Chọn loại mực * --</option>
@@ -531,7 +559,6 @@
                 <option value="MỰC LASER">MỰC LASER</option>
                 <option value="KHÔNG MỰC">KHÔNG MỰC</option>
                 <option value="THIẾT BỊ ĐIỆN">THIẾT BỊ ĐIỆN</option>
-
             </select>
 
             <select class="row-policy w-full h-8 bg-amber-500/10 border border-amber-500/30 focus:border-amber-400 focus:ring-1 focus:ring-amber-500 text-amber-300 rounded-lg px-2.5 text-[11px] font-semibold outline-none cursor-pointer disabled:opacity-50 disabled:cursor-not-allowed transition-all" 
@@ -636,7 +663,6 @@
 <script id="policies-data" type="application/json">
     {{ policies | default([]) | tojson | safe }}
 </script>
-
 <script>
 // =========================================================
 // 0. TRẠNG THÁI TOÀN CỤC
@@ -657,7 +683,6 @@ let currentActiveModelInput = null;
 // =========================================================
 // 1. HÀM TIỆN ÍCH
 // =========================================================
-// Bỏ dấu, lower-case, xóa ký tự đặc biệt (dùng để so khớp hãng/danh mục/tình trạng)
 function normalizeString(str) {
     if (!str) return '';
     return String(str)
@@ -674,11 +699,9 @@ function simplifyCondition(condStr) {
     return normalizeString(condStr).replace(/^may/, '');
 }
 
-// So khớp tên máy in: giữ khoảng trắng đơn, không phân biệt hoa thường
 const normName = s => String(s || '').toLowerCase().replace(/\s+/g, ' ').trim();
 const printerFullName = p => `${p.brand_name || ''} ${p.model_code || ''}`.trim();
 
-// Kiểm tra phản hồi API thống nhất cho mọi hàm
 const isApiOk = (res, json) => res.ok && !!json && (json.success === true || json.status === 'success');
 
 async function postJson(url, body, method = 'POST') {
@@ -692,7 +715,6 @@ async function postJson(url, body, method = 'POST') {
     return { res, json };
 }
 
-// Khóa/mở nút trong lúc chờ API để tránh bấm đúp
 function setBusy(btn, busy) {
     if (!btn) return;
     btn.disabled = busy;
@@ -704,7 +726,6 @@ function setBusy(btn, busy) {
 // 2. DỮ LIỆU MÁY IN
 // =========================================================
 function renderPrinterDatalist() {
-    // Không còn dùng <datalist> của trình duyệt (phải bấm 2 lần mới hiện); dùng panel gợi ý riêng
     document.getElementById('printerList')?.remove();
     if (suggestInput) renderSuggest();
 }
@@ -723,7 +744,7 @@ function loadPrintersForInline(force = false) {
             renderPrinterDatalist();
         } catch (err) {
             console.error('Lỗi tải danh mục máy in:', err);
-            printersPromise = null;   // cho phép thử lại lần sau
+            printersPromise = null;
         }
     })();
 
@@ -732,15 +753,13 @@ function loadPrintersForInline(force = false) {
 
 // =========================================================
 // 2B. GỢI Ý MODEL MÁY IN - LIVE SEARCH TỰ VIẾT
-// Thay cho <datalist> của trình duyệt: danh sách hiện ngay khi gõ,
-// lọc theo từng ký tự, không phân biệt hoa/thường và dấu tiếng Việt.
 // =========================================================
 const MODEL_SUGGEST_LIMIT = 40;
 
-let suggestPanel = null;     // phần tử danh sách (dùng chung cho mọi dòng)
-let suggestInput = null;     // ô model đang mở gợi ý
-let suggestItems = [];       // kết quả đang hiển thị
-let suggestActive = -1;      // mục đang được tô sáng
+let suggestPanel = null;     
+let suggestInput = null;     
+let suggestItems = [];       
+let suggestActive = -1;      
 let suggestLoading = false;
 let suggestIndexCache = { src: null, len: -1, rows: [] };
 
@@ -748,7 +767,6 @@ const escHtml = s => String(s ?? '').replace(/[&<>"']/g, c => (
     { '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[c]
 ));
 
-// Chuẩn hóa để tìm kiếm: bỏ dấu, lower-case, ký tự đặc biệt thành khoảng trắng
 const searchNorm = s => String(s || '')
     .normalize('NFD').replace(/[̀-ͯ]/g, '')
     .replace(/đ/g, 'd').replace(/Đ/g, 'D')
@@ -756,7 +774,6 @@ const searchNorm = s => String(s || '')
     .replace(/[^a-z0-9]+/g, ' ')
     .trim();
 
-// Bỏ datalist gốc của trình duyệt để không bị hai danh sách gợi ý chồng nhau
 function stripNativeDatalist(input) {
     input.removeAttribute('list');
     input.setAttribute('autocomplete', 'off');
@@ -780,8 +797,6 @@ function getSuggestIndex() {
     return suggestIndexCache.rows;
 }
 
-// Điểm càng thấp càng khớp: 0 đúng hệt, 1 bắt đầu bằng, 2 mỗi từ khớp đầu từ,
-// 3 mỗi từ nằm trong tên, 4 khớp khi bỏ khoảng trắng (vd "ix 6770" ~ "ix6770")
 function searchPrinters(query) {
     const rows = getSuggestIndex();
     const q = searchNorm(query);
@@ -800,7 +815,7 @@ function searchPrinters(query) {
         else continue;
         scored.push({ score, row: r });
     }
-    scored.sort((a, b) => a.score - b.score);   // sort ổn định: giữ thứ tự A-Z trong cùng điểm
+    scored.sort((a, b) => a.score - b.score);
     return {
         items: scored.slice(0, MODEL_SUGGEST_LIMIT).map(x => x.row),
         total: scored.length
@@ -832,7 +847,6 @@ function ensureSuggestPanel() {
     panel.setAttribute('role', 'listbox');
     panel.hidden = true;
 
-    // Giữ focus ở ô nhập khi bấm vào danh sách: chỉ cần 1 lần bấm là chọn được
     panel.addEventListener('mousedown', e => e.preventDefault());
     panel.addEventListener('mouseover', e => {
         const el = e.target.closest('[data-idx]');
@@ -859,7 +873,6 @@ function positionSuggest() {
     suggestPanel.style.width = width + 'px';
     suggestPanel.style.left = left + 'px';
 
-    // Đủ chỗ phía dưới thì mở xuống, không thì mở lên trên
     const need = Math.min(suggestPanel.scrollHeight, 288) + 12;
     const spaceBelow = window.innerHeight - r.bottom;
     if (spaceBelow < need && r.top > spaceBelow) {
@@ -912,7 +925,6 @@ function renderSuggest() {
             html += `<div class="ms-more">Còn ${total - items.length} kết quả khác, gõ thêm để thu hẹp</div>`;
         }
 
-        // Có model khớp đúng hệt thì không cần gợi ý thêm mới
         const text = query.trim();
         const hasExact = items.length && items[0].s === searchNorm(query);
         if (text && !hasExact) {
@@ -952,13 +964,20 @@ function pickSuggest(idx) {
     const row = suggestItems[idx];
     if (!input || !row) return;
 
-    input.value = row.name;
+    const tr = input.closest('tr');
+    const isNewHead = tr?.querySelector('.row-new-head')?.checked;
+    
+    let modelText = row.name;
+    if (isNewHead && !modelText.toLowerCase().includes('đầu phun mới')) {
+        modelText += ' - Đầu phun mới';
+    }
+
+    input.value = modelText;
     input.classList.remove('border-red-500');
     closeSuggest();
-    onInlineModelChange(input);   // điền danh mục + lọc gói bảo hành
+    onInlineModelChange(input);
 }
 
-// Model chưa có trong danh mục: mở modal thêm máy in, điền sẵn hãng/model đã đoán
 function addNewFromSuggest() {
     const input = suggestInput;
     if (!input) return;
@@ -970,7 +989,7 @@ function addNewFromSuggest() {
     });
 }
 
-// ---- Sự kiện (gắn một lần trên document, dùng được cho cả dòng thêm mới và dòng tải lại) ----
+// Event Listeners cho Model Suggest
 document.addEventListener('focusin', e => {
     const input = e.target.closest?.('.row-model-input');
     if (!input) return;
@@ -1036,19 +1055,46 @@ window.addEventListener('scroll', e => {
 }, true);
 
 // =========================================================
-// 3. BỘ LỌC CHÍNH SÁCH BẢO HÀNH THEO MODEL / TÌNH TRẠNG
+// 3. XỬ LÝ CHECKBOX "ĐẦU PHUN MỚI" VÀ BỘ LỌC CHÍNH SÁCH
 // =========================================================
+
+function onInlineHeadChange(checkboxEl) {
+    const tr = checkboxEl.closest('tr');
+    if (!tr) return;
+    const modelInput = tr.querySelector('.row-model-input');
+    if (!modelInput) return;
+
+    let val = modelInput.value.trim();
+    let cleanVal = val.replace(/\s*-\s*Đầu phun mới/gi, '').trim();
+
+    if (checkboxEl.checked) {
+        if (cleanVal) modelInput.value = `${cleanVal} - Đầu phun mới`;
+    } else {
+        modelInput.value = cleanVal;
+    }
+
+    onInlineModelChange(modelInput);
+}
+
 function onInlineModelChange(inputEl) {
     const tr = inputEl.closest('tr');
     if (!tr) return;
 
     const categoryInput = tr.querySelector('.row-category');
     const rawVal = inputEl.value.trim().replace(/\s+/g, ' ');
-    const cleanVal = normName(rawVal);
+    
+    const baseVal = rawVal.replace(/\s*-\s*Đầu phun mới/gi, '').trim();
+    const cleanVal = normName(baseVal);
 
     const setMeta = (brand, model) => {
         inputEl.setAttribute('data-brand', brand);
-        inputEl.setAttribute('data-model', model);
+        
+        const isNewHead = tr.querySelector('.row-new-head')?.checked;
+        let fullModel = model;
+        if (isNewHead && model && !model.toLowerCase().includes('đầu phun mới')) {
+            fullModel = `${model} - Đầu phun mới`;
+        }
+        inputEl.setAttribute('data-model', fullModel);
     };
 
     if (!cleanVal) {
@@ -1065,20 +1111,18 @@ function onInlineModelChange(inputEl) {
         setMeta((matched.brand_name || '').trim(), (matched.model_code || '').trim());
         if (categoryInput) categoryInput.value = matched.category || '';
     } else {
-        // Máy chưa có trong danh mục: xóa danh mục cũ, đoán hãng/model
         if (categoryInput) categoryInput.value = '';
 
-        // Ưu tiên hãng đã biết (hãng dài trước) để hãng nhiều từ không bị cắt sai
         const brands = [...new Set(allPrinters.map(p => (p.brand_name || '').trim()).filter(Boolean))]
             .sort((a, b) => b.length - a.length);
         const knownBrand = brands.find(b => cleanVal.startsWith(normName(b) + ' '));
 
         if (knownBrand) {
-            setMeta(knownBrand, rawVal.substring(knownBrand.length).trim());
+            setMeta(knownBrand, baseVal.substring(knownBrand.length).trim());
         } else {
-            const i = rawVal.indexOf(' ');
-            if (i > 0) setMeta(rawVal.substring(0, i), rawVal.substring(i + 1).trim());
-            else setMeta(rawVal, '');
+            const i = baseVal.indexOf(' ');
+            if (i > 0) setMeta(baseVal.substring(0, i), baseVal.substring(i + 1).trim());
+            else setMeta(baseVal, '');
         }
     }
 
@@ -1087,16 +1131,46 @@ function onInlineModelChange(inputEl) {
 
 function onInlineConditionChange(selectEl) {
     const tr = selectEl.closest('tr');
-    selectEl.classList.remove('text-amber-400', 'text-emerald-400');
-    if (selectEl.value === 'Đã qua sử dụng') selectEl.classList.add('text-amber-400');
-    else selectEl.classList.add('text-emerald-400');
-    if (tr) filterInlinePolicies(tr);
+    if (!tr) return;
+
+    // 1. Đổi màu text hiển thị
+    selectEl.classList.remove('text-amber-400', 'text-emerald-400', 'text-purple-400');
+    if (selectEl.value === 'Đã qua sử dụng') {
+        selectEl.classList.add('text-amber-400');
+    } else if (selectEl.value === 'Không phân biệt') {
+        selectEl.classList.add('text-purple-400');
+    } else {
+        selectEl.classList.add('text-emerald-400');
+    }
+
+    // 2. Ràng buộc ô "Đầu phun mới"
+    const headCheckbox = tr.querySelector('.row-new-head');
+    if (headCheckbox) {
+        const isAllowed = (selectEl.value === 'Đã qua sử dụng' || selectEl.value === 'Không phân biệt');
+        
+        headCheckbox.disabled = !isAllowed;
+
+        if (!isAllowed) {
+            if (headCheckbox.checked) {
+                headCheckbox.checked = false;
+                onInlineHeadChange(headCheckbox);
+            }
+            headCheckbox.closest('label')?.classList.add('opacity-40', 'cursor-not-allowed');
+        } else {
+            headCheckbox.closest('label')?.classList.remove('opacity-40', 'cursor-not-allowed');
+        }
+    }
+
+    // 3. Lọc lại gói bảo hành phù hợp
+    filterInlinePolicies(tr);
 }
 
 function buildPolicyOption(p) {
     const opt = document.createElement('option');
     opt.value = p.policy_name;
     opt.textContent = `${p.policy_name} (${p.warranty_months ?? 0}T - ${p.head_warranty_months ?? 0}T)`;
+
+    if (p.id) opt.setAttribute('data-id', p.id);
 
     const hasPage = p.no_page_limit !== true && ((p.page_limit_body || 0) > 0 || (p.page_limit_head || 0) > 0);
     const hasMeter = p.no_meter_limit !== true && ((p.meter_limit_body || 0) > 0 || (p.meter_limit_head || 0) > 0);
@@ -1106,7 +1180,6 @@ function buildPolicyOption(p) {
     return opt;
 }
 
-// Đảm bảo gói đã lưu vẫn chọn được dù đã bị tắt hoặc không còn khớp bộ lọc
 function ensurePolicyOption(select, name) {
     if (!select || !name) return;
     if (Array.from(select.options).some(o => o.value === name)) return;
@@ -1126,13 +1199,12 @@ function filterInlinePolicies(tr) {
     const brand = (modelInput ? modelInput.getAttribute('data-brand') : '') || tr.getAttribute('data-brand') || '';
 
     const targetBrandNorm = normalizeString(brand);
-    // Nhớ gói đã chọn gần nhất để khôi phục khi người dùng sửa model rồi gõ lại cho khớp
     const savedPolicyVal = policySelect.value || policySelect.dataset.lastPolicy || '';
 
     if (!category || !targetBrandNorm) {
         const hasModelText = !!(modelInput && modelInput.value.trim());
         policySelect.innerHTML = hasModelText
-            ? '<option value="">-- Máy chưa có trong danh mục, bấm "Thêm" --</option>'
+            ? '<option value="">-- Máy chưa có trong danh mục, chọn thủ công --</option>'
             : '<option value="">-- Chờ chọn Model thiết bị --</option>';
         policySelect.disabled = true;
         onInlinePolicyChange(policySelect);
@@ -1156,6 +1228,8 @@ function filterInlinePolicies(tr) {
             pBrandNorm === 'tatca' ||
             pBrandNorm === 'all' ||
             pBrandNorm === 'khac' ||
+            pBrandNorm === 'apdungchung' ||  // 👈 BỔ SUNG: Cho phép chính sách "Áp dụng chung"
+            pBrandNorm === 'chung' ||
             pBrandNorm.includes(targetBrandNorm) ||
             targetBrandNorm.includes(pBrandNorm)
         );
@@ -1165,11 +1239,14 @@ function filterInlinePolicies(tr) {
             pCategoryNorm === 'tatca' ||
             pCategoryNorm === 'all'
         );
+        
         const isMatchCondition = (
             !pCondClean ||
             pCondClean === inputCondClean ||
             pCondClean === 'tatca' ||
-            pCondClean === 'all'
+            pCondClean === 'all' ||
+            pCondClean === 'khongphanbiet' ||
+            inputCondClean === 'khongphanbiet'
         );
 
         return p.is_active !== false && isMatchBrand && isMatchCategory && isMatchCondition;
@@ -1236,8 +1313,14 @@ async function addInlineRow() {
 
     const clone = template.content.cloneNode(true);
     clone.querySelectorAll('.row-model-input').forEach(stripNativeDatalist);
-    // Ngày theo giờ máy người dùng (toISOString dùng UTC nên có thể lệch 1 ngày)
     clone.querySelector('.row-date').value = new Date().toLocaleDateString('en-CA');
+
+    // Khóa ô Checkbox "Đầu phun mới" khi mới thêm hàng (vì mặc định tình trạng là Máy mới)
+    const headCb = clone.querySelector('.row-new-head');
+    if (headCb) {
+        headCb.disabled = true;
+        headCb.closest('label')?.classList.add('opacity-40', 'cursor-not-allowed');
+    }
 
     tbody.insertBefore(clone, tbody.firstChild);
     updateBatchCount();
@@ -1257,7 +1340,6 @@ function updateBatchCount() {
     if (btnBatch) btnBatch.classList.toggle('hidden', count === 0);
 }
 
-// Trả về payload hợp lệ, hoặc null (đồng thời tô đỏ mọi ô sai)
 function extractRowData(tr) {
     const snInput = tr.querySelector('.row-sn');
     const customerInput = tr.querySelector('.row-customer');
@@ -1272,12 +1354,14 @@ function extractRowData(tr) {
     const phoneVal = phoneInput ? phoneInput.value.trim().replace(/\s+/g, '') : '';
 
     const policyVal = policySelect?.value;
+    const policyOpt = policySelect?.options[policySelect.selectedIndex];
+    const policyIdVal = policyOpt?.getAttribute('data-id') || null;
+
     const categoryVal = tr.querySelector('.row-category')?.value || tr.getAttribute('data-category') || '';
     const conditionVal = tr.querySelector('.row-condition')?.value || tr.getAttribute('data-condition') || 'Máy mới';
     const inkTypeVal = inkTypeSelect ? inkTypeSelect.value.trim() : (tr.getAttribute('data-ink-type') || '');
     const dateVal = tr.querySelector('.row-date')?.value;
 
-    // Ô counter bị khóa (gói không giới hạn) thì không gửi giá trị cũ
     let counterVal = (counterInput && !counterInput.disabled) ? parseInt(counterInput.value, 10) : 0;
     if (!Number.isFinite(counterVal) || counterVal < 0) counterVal = 0;
 
@@ -1312,6 +1396,7 @@ function extractRowData(tr) {
         category: categoryVal,
         condition: conditionVal,
         ink_type: inkTypeVal,
+        policy_id: policyIdVal,
         applied_policy_name: policyVal,
         initial_counter: counterVal,
         current_counter: counterVal,
@@ -1346,7 +1431,6 @@ async function saveBatchRows() {
     const rows = document.querySelectorAll('.new-inline-row');
     if (rows.length === 0) return;
 
-    // Chạy hết mọi dòng để tô đỏ tất cả ô sai, không dừng ở dòng đầu
     const items = [];
     let hasInvalid = false;
     rows.forEach(tr => {
@@ -1400,6 +1484,7 @@ async function enableEditRow(btn) {
     const customerInput = tr.querySelector('.row-customer');
     const phoneInput = tr.querySelector('.row-phone');
     const modelInput = tr.querySelector('.row-model-input');
+    const newHeadCheckbox = tr.querySelector('.row-new-head');
     const categoryInput = tr.querySelector('.row-category');
     const conditionSelect = tr.querySelector('.row-condition');
     const inkTypeSelect = tr.querySelector('.row-ink-type');
@@ -1407,11 +1492,17 @@ async function enableEditRow(btn) {
     const counterInput = tr.querySelector('.row-counter');
     const dateInput = tr.querySelector('.row-date');
 
+    const currentModelVal = modelInput ? modelInput.value : '';
+    const isNewHeadChecked = currentModelVal.toLowerCase().includes('đầu phun mới');
+    const conditionVal = conditionSelect ? conditionSelect.value : 'Máy mới';
+    const isAllowedHead = (conditionVal === 'Đã qua sử dụng' || conditionVal === 'Không phân biệt');
+
     originalRowData[rowId] = {
         sn: snInput ? snInput.value : '',
         customer: customerInput ? customerInput.value : '',
         phone: phoneInput ? phoneInput.value : '',
-        modelInputVal: modelInput ? modelInput.value : '',
+        modelInputVal: currentModelVal,
+        isNewHead: isNewHeadChecked,
         brand: tr.getAttribute('data-brand') || '',
         model: tr.getAttribute('data-model') || '',
         category: categoryInput ? categoryInput.value : '',
@@ -1421,6 +1512,17 @@ async function enableEditRow(btn) {
         counter: counterInput ? counterInput.value : '',
         date: dateInput ? dateInput.value : ''
     };
+
+    if (newHeadCheckbox) {
+        newHeadCheckbox.disabled = !isAllowedHead;
+        newHeadCheckbox.checked = isNewHeadChecked && isAllowedHead;
+        
+        if (!isAllowedHead) {
+            newHeadCheckbox.closest('label')?.classList.add('opacity-40', 'cursor-not-allowed');
+        } else {
+            newHeadCheckbox.closest('label')?.classList.remove('opacity-40', 'cursor-not-allowed');
+        }
+    }
 
     viewInfo?.classList.add('hidden');
     editInputs?.classList.remove('hidden');
@@ -1448,7 +1550,6 @@ async function enableEditRow(btn) {
 
     filterInlinePolicies(tr);
 
-    // Gói đang dùng có thể đã bị tắt/không còn khớp bộ lọc: vẫn phải chọn được
     const savedPolicy = originalRowData[rowId].policy;
     if (policySelect && savedPolicy) {
         ensurePolicyOption(policySelect, savedPolicy);
@@ -1472,6 +1573,7 @@ function cancelEditRow(btn) {
         const customerInput = tr.querySelector('.row-customer');
         const phoneInput = tr.querySelector('.row-phone');
         const modelInput = tr.querySelector('.row-model-input');
+        const newHeadCheckbox = tr.querySelector('.row-new-head');
         const categoryInput = tr.querySelector('.row-category');
         const conditionSelect = tr.querySelector('.row-condition');
         const inkTypeSelect = tr.querySelector('.row-ink-type');
@@ -1487,13 +1589,13 @@ function cancelEditRow(btn) {
             modelInput.setAttribute('data-brand', saved.brand);
             modelInput.setAttribute('data-model', saved.model);
         }
+        if (newHeadCheckbox) newHeadCheckbox.checked = saved.isNewHead;
         if (categoryInput) categoryInput.value = saved.category;
         if (conditionSelect) conditionSelect.value = saved.condition;
         if (inkTypeSelect) inkTypeSelect.value = saved.inkType;
         if (counterInput) counterInput.value = saved.counter;
         if (dateInput) dateInput.value = saved.date;
 
-        // Dựng lại danh sách gói theo model/tình trạng ban đầu rồi mới chọn lại gói cũ
         if (policySelect) {
             policySelect.dataset.lastPolicy = saved.policy;
             filterInlinePolicies(tr);
@@ -1567,7 +1669,6 @@ async function copyToClipboard(text) {
         if (navigator.clipboard && window.isSecureContext) {
             await navigator.clipboard.writeText(text);
         } else {
-            // Dự phòng cho HTTP (clipboard API chỉ có trên HTTPS/localhost)
             const ta = document.createElement('textarea');
             ta.value = text;
             ta.style.cssText = 'position:fixed;opacity:0;top:0;left:0';
@@ -1594,7 +1695,6 @@ async function confirmDelete(warrantyId, identifier) {
     }
 }
 
-// Xóa viền đỏ khi người dùng sửa lại (bắt cả input và change cho thẻ select)
 ['input', 'change'].forEach(evt => {
     document.addEventListener(evt, e => {
         if (e.target.tagName === 'INPUT' || e.target.tagName === 'SELECT') {
@@ -1625,7 +1725,6 @@ document.addEventListener('DOMContentLoaded', () => {
     });
 
     async function fetchLiveSearchResults() {
-        // Hủy request cũ để phản hồi đến muộn không ghi đè kết quả mới
         if (searchController) searchController.abort();
         const controller = new AbortController();
         searchController = controller;
@@ -1642,10 +1741,8 @@ document.addEventListener('DOMContentLoaded', () => {
             const currentTbody = document.getElementById('warrantyTbody');
             if (!newTbody || !currentTbody) return;
 
-            // Đang sửa một dòng cũ thì không làm mới, tránh mất thay đổi
             if (currentTbody.querySelector('.edit-mode-inputs:not(.hidden)')) return;
 
-            // Giữ lại các dòng thêm mới chưa lưu
             const keepRows = Array.from(currentTbody.querySelectorAll('.new-inline-row'));
             currentTbody.innerHTML = newTbody.innerHTML;
             if (keepRows.length) {
@@ -1711,7 +1808,6 @@ async function savePrinter(e) {
         return;
     }
 
-    // Máy đã có trong danh mục thì chọn luôn, không tạo trùng
     await loadPrintersForInline();
     const dup = allPrinters.find(p => normName(printerFullName(p)) === normName(printerFullName(payload)));
     if (dup) {
@@ -1735,7 +1831,6 @@ async function savePrinter(e) {
             allPrinters.push(newPrinter);
             renderPrinterDatalist();
 
-            // Điền model TRƯỚC khi đóng modal (closePrinterModal xóa currentActiveModelInput)
             fillModelInput(newPrinter);
             closePrinterModal();
             alert('✅ Thêm máy in thành công!');
