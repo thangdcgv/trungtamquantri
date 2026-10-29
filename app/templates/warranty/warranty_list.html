@@ -350,7 +350,7 @@
 
                                         <select class="row-ink-type w-full h-7 bg-slate-950 border border-slate-700 text-cyan-300 text-[10px] font-semibold px-1 rounded outline-none truncate" required>
                                             <option value="" disabled {% if not item.ink_type or item.ink_type == 'N/A' %}selected{% endif %}>-- Chọn loại * --</option>
-                                            {% for ink_opt in ["DYE UV","MỰC CHÍNH HÃNG", "CHUYỂN NHIỆT", "IN PHIM", "PREMIUM DYE", "MỰC PET", "DYE INKTEK", "PIGMENT UV", "PIGMENT ART", "PIGMENT CANON", "KHÔNG MỰC","THIẾT BỊ ĐIỆN"] %}
+                                            {% for ink_opt in ["DYE UV","MỰC CHÍNH HÃNG", "CHUYỂN NHIỆT", "IN PHIM", "PREMIUM DYE", "MỰC PET", "DYE INKTEK", "PIGMENT UV", "PIGMENT ART", "PIGMENT CANON","MỰC LASER", "KHÔNG MỰC","THIẾT BỊ ĐIỆN"] %}
                                                 <option value="{{ ink_opt }}" {% if item.ink_type == ink_opt %}selected{% endif %}>{{ ink_opt }}</option>
                                             {% endfor %}
                                         </select>
@@ -528,6 +528,7 @@
                 <option value="PIGMENT UV">PIGMENT UV</option>
                 <option value="PIGMENT ART">PIGMENT ART</option>
                 <option value="PIGMENT CANON">PIGMENT CANON</option>
+                <option value="MỰC LASER">MỰC LASER</option>
                 <option value="KHÔNG MỰC">KHÔNG MỰC</option>
                 <option value="THIẾT BỊ ĐIỆN">THIẾT BỊ ĐIỆN</option>
 
