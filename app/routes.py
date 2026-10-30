@@ -8,6 +8,7 @@ from fastapi.responses import RedirectResponse
 from fastapi.templating import Jinja2Templates
 
 from config import supabase
+from app.templates_config import templates
 from app.auth import get_current_user_or_redirect
 
 logger = logging.getLogger(__name__)
@@ -21,7 +22,6 @@ TEMPLATES_DIR = (
     if (BASE_DIR.parent / "templates").exists()
     else BASE_DIR / "templates"
 )
-templates = Jinja2Templates(directory=str(TEMPLATES_DIR))
 
 # === KHAI BÁO MÚI GIỜ & FILTER JINJA2 ===
 VIETNAM_TZ = timezone(timedelta(hours=7))

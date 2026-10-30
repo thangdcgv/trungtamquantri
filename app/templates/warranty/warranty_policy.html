@@ -14,7 +14,7 @@
                     <span>Cấu Hình Chính Sách Bảo Hành</span>
                 </h1>
                 <p class="text-xs sm:text-sm text-slate-400 mt-1">
-                    Thiết lập thời hạn bảo hành thân máy, đầu phun, hộp mực và giới hạn trang in / số mét áp dụng cho từng dòng máy
+                    Thiết lập chính sách bảo hành cho từng dòng máy
                 </p>
             </div>
             <div class="flex items-center gap-2 shrink-0">
@@ -85,13 +85,9 @@
                                 <span class="px-2.5 py-1 rounded-lg text-[10px] font-bold bg-blue-500/10 text-blue-400 border border-blue-500/20 inline-flex items-center gap-1">
                                     <i class="fa-solid fa-sparkles text-[9px]"></i> Máy mới
                                 </span>
-                            {% elif p.condition == 'Đã qua sử dụng' %}
+                            {% else %}
                                 <span class="px-2.5 py-1 rounded-lg text-[10px] font-bold bg-amber-500/10 text-amber-400 border border-amber-500/20 inline-flex items-center gap-1">
                                     <i class="fa-solid fa-rotate text-[9px]"></i> Đã qua sử dụng
-                                </span>
-                            {% else %}
-                                <span class="px-2.5 py-1 rounded-lg text-[10px] font-bold bg-purple-500/10 text-purple-400 border border-purple-500/20 inline-flex items-center gap-1">
-                                    <i class="fa-solid fa-layer-group text-[9px]"></i> Không phân biệt
                                 </span>
                             {% endif %}
                         </td>
@@ -198,6 +194,7 @@
                         <option value="Mimaki"></option>
                         <option value="Graphtec"></option>
                         <option value="Pantum"></option>
+                        <option value="KL"></option>
                         <option value="Áp dụng chung"></option>
                         {% for b in existing_brands %}
                             <option value="{{ b }}"></option>
@@ -271,7 +268,12 @@
                                 <option value="Canon"></option>
                                 <option value="HP"></option>
                                 <option value="Brother"></option>
+                                <option value="Ricoh"></option>
+                                <option value="Refine"></option>
+                                <option value="Mimaki"></option>
                                 <option value="Graphtec"></option>
+                                <option value="Pantum"></option>
+                                <option value="KL"></option>
                                 <option value="Áp dụng chung"></option>
                                 {% for b in existing_brands %}
                                     <option value="{{ b }}"></option>
@@ -301,8 +303,7 @@
                             <select id="condition" name="condition" onchange="autoSuggestPolicyName()" 
                                 class="w-full h-10 bg-slate-900 border border-slate-700 text-white text-xs rounded-xl px-3 focus:ring-1 focus:ring-cyan-500 focus:border-cyan-500 outline-none cursor-pointer transition-all">
                                 <option value="Máy mới">Máy mới</option>
-                                <option value="Đã qua sử dụng">Đã qua sử dụng</option>
-                                <option value="Không phân biệt">Không phân biệt</option>
+                                <option value="Đã qua sử dụng">Đã qua sử dụng</option>                             
                             </select>
                         </div>
 

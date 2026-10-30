@@ -12,7 +12,7 @@ import numpy as np
 import pandas as pd
 from fastapi import APIRouter, Depends, HTTPException, Query, Request
 from fastapi.responses import HTMLResponse, JSONResponse, StreamingResponse
-from fastapi.templating import Jinja2Templates
+from app.templates_config import templates
 
 from app.auth import require_login
 from config import supabase
@@ -28,7 +28,6 @@ TEMPLATES_DIR = (
     if (BASE_DIR.parent / "templates").exists()
     else BASE_DIR / "templates"
 )
-templates = Jinja2Templates(directory=str(TEMPLATES_DIR))
 
 router = APIRouter(prefix="/admin/report", tags=["Báo cáo & Thống kê"])
 

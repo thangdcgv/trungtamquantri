@@ -7,6 +7,7 @@ from fastapi.responses import HTMLResponse, RedirectResponse
 from fastapi.templating import Jinja2Templates
 from starlette.concurrency import run_in_threadpool
 from config import supabase, supabase_admin
+from app.templates_config import templates
 
 logger = logging.getLogger(__name__)
 router = APIRouter(prefix="/auth", tags=["Auth"])
@@ -24,7 +25,6 @@ TEMPLATES_DIR = (
     if (BASE_DIR.parent / "templates").exists()
     else BASE_DIR / "templates"
 )
-templates = Jinja2Templates(directory=str(TEMPLATES_DIR))
 
 DEVICE_TYPE_DESKTOP = "desktop"
 DEVICE_TYPE_MOBILE = "mobile"

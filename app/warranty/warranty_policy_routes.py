@@ -6,13 +6,12 @@ from pydantic import BaseModel
 
 from app.auth import get_current_user_or_redirect, require_login
 from config import supabase
+from app.templates_config import templates  # 👈 Import sạch sẽ, không bị vòng lặp
 
-# Khai báo Jinja2 Templates
-templates = Jinja2Templates(directory="app/templates")
 
 router = APIRouter(prefix="/admin/chinh-sach-bao-hanh", tags=["Warranty Policy"])
 
-DANH_SACH_LOAI_MAY = ["In phun", "In Laser", "In kim", "Cắt bế", "Cán màng", "Ép nhiệt","Máy Scan", "Thiết bị khác"]
+DANH_SACH_LOAI_MAY = ["In phun", "In Laser", "In kim", "Cắt bế", "Máy Scan", "Thiết bị điện", "Thiết bị khác"]
 
 # =========================================================================
 # PYDANTIC SCHEMA (Cập nhật đồng bộ với CSDL & Template)

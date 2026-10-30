@@ -10,8 +10,10 @@ from pydantic import BaseModel, Field, HttpUrl, field_validator
 import uuid # <-- Đã thêm thư viện UUID
 
 
+
 # Imports đồng bộ với hệ thống hiện tại
 from config import supabase
+from app.templates_config import templates
 from app.auth import require_login, get_current_user_or_redirect
 
 # ==========================================
@@ -25,7 +27,6 @@ TEMPLATES_DIR = (
     if (BASE_DIR.parent / "templates").exists()
     else BASE_DIR / "templates"
 )
-templates = Jinja2Templates(directory=str(TEMPLATES_DIR))
 
 # ==========================================
 # HẰNG SỐ & THAM SỐ CẤU HÌNH

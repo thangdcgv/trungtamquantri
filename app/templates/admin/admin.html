@@ -561,6 +561,7 @@
                     </svg>
                 </div>
             </a>
+            
             {% else %}
             <!-- Dành cho các cấp quyền khác: Bị mờ và nảy cảnh báo -->
             <a href="javascript:void(0);" 
@@ -586,6 +587,34 @@
                 </div>
                 <div class="btn-action">
                     <span>Bị giới hạn quyền</span>
+                    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" aria-hidden="true">
+                        <line x1="5" y1="12" x2="19" y2="12"></line>
+                        <polyline points="12 5 19 12 12 19"></polyline>
+                    </svg>
+                </div>
+            </a>
+            {% endif %}
+            {% if can_access('page_permissions', current_user) %}
+            <!-- Card Cấu hình Phân quyền Truy cập (Dynamic RBAC) -->
+            <a href="/admin/phan-quyen" class="admin-card accent-permissions">
+                <div>
+                    <div class="admin-card-header">
+                        <div class="icon-box" aria-hidden="true">
+                            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                                <rect x="3" y="11" width="18" height="11" rx="2" ry="2"></rect>
+                                <path d="M7 11V7a5 5 0 0 1 10 0v4"></path>
+                            </svg>
+                        </div>
+                        <div>
+                            <h2 class="card-title">Phân Quyền Truy Cập</h2>
+                            <p class="card-desc">
+                                Quản lý phân quyền động (Dynamic RBAC), cho phép thiết lập và cấp quyền truy cập từng trang/tính năng cho từng cấp độ tài khoản trên hệ thống.
+                            </p>
+                        </div>
+                    </div>
+                </div>
+                <div class="btn-action">
+                    <span>Cấu hình phân quyền</span>
                     <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" aria-hidden="true">
                         <line x1="5" y1="12" x2="19" y2="12"></line>
                         <polyline points="12 5 19 12 12 19"></polyline>

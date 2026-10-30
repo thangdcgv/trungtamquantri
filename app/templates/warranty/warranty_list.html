@@ -124,12 +124,31 @@
         </div>
         
         <div class="flex items-center gap-2.5 w-full lg:w-auto">
+            <!-- Nút Cấu Hình Bảo Hành (Chỉ hiển thị với tài khoản Super Admin) -->
+            {% if current_user and current_user.role and (current_user.role | lower) in ['super admin', 'system admin'] %}            <a href="/admin/chinh-sach-bao-hanh" 
+            class="flex-1 lg:flex-initial inline-flex items-center justify-center gap-2 bg-purple-600 hover:bg-purple-500 text-white font-semibold px-4 py-2.5 rounded-xl text-xs transition border border-purple-500 shadow-lg shadow-purple-600/30 active:scale-[0.98] cursor-pointer"
+            title="Cấu hình chính sách bảo hành hệ thống">
+                <i class="fa-solid fa-sliders text-purple-200"></i>
+                <span>Cấu Hình Bảo Hành</span>
+            </a>
+            {% endif %}
+
+            <!-- Nút điều hướng Danh Sách Máy In -->
+            <a href="/warranty/danh-sach-may-in" 
+            class="flex-1 lg:flex-initial inline-flex items-center justify-center gap-2 bg-slate-800 hover:bg-slate-700 text-slate-200 font-semibold px-4 py-2.5 rounded-xl text-xs transition border border-slate-700 shadow-lg shadow-slate-900/40 active:scale-[0.98] cursor-pointer"
+            title="Quản lý danh sách máy in">
+                <i class="fa-solid fa-print text-emerald-400"></i>
+                <span>Danh Sách Máy In</span>
+            </a>
+
+            <!-- Nút Thêm Hàng Mới -->
             <button onclick="addInlineRow()" 
                     class="flex-1 lg:flex-initial inline-flex items-center justify-center gap-2 bg-indigo-600 hover:bg-indigo-500 text-white font-semibold px-4 py-2.5 rounded-xl text-xs transition border border-indigo-500 shadow-lg shadow-indigo-600/30 active:scale-[0.98] cursor-pointer">
                 <i class="fa-solid fa-plus"></i>
                 <span>Thêm Hàng Mới</span>
             </button>
 
+            <!-- Nút Lưu Tất Cả -->
             <button id="btnSaveBatch" onclick="saveBatchRows()" 
                     class="hidden flex-1 lg:flex-initial inline-flex items-center justify-center gap-2 bg-amber-600 hover:bg-amber-500 text-white font-semibold px-4 py-2.5 rounded-xl text-xs transition border border-amber-500 shadow-lg shadow-amber-600/30 active:scale-[0.98] cursor-pointer">
                 <i class="fa-solid fa-floppy-disk"></i>
@@ -326,8 +345,6 @@
                                         <span class="text-[10px] font-semibold px-2 py-1 rounded-md border text-center truncate 
                                             {% if cond_val == 'Đã qua sử dụng' %}
                                                 bg-amber-950/60 text-amber-300 border-amber-800/60
-                                            {% elif cond_val == 'Không phân biệt' %}
-                                                bg-purple-950/60 text-purple-300 border-purple-800/60
                                             {% else %}
                                                 bg-emerald-950/60 text-emerald-300 border-emerald-800/60
                                             {% endif %}">
@@ -368,7 +385,6 @@
                                         <select class="row-condition w-full h-7 bg-slate-950 border border-slate-700 text-emerald-400 text-[10px] font-medium px-1 rounded outline-none" onchange="onInlineConditionChange(this)">
                                             <option value="Máy mới" {% if item.condition == 'Máy mới' %}selected{% endif %}>Máy mới</option>
                                             <option value="Đã qua sử dụng" {% if item.condition == 'Đã qua sử dụng' %}selected{% endif %}>Đã qua sử dụng</option>
-                                            <option value="Không phân biệt" {% if item.condition == 'Không phân biệt' %}selected{% endif %}>Không phân biệt</option>
                                         </select>
 
                                         <select class="row-ink-type w-full h-7 bg-slate-950 border border-slate-700 text-cyan-300 text-[10px] font-semibold px-1 rounded outline-none truncate" required>
@@ -394,7 +410,7 @@
                                                 {% if p.is_active != False %}
                                                     {% set has_page = p.no_page_limit != True and ((p.page_limit_body or 0) > 0 or (p.page_limit_head or 0) > 0) %}
                                                     {% set has_meter = p.no_meter_limit != True and ((p.meter_limit_body or 0) > 0 or (p.meter_limit_head or 0) > 0) %}
-                                                    <option value="{{ p.policy_name }}" 
+                                                    <option value="{{ p.id }}" 
                                                             class="bg-slate-900 text-slate-100 py-1"
                                                             data-id="{{ p.id }}"
                                                             data-brand="{{ p.brand_name or '' }}"
@@ -402,7 +418,7 @@
                                                             data-condition="{{ p.condition or '' }}"
                                                             data-has-page="{{ 'true' if has_page else 'false' }}"
                                                             data-has-meter="{{ 'true' if has_meter else 'false' }}"
-                                                            {% if item.applied_policy_name == p.policy_name or item.policy_id == p.id %}selected{% endif %}>
+                                                            {% if item and p.id|string == item.policy_id|string %}selected{% endif %}>
                                                         {{ p.policy_name }} ({{ p.warranty_months }}T - {{ p.head_warranty_months }}T)
                                                     </option>
                                                 {% endif %}
@@ -536,7 +552,6 @@
                         onchange="onInlineConditionChange(this)">
                         <option value="Máy mới">Máy mới</option>
                         <option value="Đã qua sử dụng">Đã qua sử dụng</option>
-                        <option value="Không phân biệt">Không phân biệt</option>
                     </select>
                 </div>
             </div>
@@ -1137,8 +1152,6 @@ function onInlineConditionChange(selectEl) {
     selectEl.classList.remove('text-amber-400', 'text-emerald-400', 'text-purple-400');
     if (selectEl.value === 'Đã qua sử dụng') {
         selectEl.classList.add('text-amber-400');
-    } else if (selectEl.value === 'Không phân biệt') {
-        selectEl.classList.add('text-purple-400');
     } else {
         selectEl.classList.add('text-emerald-400');
     }
@@ -1146,7 +1159,7 @@ function onInlineConditionChange(selectEl) {
     // 2. Ràng buộc ô "Đầu phun mới"
     const headCheckbox = tr.querySelector('.row-new-head');
     if (headCheckbox) {
-        const isAllowed = (selectEl.value === 'Đã qua sử dụng' || selectEl.value === 'Không phân biệt');
+        const isAllowed = (selectEl.value === 'Đã qua sử dụng');
         
         headCheckbox.disabled = !isAllowed;
 
@@ -1397,7 +1410,6 @@ function extractRowData(tr) {
         condition: conditionVal,
         ink_type: inkTypeVal,
         policy_id: policyIdVal,
-        applied_policy_name: policyVal,
         initial_counter: counterVal,
         current_counter: counterVal,
         purchase_date: dateVal
@@ -1495,7 +1507,7 @@ async function enableEditRow(btn) {
     const currentModelVal = modelInput ? modelInput.value : '';
     const isNewHeadChecked = currentModelVal.toLowerCase().includes('đầu phun mới');
     const conditionVal = conditionSelect ? conditionSelect.value : 'Máy mới';
-    const isAllowedHead = (conditionVal === 'Đã qua sử dụng' || conditionVal === 'Không phân biệt');
+    const isAllowedHead = (conditionVal === 'Đã qua sử dụng');
 
     originalRowData[rowId] = {
         sn: snInput ? snInput.value : '',

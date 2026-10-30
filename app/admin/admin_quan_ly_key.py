@@ -10,6 +10,7 @@ from pydantic import BaseModel, Field
 
 from app.auth import get_current_user_or_redirect, require_login
 from config import supabase
+from app.templates_config import templates
 
 logger = logging.getLogger(__name__)
 
@@ -22,8 +23,6 @@ api_router = APIRouter(
     prefix="/api/quan-ly-key", 
     tags=["Admin API - Xuất Key"]
 )
-
-templates = Jinja2Templates(directory="app/templates")
 
 
 # =========================================================================

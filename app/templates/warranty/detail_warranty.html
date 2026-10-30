@@ -398,9 +398,10 @@
             <div class="policy-box">
                 <div>
                     <label class="field-label"><i class="fa-solid fa-clipboard-check"></i> Chọn chính sách bảo hành</label>
-                    <select name="applied_policy_name" id="applied_policy_name" class="form-control-custom" onchange="applyPolicyPreset(this.value)">
+                    <select name="policy_id" id="policy_id" class="form-control-custom" onchange="applyPolicyPreset(this.value)">
+                        <option value="">-- Chọn chính sách bảo hành --</option>
                         {% for p in policies %}
-                            <option value="{{ p.policy_name }}" {% if p.policy_name == item.applied_policy_name %}selected{% endif %}>
+                            <option value="{{ p.id }}" {% if item and p.id|string == item.policy_id|string %}selected{% endif %}>
                                 {{ p.policy_name }}
                             </option>
                         {% endfor %}

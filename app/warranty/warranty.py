@@ -6,10 +6,10 @@ from typing import List, Optional, Union, Dict, Any
 from datetime import datetime
 
 from config import supabase
+from app.templates_config import templates  # 👈 Import sạch sẽ, không bị vòng lặp
 from app.auth import require_login
 
 router = APIRouter(prefix="/warranty", tags=["Warranty"])
-templates = Jinja2Templates(directory="app/templates")
 
 
 # ==================== HÀM BỔ TRỢ & HELPER ====================
@@ -23,7 +23,7 @@ def format_phone_number(phone: Any) -> str:
 
 
 def validate_condition(cond_str: Optional[Any], default_val: str = "Máy mới") -> str:
-    """Đảm bảo condition thuộc ['Máy mới', 'Đã qua sử dụng', 'Không phân biệt']."""
+    """Đảm bảo condition thuộc ['Máy mới', 'Đã qua sử dụng']."""
     if not cond_str:
         return default_val
     val = str(cond_str).strip()
@@ -31,8 +31,6 @@ def validate_condition(cond_str: Optional[Any], default_val: str = "Máy mới")
     
     if "qua sử dụng" in val_lower or "cũ" in val_lower or "used" in val_lower:
         return "Đã qua sử dụng"
-    if "không phân biệt" in val_lower or "khong phan biet" in val_lower:
-        return "Không phân biệt"
     if "mới" in val_lower or "moi" in val_lower or "new" in val_lower:
         return "Máy mới"
         
@@ -80,7 +78,7 @@ def get_staff_display_name(current_user: dict) -> str:
 # ==================== SCHEMAS ====================
 
 class BatchItemSchema(BaseModel):
-    policy_id: Optional[str] = None        # 👈 Bổ sung policy_id (UUID)
+    policy_id: str = Field(..., min_length=1)  # 👈 Bắt buộc có UUID chính sách
     serial_number: str = Field(..., min_length=1)
     customer_name: str = Field(..., min_length=1)
     phone_number: str = Field(..., min_length=8)
@@ -88,10 +86,21 @@ class BatchItemSchema(BaseModel):
     model_name: Optional[str] = ""
     category: str = "In phun"
     condition: Optional[str] = "Máy mới"
-    ink_type: Optional[str] = "Mực Dye UV"
-    applied_policy_name: Optional[str] = "NULL"
+    ink_type: Optional[str] = "DYE UV"
     initial_counter: int = Field(0, ge=0)
     purchase_date: Optional[str] = None
+
+    @field_validator('policy_id')
+    @classmethod
+    def validate_policy_id(cls, v: str) -> str:
+        if not v or not v.strip() or v.strip().upper() == "NULL":
+            raise ValueError("Vui lòng chọn chính sách bảo hành hợp lệ!")
+        return v.strip()
+
+    @field_validator('condition')
+    @classmethod
+    def validate_cond(cls, v: Optional[str]) -> str:
+        return validate_condition(v)
 
     @field_validator('serial_number')
     @classmethod
@@ -131,12 +140,11 @@ class BatchCreateSchema(BaseModel):
 
 
 class WarrantyUpdateSchema(BaseModel):
-    policy_id: Optional[str] = None        # 👈 Bổ sung policy_id (UUID)
+    policy_id: Optional[str] = None        # 👈 UUID khóa ngoại tới warranty_policy
     serial_number: Optional[str] = None
     customer_name: Optional[str] = None
     phone_number: Optional[str] = None
     purchase_date: Optional[str] = None
-    applied_policy_name: Optional[str] = None
     category: Optional[str] = None
     condition: Optional[str] = None
     brand_name: Optional[str] = None
@@ -150,6 +158,44 @@ class WarrantyUpdateSchema(BaseModel):
     page_limit_body: Optional[int] = None
     page_limit_head: Optional[int] = None
     no_page_limit: Optional[Union[bool, str]] = None
+
+    @field_validator('policy_id')
+    @classmethod
+    def validate_policy_id(cls, v: Optional[str]) -> Optional[str]:
+        if v and (v.strip() == "" or v.strip().upper() == "NULL"):
+            return None
+        return v.strip() if v else None
+
+    @field_validator('condition')
+    @classmethod
+    def validate_cond(cls, v: Optional[str]) -> Optional[str]:
+        if v is not None:
+            return validate_condition(v)
+        return v
+
+    @field_validator('serial_number')
+    @classmethod
+    def validate_serial(cls, v: Optional[str]) -> Optional[str]:
+        if v and v.strip():
+            return v.strip().upper()
+        return v
+
+    @field_validator('customer_name')
+    @classmethod
+    def validate_customer(cls, v: Optional[str]) -> Optional[str]:
+        if v and v.strip():
+            return v.strip().title()
+        return v
+
+    @field_validator('phone_number')
+    @classmethod
+    def validate_phone(cls, v: Optional[str]) -> Optional[str]:
+        if v and v.strip():
+            clean_phone = format_phone_number(v)
+            if not clean_phone.isdigit() or not (9 <= len(clean_phone) <= 11):
+                raise ValueError("Số điện thoại không hợp lệ (9 - 11 chữ số)!")
+            return clean_phone
+        return v
 
 
 # ==================== 1. ROUTE XEM DANH SÁCH ====================
@@ -171,7 +217,7 @@ def get_warranty_list(
         policies = sorted(raw_policies, key=lambda p: (str(p.get("category", "")), str(p.get("policy_name", ""))))
         
         raw_categories = list({p.get("category") for p in policies if p.get("category")})
-        categories = sorted(raw_categories) if raw_categories else ["In phun", "In Laser", "In kim", "Cắt bế", "Cán màng", "Ép nhiệt", "Scan", "Thiết bị khác"]
+        categories = sorted(raw_categories) if raw_categories else ["In phun", "In Laser", "In kim", "Cắt bế", "Scan","Thiết bị điện", "Thiết bị khác"]
 
         # Lấy danh sách người tạo
         creators_res = supabase.table("warranty_records").select("staff_name").limit(500).execute()
@@ -284,8 +330,7 @@ def batch_create_warranty_records(
             )
 
         active_policies = get_active_policies()
-        policy_by_id = {p.get('id'): p for p in active_policies if p.get('id')}
-        policy_by_name = {p.get('policy_name'): p for p in active_policies if p.get('policy_name')}
+        policy_by_id = {str(p.get('id')): p for p in active_policies if p.get('id')}
         
         staff_display = get_staff_display_name(current_user)
         now_dt = datetime.now()
@@ -295,12 +340,9 @@ def batch_create_warranty_records(
         for item in data.items:
             p_date = item.purchase_date.strip() if item.purchase_date and item.purchase_date.strip() else now_dt.strftime("%Y-%m-%d")
             
-            # Khớp policy theo UUID trước, nếu không có mới khớp theo Tên
-            p_info = {}
-            if item.policy_id and item.policy_id in policy_by_id:
-                p_info = policy_by_id[item.policy_id]
-            elif item.applied_policy_name and item.applied_policy_name in policy_by_name:
-                p_info = policy_by_name[item.applied_policy_name]
+            # Khớp chính sách dựa hoàn toàn vào policy_id (UUID)
+            p_info = policy_by_id.get(str(item.policy_id), {})
+            p_name = p_info.get('policy_name', 'N/A')
 
             w_months = int(p_info.get('warranty_months', 0))
             h_months = int(p_info.get('head_warranty_months', 0)) if item.category != "In Laser" else 0
@@ -309,19 +351,18 @@ def batch_create_warranty_records(
             p_head = int(p_info.get('page_limit_head', 0))
             is_no_limit = bool(p_info.get('no_page_limit', False))
 
-            log_entry = f"• [{now_str}] {staff_display}: KHỞI TẠO (Gói: {item.applied_policy_name}) | Máy: {item.brand_name or ''} {item.model_name or ''} ({item.ink_type or ''}) | S/N: {item.serial_number}"
+            log_entry = f"• [{now_str}] {staff_display}: KHỞI TẠO (Gói: {p_name}) | Máy: {item.brand_name or ''} {item.model_name or ''} ({item.ink_type or ''}) | S/N: {item.serial_number}"
 
             records_to_insert.append({
-                "policy_id": p_info.get("id") or item.policy_id or None, # 👈 Lưu Khóa Ngoại UUID
+                "policy_id": item.policy_id, # 👈 Sử dụng hoàn toàn khóa ngoại UUID
                 "customer_name": item.customer_name,
                 "phone_number": item.phone_number,
                 "purchase_date": p_date,
-                "applied_policy_name": item.applied_policy_name or "NULL",
                 "category": item.category,
                 "condition": validate_condition(item.condition),
                 "brand_name": item.brand_name or "",
                 "model_name": item.model_name or "",
-                "ink_type": item.ink_type or "Mực Dye UV",
+                "ink_type": item.ink_type or "DYE UV",
                 "serial_number": item.serial_number,
                 "warranty_months": w_months,
                 "head_warranty_months": h_months,
@@ -395,6 +436,7 @@ async def update_warranty_record(
             form_data = await request.form()
             data = dict(form_data)
 
+        # Lấy thông tin phiếu cũ
         old_res = supabase.table("warranty_records").select("*").eq("id", warranty_id).execute()
         if not old_res.data:
             msg = "Không tìm thấy phiếu bảo hành để cập nhật"
@@ -403,21 +445,28 @@ async def update_warranty_record(
         old_data = old_res.data[0]
         staff_display = get_staff_display_name(current_user)
 
+        # Chuẩn hóa dữ liệu văn bản
         clean_sn = str(data.get("serial_number") or old_data.get("serial_number") or "").strip().upper()
         new_customer = str(data.get("customer_name") or old_data.get("customer_name") or "").strip().title()
         new_phone = format_phone_number(data.get("phone_number") or old_data.get("phone_number"))
         new_brand = str(data.get("brand_name") or old_data.get("brand_name") or "").strip()
         new_model = str(data.get("model_name") or old_data.get("model_name") or "").strip()
         new_ink = str(data.get("ink_type") or old_data.get("ink_type") or "").strip()
-        new_policy_id = data.get("policy_id") or old_data.get("policy_id")
         
+        # Xử lý an toàn policy_id (UUID)
+        raw_policy_id = data.get("policy_id") or old_data.get("policy_id")
+        if raw_policy_id and str(raw_policy_id).strip().upper() in ["", "NONE", "NULL"]:
+            new_policy_id = None
+        else:
+            new_policy_id = str(raw_policy_id).strip() if raw_policy_id else None
+
         purchase_date = data.get("purchase_date") or old_data.get("purchase_date")
         if purchase_date and not str(purchase_date).strip():
             purchase_date = None
 
-        applied_policy_name = data.get("applied_policy_name") or old_data.get("applied_policy_name") or "NULL"
         category = data.get("category") or old_data.get("category") or "In phun"
         
+        # 🟢 ĐẢM BẢO CONDITION CHỈ LÀ 'Máy mới' HOẶC 'Đã qua sử dụng'
         raw_cond = data.get("condition")
         condition = validate_condition(raw_cond, default_val=old_data.get("condition") or "Máy mới")
 
@@ -432,20 +481,15 @@ async def update_warranty_record(
         initial_counter = parse_int(data.get("initial_counter"), old_data.get("initial_counter") or 0)
         current_counter = parse_int(data.get("current_counter"), old_data.get("current_counter") or initial_counter)
 
-        # 🟢 Tra cứu policy thông qua UUID policy_id hoặc Name
+        # Tra cứu chính sách theo UUID
         active_policies = get_active_policies()
-        policy_by_id = {p.get('id'): p for p in active_policies if p.get('id')}
-        policy_by_name = {p.get('policy_name'): p for p in active_policies if p.get('policy_name')}
+        policy_by_id = {str(p.get('id')): p for p in active_policies if p.get('id')}
         
-        p_info = {}
-        if new_policy_id and new_policy_id in policy_by_id:
-            p_info = policy_by_id[new_policy_id]
-        elif applied_policy_name and applied_policy_name in policy_by_name:
-            p_info = policy_by_name[applied_policy_name]
+        p_info = policy_by_id.get(str(new_policy_id), {}) if new_policy_id else {}
+        policy_name_display = p_info.get('policy_name', 'Chưa chọn')
 
         if p_info:
             new_policy_id = p_info.get('id')
-            applied_policy_name = p_info.get('policy_name')
             warranty_months = int(p_info.get('warranty_months', 0))
             head_warranty_months = int(p_info.get('head_warranty_months', 0)) if category != "In Laser" else 0
             cartridge_warranty_months = int(p_info.get('cartridge_warranty_months', 0)) if category == "In Laser" else 0
@@ -460,6 +504,7 @@ async def update_warranty_record(
             page_limit_head = parse_int(data.get("page_limit_head"), old_data.get("page_limit_head") or 0)
             no_page_limit = parse_bool(data.get("no_page_limit") if "no_page_limit" in data else old_data.get("no_page_limit"))
 
+        # Validation bắt buộc
         if not clean_sn or not new_customer:
             return JSONResponse(status_code=400, content={"success": False, "message": "Vui lòng nhập đầy đủ Serial và Tên khách hàng!"})
 
@@ -474,39 +519,43 @@ async def update_warranty_record(
             if sn_check.data:
                 return JSONResponse(status_code=400, content={"success": False, "message": f"🚫 Số Serial '{clean_sn}' đã tồn tại ở phiếu khác!"})
 
-        # Nhật ký thay đổi chi tiết
+        # Đọc tên chính sách cũ cho edit_log (chỉ tra cứu theo policy_id UUID)
+        old_policy_id = old_data.get("policy_id")
+        old_p_info = policy_by_id.get(str(old_policy_id), {}) if old_policy_id else {}
+        old_policy_name = old_p_info.get("policy_name") or "Chưa chọn"
+
+        # So sánh tạo vết thay đổi
         fields_map = {
-            "serial_number": ("Số Serial", clean_sn),
-            "customer_name": ("Tên KH", new_customer),
-            "phone_number": ("SĐT", new_phone),
-            "brand_name": ("Thương hiệu", new_brand),
-            "model_name": ("Model", new_model),
-            "ink_type": ("Loại mực", new_ink),
-            "applied_policy_name": ("Gói BH", applied_policy_name),
-            "condition": ("Tình trạng", condition),
-            "warranty_months": ("BH Thân", warranty_months),
-            "head_warranty_months": ("BH Đầu phun", head_warranty_months),
-            "initial_counter": ("Counter ban đầu", initial_counter),
-            "current_counter": ("Counter hiện tại", current_counter),
+            "serial_number": ("Số Serial", old_data.get("serial_number"), clean_sn),
+            "customer_name": ("Tên KH", old_data.get("customer_name"), new_customer),
+            "phone_number": ("SĐT", old_data.get("phone_number"), new_phone),
+            "brand_name": ("Thương hiệu", old_data.get("brand_name"), new_brand),
+            "model_name": ("Model", old_data.get("model_name"), new_model),
+            "ink_type": ("Loại mực", old_data.get("ink_type"), new_ink),
+            "policy_id": ("Gói BH", old_policy_name, policy_name_display),
+            "condition": ("Tình trạng", old_data.get("condition"), condition),
+            "warranty_months": ("BH Thân", old_data.get("warranty_months"), warranty_months),
+            "head_warranty_months": ("BH Đầu phun", old_data.get("head_warranty_months"), head_warranty_months),
+            "initial_counter": ("Counter ban đầu", old_data.get("initial_counter"), initial_counter),
+            "current_counter": ("Counter hiện tại", old_data.get("current_counter"), current_counter),
         }
-        changes = [f"{lbl}: {old_data.get(k)} ➔ {val}" for k, (lbl, val) in fields_map.items() if str(old_data.get(k) or '').strip() != str(val).strip()]
+        changes = [f"{lbl}: {old_v} ➔ {new_v}" for k, (lbl, old_v, new_v) in fields_map.items() if str(old_v or '').strip() != str(new_v or '').strip()]
 
         now_dt = datetime.now()
         detail_str = f" | Thay đổi: {', '.join(changes)}" if changes else " | Không thay đổi nội dung"
-        log_entry = f"• [{now_dt.strftime('%H:%M %d/%m/%Y')}] {staff_display}: CẬP NHẬT (Gói: {applied_policy_name}){detail_str}"
+        log_entry = f"• [{now_dt.strftime('%H:%M %d/%m/%Y')}] {staff_display}: CẬP NHẬT (Gói: {policy_name_display}){detail_str}"
         
         existing_log = str(old_data.get("edit_log", "")).strip()
         full_log = f"{log_entry}\n{existing_log}" if existing_log and existing_log.lower() != "none" else log_entry
 
         update_payload = {
-            "policy_id": new_policy_id, # 👈 Lưu UUID policy_id
+            "policy_id": new_policy_id,
             "serial_number": clean_sn,
             "customer_name": new_customer,
             "phone_number": new_phone,
             "purchase_date": purchase_date,
-            "applied_policy_name": applied_policy_name,
             "category": category,
-            "condition": condition,
+            "condition": condition,  # 👈 Luôn luôn là 'Máy mới' hoặc 'Đã qua sử dụng'
             "brand_name": new_brand,
             "model_name": new_model,
             "ink_type": new_ink,
@@ -525,17 +574,17 @@ async def update_warranty_record(
         if old_data.get("current_counter") != current_counter:
             update_payload["pages_updated_at"] = now_dt.isoformat()
 
-        supabase.table("warranty_records").update(update_payload).eq("id", warranty_id).execute()
+        res = supabase.table("warranty_records").update(update_payload).eq("id", warranty_id).execute()
 
         if is_json_request:
             return {"success": True, "message": "Cập nhật thành công!"}
         
-        # 🟢 FIX: Sửa lỗi tham số status_count -> status_code và đúng đường dẫn chi tiết
         return RedirectResponse(url=f"/warranty/chi-tiet/{warranty_id}?status=updated", status_code=status.HTTP_303_SEE_OTHER)
 
     except HTTPException:
         raise
     except Exception as e:
+        print(f"❌ Lỗi cập nhật phiếu bảo hành ({warranty_id}): {e}")
         return JSONResponse(status_code=500, content={"success": False, "message": f"Lỗi hệ thống: {str(e)}"})
 
 

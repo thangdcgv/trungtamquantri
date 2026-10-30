@@ -4,6 +4,7 @@ from fastapi import APIRouter, Request, Depends, HTTPException, Query, status
 from fastapi.responses import HTMLResponse, JSONResponse, RedirectResponse
 from fastapi.templating import Jinja2Templates
 from pydantic import BaseModel, Field
+from app.templates_config import templates  # 👈 Import sạch sẽ, không bị vòng lặp
 
 from app.auth import get_current_user_or_redirect, require_login
 from config import supabase
@@ -14,10 +15,9 @@ logger = logging.getLogger(__name__)
 router = APIRouter(prefix="/warranty/danh-sach-may-in", tags=["Admin - Danh Sách Máy In"])
 api_router = APIRouter(prefix="/warranty/api/danh-sach-may-in", tags=["Admin API - Danh Sách Máy In"])
 
-templates = Jinja2Templates(directory="app/templates")
 
 # --- DANH MỤC MẶC ĐỊNH PHỤC VỤ DROPDOWN ---
-DANH_SACH_LOAI_MAY = ["In phun", "In Laser", "In kim", "Cắt bế", "Cán màng", "Ép nhiệt","Máy Scan", "Thiết bị khác"]
+DANH_SACH_LOAI_MAY = ["In phun", "In Laser", "In kim", "Cắt bế", "Scan","Thiết bị điện", "Thiết bị khác"]
 
 
 # =========================================================================

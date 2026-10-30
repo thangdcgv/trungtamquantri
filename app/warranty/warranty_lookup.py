@@ -9,6 +9,7 @@ from dateutil.relativedelta import relativedelta
 from fastapi import APIRouter, Request, Query, HTTPException, Response
 from fastapi.responses import HTMLResponse, StreamingResponse
 from fastapi.templating import Jinja2Templates
+from app.templates_config import templates  # 👈 Import sạch sẽ, không bị vòng lặp
 
 # Import Supabase client từ file config dự án của bạn
 from config import supabase
@@ -23,7 +24,7 @@ except ImportError:
         create_warranty_pdf = None
 
 router = APIRouter(prefix="/warranty", tags=["Bảo Hành Điện Tử"])
-templates = Jinja2Templates(directory="app/templates")
+
 
 
 # =========================================================

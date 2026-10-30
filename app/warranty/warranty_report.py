@@ -9,6 +9,7 @@ import pandas as pd
 from fastapi import APIRouter, Depends, HTTPException, Query, Request, status
 from fastapi.responses import HTMLResponse, StreamingResponse
 from fastapi.templating import Jinja2Templates
+from app.templates_config import templates  # 👈 Import sạch sẽ, không bị vòng lặp
 
 from app.auth import require_login
 from config import supabase
@@ -16,7 +17,6 @@ from config import supabase
 logger = logging.getLogger(__name__)
 
 router = APIRouter(prefix="/admin/bao-cao", tags=["Báo cáo & Thống kê"])
-templates = Jinja2Templates(directory="app/templates")
 
 ALLOWED_ADMIN_ROLES = {"super admin", "system admin", "admin"}
 
@@ -42,10 +42,7 @@ def parse_date_safe(date_str: Optional[str], default_date: date) -> date:
 
 
 def get_model_info(raw_name: str) -> Tuple[str, str]:
-    """
-    Trích xuất chuẩn [Thương hiệu / Loại thiết bị] + [Mã Model] dựa trên Thư viện từ khóa
-    và Quy tắc nhận diện tự động từ Mã Model.
-    """
+    """Tách chuẩn [Thương hiệu + Mã Model] dự phòng khi cột brand_name/model_name rỗng."""
     if not raw_name:
         return "Thiết bị khác", "0"
 
@@ -84,10 +81,7 @@ def get_model_info(raw_name: str) -> Tuple[str, str]:
 
         if not found_brand:
             if re.match(r"^(L\d|EP|M\d|XP|WF|SC|LBP\s*\d)", model_code):
-                if re.match(r"^LBP", model_code):
-                    found_brand = "Canon"
-                else:
-                    found_brand = "Epson"
+                found_brand = "Canon" if re.match(r"^LBP", model_code) else "Epson"
             elif re.match(r"^(IX|G\d|TS|IP|MG)", model_code):
                 found_brand = "Canon"
             elif re.match(r"^(M\d{4}|P\d{4})", model_code):
@@ -125,7 +119,7 @@ def process_warranty_data_by_range(
     start_date: date,
     end_date: date,
 ) -> Dict:
-    """Xử lý tính toán báo cáo theo khoảng thời gian linh hoạt."""
+    """Xử lý tính toán báo cáo theo khoảng thời gian linh hoạt dựa trên cấu trúc DB mới."""
     today_date = date.today()
     delta_days = (end_date - start_date).days
     
@@ -133,6 +127,9 @@ def process_warranty_data_by_range(
 
     valid_records = []
     all_categories = set()
+
+    # Tạo dictionary tra cứu chính sách theo UUID policy_id
+    policy_by_id = {str(p["id"]): p for p in policies if p.get("id")}
 
     for item in records:
         if item.get("category"):
@@ -152,9 +149,12 @@ def process_warranty_data_by_range(
         if category_filter and str(item.get("category")).strip() != category_filter:
             continue
 
-        cond = item.get("condition") or "Mới"
-        machine_type = "✨ Máy mới" if cond == "Mới" else "🇯🇵 Máy nội địa/Cũ"
-        if condition_filter and machine_type != condition_filter:
+        # 🟢 Khắc phục khớp điều kiện condition chuẩn theo Constraint CSDL ('Máy mới' / 'Đã qua sử dụng')
+        cond = str(item.get("condition") or "Máy mới").strip()
+        is_new = (cond == "Máy mới" or "mới" in cond.lower())
+        machine_type = "✨ Máy mới" if is_new else "🇯🇵 Máy nội địa/Cũ"
+
+        if condition_filter and machine_type != condition_filter and cond != condition_filter:
             continue
 
         item["_p_date"] = p_date
@@ -181,30 +181,18 @@ def process_warranty_data_by_range(
         else:
             used_count += 1
 
-        policy = None
-        applied_pname = item.get("applied_policy_name")
-        if applied_pname and policies:
-            policy = next((p for p in policies if p.get("policy_name") == applied_pname), None)
+        # 🟢 Lấy thông tin chính sách bằng UUID policy_id
+        p_id = str(item.get("policy_id") or "").strip()
+        policy = policy_by_id.get(p_id)
 
-        if policy is None and policies:
-            row_cat = str(item.get("category") or "").strip()
-            row_cond = str(item.get("condition") or "").strip()
-            matches = [
-                p for p in policies
-                if str(p.get("category")).strip() == row_cat and str(p.get("condition")).strip() == row_cond
-            ]
-            if matches:
-                brand = "EPSON" if "EPSON" in str(item.get("model_name")).upper() else "CANON"
-                brand_matches = [p for p in matches if brand in str(p.get("policy_name")).upper()]
-                policy = brand_matches[0] if brand_matches else matches[0]
+        # Đọc tham số bảo hành trực tiếp từ bản ghi phiếu (snapshot) hoặc từ policy
+        m_body = item.get("warranty_months") if item.get("warranty_months") is not None else (policy.get("warranty_months", 0) if policy else 0)
+        m_head = item.get("head_warranty_months") if item.get("head_warranty_months") is not None else (policy.get("head_warranty_months", 0) if policy else 0)
+        m_cart = item.get("cartridge_warranty_months") if item.get("cartridge_warranty_months") is not None else (policy.get("cartridge_warranty_months", 0) if policy else 0)
 
-        m_body = policy.get("warranty_months") if policy else (item.get("warranty_months") or 0)
-        m_head = policy.get("head_warranty_months") if policy else (item.get("head_warranty_months") or 0)
-        m_cart = policy.get("cartridge_warranty_months") if policy else (item.get("cartridge_warranty_months") or 0)
-
-        l_body = policy.get("page_limit_body") if policy else (item.get("page_limit_body") or 0)
-        l_head = policy.get("page_limit_head") if policy else (item.get("page_limit_head") or 0)
-        no_limit = policy.get("no_page_limit") if policy else (item.get("no_page_limit") or False)
+        l_body = item.get("page_limit_body") if item.get("page_limit_body") is not None else (policy.get("page_limit_body", 0) if policy else 0)
+        l_head = item.get("page_limit_head") if item.get("page_limit_head") is not None else (policy.get("page_limit_head", 0) if policy else 0)
+        no_limit = bool(item.get("no_page_limit") if item.get("no_page_limit") is not None else (policy.get("no_page_limit", False) if policy else False))
 
         curr_count = item.get("current_counter") or 0
         init_count = item.get("initial_counter") or 0
@@ -219,9 +207,9 @@ def process_warranty_data_by_range(
         is_laser = "Laser" in str(item.get("category") or "")
 
         if m_body > 0 and exp_body < today_date:
-            reasons.append("Hết TG Cơ")
+            reasons.append("Hết TG Thân máy")
         if not no_limit and l_body > 0 and actual_printed >= l_body:
-            reasons.append(f"Quá trang Cơ ({actual_printed:,}/{l_body:,})")
+            reasons.append(f"Quá trang Thân máy ({actual_printed:,}/{l_body:,})")
 
         if not is_laser and m_head > 0:
             if exp_head < today_date:
@@ -229,12 +217,12 @@ def process_warranty_data_by_range(
             if not no_limit and l_head > 0 and actual_printed >= l_head:
                 reasons.append(f"Quá trang Đầu phun ({actual_printed:,}/{l_head:,})")
 
-        if m_cart > 0 and exp_cart < today_date:
+        if is_laser and m_cart > 0 and exp_cart < today_date:
             reasons.append("Hết TG Hộp mực")
 
         is_warranty_active = (len(reasons) == 0)
         reason_str = "✅ Trong hạn" if is_warranty_active else " & ".join(reasons)
-        final_policy_name = policy.get("policy_name") if policy else (item.get("applied_policy_name") or "Mặc định")
+        final_policy_name = policy.get("policy_name") if policy else "Mặc định / Tùy chỉnh"
 
         if is_warranty_active:
             active_count += 1
@@ -242,23 +230,30 @@ def process_warranty_data_by_range(
             expired_count += 1
             expired_list.append({
                 "serial_number": str(item.get("serial_number") or "N/A"),
-                "model_name": str(item.get("model_name") or "N/A"),
+                "model_name": f"{item.get('brand_name') or ''} {item.get('model_name') or ''}".strip() or "N/A",
                 "customer_name": str(item.get("customer_name") or "Khách lẻ"),
                 "applied_policy_name": final_policy_name,
                 "reason": reason_str,
             })
 
-        raw_model = item.get("model_name") or "Khác"
-        disp_name, _ = get_model_info(raw_model)
+        # Ghép tên Model hiển thị từ brand_name và model_name trong CSDL
+        brand_str = str(item.get("brand_name") or "").strip()
+        model_str = str(item.get("model_name") or "").strip()
+        if brand_str and model_str:
+            disp_name = f"{brand_str} {model_str}"
+        elif model_str:
+            disp_name, _ = get_model_info(model_str)
+        else:
+            disp_name = "Thiết bị khác"
 
-        # Lưu bản ghi chuẩn bị xuất Excel
+        # Bản ghi chi tiết phục vụ xuất Excel
         detailed_export_records.append({
             "customer_name": str(item.get("customer_name") or "Khách lẻ"),
             "phone_number": str(item.get("phone_number") or ""),
             "purchase_date_str": p_date.strftime("%d/%m/%Y"),
             "category": str(item.get("category") or ""),
             "display_model": disp_name,
-            "raw_model": raw_model,
+            "raw_model": model_str or disp_name,
             "serial_number": str(item.get("serial_number") or "N/A"),
             "condition": item["_machine_type"],
             "status_str": "Trong hạn" if is_warranty_active else "Hết hạn",
@@ -269,7 +264,7 @@ def process_warranty_data_by_range(
             "pages_printed": actual_printed,
             "exp_body_str": exp_body.strftime("%d/%m/%Y") if m_body > 0 else "K.Áp dụng",
             "exp_head_str": exp_head.strftime("%d/%m/%Y") if m_head > 0 and not is_laser else "K.Áp dụng",
-            "exp_cart_str": exp_cart.strftime("%d/%m/%Y") if m_cart > 0 else "K.Áp dụng",
+            "exp_cart_str": exp_cart.strftime("%d/%m/%Y") if m_cart > 0 and is_laser else "K.Áp dụng",
         })
 
         time_key = p_date.strftime("%d/%m") if group_by_day else p_date.strftime("%m/%Y")
@@ -334,14 +329,14 @@ def _build_warranty_report_excel(
     start_date: date,
     end_date: date
 ) -> io.BytesIO:
-    """Tạo Workbook Excel cho báo cáo bảo hành sản phẩm."""
+    """Tạo Workbook Excel cho báo cáo bảo hành sản phẩm chuẩn định dạng."""
     out = io.BytesIO()
 
     with pd.ExcelWriter(out, engine="xlsxwriter") as writer:
         wb = writer.book
         ws = wb.add_worksheet("BaoCaoBaoHanh")
 
-        # Config Styles
+        # Định dạng Style
         fmt_title = wb.add_format({
             "bold": True, "font_size": 15, "font_name": "Segoe UI",
             "align": "center", "valign": "vcenter", "bg_color": "#1F4E79",
@@ -366,23 +361,24 @@ def _build_warranty_report_excel(
         fmt_total_lbl = wb.add_format({"bold": True, "border": 1, "align": "right", "valign": "vcenter", "bg_color": "#D9EAD3", "font_name": "Segoe UI"})
         fmt_total_num = wb.add_format({"bold": True, "border": 1, "align": "right", "valign": "vcenter", "num_format": "#,##0", "bg_color": "#D9EAD3", "font_name": "Segoe UI"})
 
+        # Danh sách 17 cột hiển thị
         headers = [
             "STT", "Tên Khách Hàng", "Số Điện Thoại", "Ngày Mua", "Danh Mục",
-            "Model Gốc", "Số Serial", "Loại Máy", "Trạng Thái BH",
-            "Chính Sách Áp Dụng", "Số Trang Đầu", "Số Trang Hiện Tại",
-            "BH Cơ Máy", "BH Đầu Phun", "BH Hộp Mực"
+            "Thương Hiệu & Model", "Số Serial", "Loại Máy", "Trạng Thái BH",
+            "Lý Do / Chi Tiết", "Chính Sách Áp Dụng", "Counter Ban Đầu",
+            "Counter Hiện Tại", "Trang Đã In", "BH Thân Máy", "BH Đầu Phun", "BH Hộp Mực"
         ]
 
-        # Title Block
-        ws.merge_range("A1:R2", "BÁO CÁO THỐNG KÊ CHI TIẾT TÌNH TRẠNG BẢO HÀNH", fmt_title)
+        # Khối Tiêu đề (Merge A1 -> Q2 cho đủ 17 cột A-Q)
+        ws.merge_range("A1:Q2", "BÁO CÁO THỐNG KÊ CHI TIẾT TÌNH TRẠNG BẢO HÀNH", fmt_title)
         sub_text = f"Giai đoạn từ ngày: {start_date.strftime('%d/%m/%Y')} đến ngày: {end_date.strftime('%d/%m/%Y')}"
-        ws.merge_range("A3:R3", sub_text, fmt_subtitle)
+        ws.merge_range("A3:Q3", sub_text, fmt_subtitle)
 
-        # Header Row
+        # Dòng Tiêu đề Bảng
         for col_idx, h_text in enumerate(headers):
             ws.write(3, col_idx, h_text, fmt_header)
 
-        # Write Rows
+        # Ghi Dữ liệu từng dòng
         start_row = 4
         for idx, row in enumerate(detailed_records):
             curr_r = start_row + idx
@@ -391,38 +387,40 @@ def _build_warranty_report_excel(
             ws.write(curr_r, 2, row["phone_number"], fmt_center)
             ws.write(curr_r, 3, row["purchase_date_str"], fmt_center)
             ws.write(curr_r, 4, row["category"], fmt_left)
-            ws.write(curr_r, 5, row["raw_model"], fmt_left)
+            ws.write(curr_r, 5, row["display_model"], fmt_left)
             ws.write(curr_r, 6, row["serial_number"], fmt_center)
             ws.write(curr_r, 7, row["condition"], fmt_center)
             
-            # Highlight Trạng Thái
+            # Trạng thái BH
             if row["status_str"] == "Trong hạn":
                 ws.write(curr_r, 8, row["status_str"], fmt_active)
             else:
                 ws.write(curr_r, 8, row["status_str"], fmt_expired)
 
-            ws.write(curr_r, 9, row["policy_name"], fmt_left)
+            ws.write(curr_r, 9, row["reason_str"], fmt_left)
+            ws.write(curr_r, 10, row["policy_name"], fmt_left)
             
-            ws.write(curr_r, 10, row["initial_counter"], fmt_num)
-            ws.write(curr_r, 11, row["current_counter"], fmt_num)
+            ws.write(curr_r, 11, row["initial_counter"], fmt_num)
+            ws.write(curr_r, 12, row["current_counter"], fmt_num)
+            ws.write(curr_r, 13, row["pages_printed"], fmt_num)
             
-            ws.write(curr_r, 12, row["exp_body_str"], fmt_center)
-            ws.write(curr_r, 13, row["exp_head_str"], fmt_center)
-            ws.write(curr_r, 14, row["exp_cart_str"], fmt_center)
+            ws.write(curr_r, 14, row["exp_body_str"], fmt_center)
+            ws.write(curr_r, 15, row["exp_head_str"], fmt_center)
+            ws.write(curr_r, 16, row["exp_cart_str"], fmt_center)
 
-        # Dòng Tổng
+        # Dòng Tổng Cộng
         tot_r = start_row + len(detailed_records)
         excel_start = start_row + 1
         excel_end = tot_r
 
-        ws.merge_range(tot_r, 0, tot_r, 11, "TỔNG SỐ TRANG ĐÃ IN:", fmt_total_lbl)
+        ws.merge_range(tot_r, 0, tot_r, 10, "TỔNG CỘNG SỐ TRANG ĐÃ IN:", fmt_total_lbl)
+        ws.write_formula(tot_r, 11, f"=SUM(L{excel_start}:L{excel_end})", fmt_total_num)
         ws.write_formula(tot_r, 12, f"=SUM(M{excel_start}:M{excel_end})", fmt_total_num)
         ws.write_formula(tot_r, 13, f"=SUM(N{excel_start}:N{excel_end})", fmt_total_num)
-        ws.write_formula(tot_r, 14, f"=SUM(O{excel_start}:O{excel_end})", fmt_total_num)
-        ws.merge_range(tot_r, 15, tot_r, 17, "", fmt_total_lbl)
+        ws.merge_range(tot_r, 14, tot_r, 16, "", fmt_total_lbl)
 
-        # Set Column Widths
-        col_widths = [6, 22, 14, 12, 16, 20, 18, 16, 14, 22, 14, 14, 14, 14, 14]
+        # Độ rộng cột
+        col_widths = [6, 22, 14, 12, 16, 22, 18, 16, 14, 25, 22, 14, 14, 14, 14, 14, 14]
         for c_i, w in enumerate(col_widths):
             ws.set_column(c_i, c_i, w)
 

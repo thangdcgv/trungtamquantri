@@ -16,6 +16,7 @@ from fastapi.templating import Jinja2Templates
 
 from app.auth import require_login
 from config import supabase  # Supabase client instance
+from app.templates_config import templates
 
 logger = logging.getLogger(__name__)
 
@@ -30,7 +31,6 @@ TEMPLATES_DIR = (
 if not TEMPLATES_DIR.exists():
     logger.error(f"CRITICAL: Không tìm thấy thư mục templates tại: {TEMPLATES_DIR}")
 
-templates = Jinja2Templates(directory=str(TEMPLATES_DIR))
 
 router = APIRouter(prefix="/cham-cong", tags=["Chấm Công Lắp Đặt"])
 

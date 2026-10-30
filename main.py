@@ -28,6 +28,8 @@ from app.warranty.warranty_policy_routes import router as warranty_policy_router
 from app.inventory import router as inventory_router, api_router as inventory_api_router
 from app.warranty.list_printers import router as list_printers_router, api_router as list_printers_api_router
 from app.warranty.warranty_lookup import router as warranty_lookup_router
+from app.permissions import can_access
+from app.templates_config import templates
 
 
 app = FastAPI(
@@ -68,10 +70,17 @@ app.add_middleware(
 )
 
 # === Templates & Static ===
-templates = Jinja2Templates(directory="app/templates")
+
+# Đăng ký các biến & hàm dùng chung toàn cục cho Jinja2
 templates.env.globals["SUPABASE_URL"] = SUPABASE_URL
 templates.env.globals["SUPABASE_KEY"] = SUPABASE_KEY
+templates.env.globals["can_access"] = can_access
 
+os.makedirs("app/static", exist_ok=True)
+app.mount("/static", StaticFiles(directory="app/static"), name="static")
+
+# Thêm hàm can_access vào Jinja2
+templates.env.globals["can_access"] = can_access
 os.makedirs("app/static", exist_ok=True)
 app.mount("/static", StaticFiles(directory="app/static"), name="static")
 

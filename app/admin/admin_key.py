@@ -5,11 +5,11 @@ from typing import List, Optional
 
 from fastapi import APIRouter, Depends, Form, HTTPException, Query, Request, status
 from fastapi.responses import HTMLResponse, RedirectResponse
-from fastapi.templating import Jinja2Templates
 from pydantic import BaseModel, Field
 
 from app.auth import get_current_user_or_redirect, require_login
 from config import supabase
+from app.templates_config import templates
 
 logger = logging.getLogger(__name__)
 
@@ -41,7 +41,7 @@ api_router = APIRouter(
     dependencies=[Depends(verify_admin_user)]
 )
 
-templates = Jinja2Templates(directory="app/templates")
+
 DANH_SACH_LOAI_TB = ["Máy in", "Máy cắt bế", "Thiết bị khác"]
 
 
