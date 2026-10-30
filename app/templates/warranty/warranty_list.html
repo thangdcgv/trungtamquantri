@@ -373,7 +373,7 @@
 
                                         <select class="row-ink-type w-full h-7 bg-slate-950 border border-slate-700 text-cyan-300 text-[10px] font-semibold px-1 rounded outline-none truncate" required>
                                             <option value="" disabled {% if not item.ink_type or item.ink_type == 'N/A' %}selected{% endif %}>-- Chọn loại * --</option>
-                                            {% for ink_opt in ["DYE UV","MỰC CHÍNH HÃNG", "CHUYỂN NHIỆT", "IN PHIM", "PREMIUM DYE", "MỰC PET", "DYE INKTEK", "PIGMENT UV", "PIGMENT ART", "PIGMENT CANON","MỰC LASER", "KHÔNG MỰC","THIẾT BỊ KHÁC"] %}
+                                            {% for ink_opt in ["DYE UV","MỰC CHÍNH HÃNG", "CHUYỂN NHIỆT", "IN PHIM", "PREMIUM DYE", "MỰC PET", "DYE INKTEK", "PIGMENT UV", "PIGMENT ART", "PIGMENT CANON","MỰC LASER", "KHÔNG MỰC","THIẾT BỊ ĐIỆN"] %}
                                                 <option value="{{ ink_opt }}" {% if item.ink_type == ink_opt %}selected{% endif %}>{{ ink_opt }}</option>
                                             {% endfor %}
                                         </select>
@@ -558,7 +558,7 @@
                 <option value="PIGMENT CANON">PIGMENT CANON</option>
                 <option value="MỰC LASER">MỰC LASER</option>
                 <option value="KHÔNG MỰC">KHÔNG MỰC</option>
-                <option value="THIẾT BỊ KHÁC">THIẾT BỊ KHÁC</option>
+                <option value="THIẾT BỊ ĐIỆN">THIẾT BỊ ĐIỆN</option>
             </select>
 
             <select class="row-policy w-full h-8 bg-amber-500/10 border border-amber-500/30 focus:border-amber-400 focus:ring-1 focus:ring-amber-500 text-amber-300 rounded-lg px-2.5 text-[11px] font-semibold outline-none cursor-pointer disabled:opacity-50 disabled:cursor-not-allowed transition-all" 
@@ -641,7 +641,7 @@
             <div>
                 <label class="block text-[11px] font-medium text-slate-300 mb-1">Phân loại thiết bị <span class="text-rose-400">*</span></label>
                 <select id="printer_category" name="category" class="w-full h-10 bg-slate-950 border border-slate-700 text-white text-xs rounded-lg px-3 focus:ring-1 focus:ring-emerald-500 outline-none cursor-pointer transition-all">
-                    {% for cat in categories or ["In phun", "In Laser", "In kim", "Cắt bế", "Cán màng", "Ép nhiệt", "Scan", "Thiết bị khác"] %}
+                    {% for cat in categories or ["In phun", "In Laser", "In kim", "Cắt bế", "Cán màng", "Ép nhiệt", "Scan", "Thiết bị điện"] %}
                         <option value="{{ cat }}">{{ cat }}</option>
                     {% endfor %}
                 </select>
