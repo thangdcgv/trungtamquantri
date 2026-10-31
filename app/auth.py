@@ -288,7 +288,11 @@ async def login(request: Request, email: str = Form(...), password: str = Form(.
     if kicked_count:
         logger.info(f"User {auth_id} đăng nhập từ {device_type}, {kicked_count} thiết bị cùng loại bị đăng xuất.")
 
-    return RedirectResponse(url=DEFAULT_REDIRECT_URL)
+    # ✅ Đã thêm status_code 303 See Other
+    return RedirectResponse(
+        url=DEFAULT_REDIRECT_URL, 
+        status_code=status.HTTP_303_SEE_OTHER
+    )
 
 
 # =========================================================

@@ -333,10 +333,10 @@
 
             <!-- 2. Kiểm Duyệt Kho & Seri (page_key: inventory_review) -->
             {% set can_inventory_review = can_access('inventory_review', current_user) %}
-            <a href="{% if can_inventory_review %}/inventory/admin/review{% else %}javascript:void(0);{% endif %}" 
-               {% if not can_inventory_review %}onclick="alert('⚠️ Truy cập bị từ chối: Chức năng Kiểm duyệt Kho & Seri bị giới hạn với quyền tài khoản của bạn!')"{% endif %}
-               class="admin-card" 
-               style="border-left: 4px solid #0d9488; {% if not can_inventory_review %}opacity: 0.5; cursor: not-allowed; filter: grayscale(40%);{% endif %}">
+            <a href="{{ '/inventory/admin/review' if can_inventory_review else 'javascript:void(0);' }}"
+            {% if not can_inventory_review %}onclick="alert('⚠️ Truy cập bị từ chối: Chức năng Kiểm duyệt Kho & Seri bị giới hạn!')"{% endif %}
+            class="admin-card {% if not can_inventory_review %}opacity-50 cursor-not-allowed{% endif %}"
+            style="border-left: 4px solid #0d9488;">
                 <div>
                     <div class="admin-card-header">
                         <div class="icon-box" aria-hidden="true" style="background: rgba(13, 148, 136, 0.1); color: #0d9488;">
