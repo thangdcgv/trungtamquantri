@@ -67,12 +67,13 @@
                         <!-- Các Cột Checkbox Role -->
                         {% for role in all_roles %}
                         {% set role_lower = role | lower %}
-                        {% set is_admin_level = role_lower in ['super admin', 'system admin'] %}
+                        <!-- Chỉ cố định toàn quyền cho system admin, super admin có thể tự do cấu hình -->
+                        {% set is_system_admin = role_lower in ['system admin'] %}
                         <td class="p-3.5 text-center">
                             <label class="inline-flex items-center justify-center cursor-pointer p-1 rounded hover:bg-slate-800/80">
                                 <input type="checkbox" value="{{ role }}" 
-                                       {% if is_admin_level or role_lower in allowed_lower %}checked{% endif %}
-                                       {% if is_admin_level %}disabled title="Tài khoản Admin cấp cao luôn có toàn quyền"{% endif %}
+                                       {% if is_system_admin or role_lower in allowed_lower %}checked{% endif %}
+                                       {% if is_system_admin %}disabled title="System Admin luôn có toàn quyền cố định"{% endif %}
                                        class="perm-checkbox w-4 h-4 rounded border-slate-700 text-cyan-600 focus:ring-0 focus:ring-offset-0 bg-slate-800 disabled:opacity-50 disabled:cursor-not-allowed">
                             </label>
                         </td>
@@ -104,7 +105,7 @@ async function savePermissions() {
 
     rows.forEach(tr => {
         const id = tr.dataset.id;
-        // Lấy tất cả các checkbox được check (bao gồm cả các checkbox disabled)
+        // Lấy tất cả các checkbox được check (bao gồm cả các checkbox disabled của system admin)
         const checkedRoles = Array.from(tr.querySelectorAll('.perm-checkbox:checked')).map(cb => cb.value);
         payload.push({ id: id, allowed_roles: checkedRoles });
     });

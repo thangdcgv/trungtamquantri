@@ -15,6 +15,9 @@
 {% block content %}
 <div class="min-h-screen bg-slate-950 text-slate-100 py-6 px-4 sm:px-6 lg:px-8 space-y-6">
 
+    <!-- Kiểm tra quyền thao tác xuất/nạp key cho trang chipless -->
+    {% set can_manage_key = can_access('chipless', current_user) %}
+
     <!-- TOP HEADER & ACTION BAR -->
     <div class="bg-slate-900/90 backdrop-blur-md p-4 sm:p-5 rounded-2xl border border-slate-800 shadow-xl flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4">
         <div class="flex items-center gap-3.5">
@@ -34,13 +37,22 @@
             </div>
         </div>
 
-        <button onclick="window.location.reload()" 
-                class="inline-flex items-center gap-2 bg-slate-800 hover:bg-slate-700 text-slate-300 hover:text-white px-4 py-2.5 rounded-xl border border-slate-700 text-xs font-semibold transition cursor-pointer active:scale-[0.98]">
-            <i class="fa-solid fa-rotate-right text-sky-400"></i>
-            <span>Làm Mới</span>
-        </button>
+        <div class="flex items-center gap-2">
+            {% if not can_manage_key %}
+            <span class="text-xs px-3 py-1.5 rounded-xl bg-amber-500/10 text-amber-400 border border-amber-500/20 flex items-center gap-1.5 font-medium">
+                <i class="fa-solid fa-lock text-[10px]"></i> Chế độ chỉ xem
+            </span>
+            {% endif %}
+
+            <button onclick="window.location.reload()" 
+                    class="inline-flex items-center gap-2 bg-slate-800 hover:bg-slate-700 text-slate-300 hover:text-white px-4 py-2.5 rounded-xl border border-slate-700 text-xs font-semibold transition cursor-pointer active:scale-[0.98]">
+                <i class="fa-solid fa-rotate-right text-sky-400"></i>
+                <span>Làm Mới</span>
+            </button>
+        </div>
     </div>
 
+    {% if can_manage_key %}
     <div class="grid grid-cols-1 xl:grid-cols-12 gap-6 items-start">
 
         <!-- CỘT TRÁI: QUY TRÌNH XUẤT KEY TỰ ĐỘNG (7 CỘT) -->
@@ -176,8 +188,16 @@
         </div>
 
     </div>
+    {% else %}
+    <!-- KHỐI THÔNG BÁO CHO TÀI KHOẢN KHÔNG CÓ QUYỀN THAO TÁC XUẤT KEY -->
+    <div class="p-4 rounded-xl bg-amber-500/10 border border-amber-500/20 text-amber-300 text-xs flex items-center gap-3">
+        <i class="fa-solid fa-triangle-exclamation text-base text-amber-400 shrink-0"></i>
+        <span>Tài khoản của bạn hiện chỉ có quyền <strong>xem lịch sử xuất key</strong>. Vui lòng liên hệ Quản trị viên nếu cần cấp quyền nạp/xuất key mới.</span>
+    </div>
+    {% endif %}
 
-    <!-- MODAL ĐẶT BÊN NGOÀI KHUNG GRID -->
+    {% if can_manage_key %}
+    <!-- MODAL XÁC NHẬN KEY MỚI (Chỉ render khi có quyền) -->
     <div id="modal_confirm_new_key" class="fixed inset-0 bg-slate-950/80 backdrop-blur-md hidden flex items-center justify-center z-50 p-4 transition-all">
         <div class="bg-slate-900 border border-slate-800 rounded-2xl p-6 max-w-md w-full shadow-2xl space-y-4 relative text-slate-100">
             <div class="flex items-center gap-3 border-b border-slate-800 pb-3">
@@ -224,8 +244,9 @@
             </div>
         </div>
     </div>
+    {% endif %}
 
-    <!-- KHU VỰC BẢNG LỊCH SỬ KÈM BỘ LỌC TÌM KIẾM (TOÀN MÀN HÌNH) -->
+    <!-- KHU VỰC BẢNG LỊCH SỬ KÈM BỘ LỌC TÌM KIẾM (HIỂN THỊ CHO CẢ 2 CẤP QUYỀN) -->
     <section class="mt-6 bg-slate-900/90 rounded-2xl border border-slate-800 p-5 shadow-2xl space-y-4">
         <!-- HEADER BẢNG KHANH BỘ LỌC ĐƯỢC TÍCH HỢP TRỰC TIẾP TẠI ĐÂY -->
         <div class="flex flex-col lg:flex-row lg:items-center justify-between gap-4 border-b border-slate-800 pb-4">
@@ -319,6 +340,7 @@
 
 </div>
 
+{% if can_manage_key %}
 <!-- MODAL THÀNH CÔNG -->
 <div id="modal_success" class="fixed inset-0 bg-slate-950/80 backdrop-blur-md hidden flex items-center justify-center z-50 p-4 transition-all">
     <div class="bg-slate-900 border border-slate-800 rounded-2xl p-6 max-w-md w-full shadow-2xl space-y-5 relative text-slate-100">
@@ -344,6 +366,7 @@
         </button>
     </div>
 </div>
+{% endif %}
 
 <!-- TOAST NOTIFICATION -->
 <div id="toast_msg" class="fixed bottom-5 right-5 bg-slate-900 border border-slate-800 text-slate-200 px-4 py-3 rounded-xl shadow-2xl hidden flex items-center gap-3 z-50 max-w-md transition-all">
