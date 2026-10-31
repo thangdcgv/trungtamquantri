@@ -669,7 +669,7 @@
 
                                     <!-- BUTTON NÚT CON MẮT XEM CHI TIẾT -->
                                     <a href="/cham-cong/detail/{{ item.id }}" 
-                                    class="btn btn-sm btn-outline-info rounded-circle d-inline-flex align-items-center justify-content-center" 
+                                    class="btn btn-sm btn-outline-info rounded-circle d-inline-flex align-items-center justify-content-center shrink-0" 
                                     style="width: 32px; height: 32px; padding: 0;" 
                                     title="Xem chi tiết">
                                         <i class="fa-solid fa-eye"></i>
@@ -678,20 +678,21 @@
                             </div>
 
                             <!-- Body Card: Ảnh + Chi tiết đơn -->
-                            <div class="d-flex flex-column flex-sm-row gap-3 mb-3 min-w-0">
-                                <!-- VÙNG HIỂN THỊ DANH SÁCH CÁC ẢNH THUMBNAIL -->
-                                <div class="d-flex flex-wrap gap-1.5 align-content-start flex-shrink-0" style="max-width: 220px;">                                    {% set raw_img = (item.hinh_anh or '') | string | trim %}
-                                    {% set img_list = [] %}
-                                    
-                                    {% if raw_img and raw_img.lower() not in ['none', 'null', 'undefined', ''] %}
-                                        {% for img_item in raw_img.split(',') %}
-                                            {% set clean_u = img_item | trim %}
-                                            {% if clean_u and clean_u.lower() not in ['none', 'null', 'undefined', ''] %}
-                                                {% set _ = img_list.append(clean_u) %}
-                                            {% endif %}
-                                        {% endfor %}
-                                    {% endif %}
+                            <div class="d-flex flex-column flex-sm-row gap-3 mb-3 min-w-0 align-items-start">
+                                <!-- VÙNG HIỂN THỊ DANH SÁCH CÁC ẢNH THUMBNAIL (Đã giới hạn gọn gàng, chống đè chữ) -->
+                                {% set raw_img = (item.hinh_anh or '') | string | trim %}
+                                {% set img_list = [] %}
+                                
+                                {% if raw_img and raw_img.lower() not in ['none', 'null', 'undefined', ''] %}
+                                    {% for img_item in raw_img.split(',') %}
+                                        {% set clean_u = img_item | trim %}
+                                        {% if clean_u and clean_u.lower() not in ['none', 'null', 'undefined', ''] %}
+                                            {% set _ = img_list.append(clean_u) %}
+                                        {% endif %}
+                                    {% endfor %}
+                                {% endif %}
 
+                                <div class="d-flex flex-wrap gap-1.5 flex-shrink-0 align-items-center" style="max-width: 190px;">
                                     {% if img_list | length > 0 %}
                                         {% for img_url in img_list %}
                                             {% if img_url.startswith('http://') or img_url.startswith('https://') or img_url.startswith('/') or img_url.startswith('data:') %}
@@ -700,35 +701,36 @@
                                                 {% set img_src = 'data:image/jpeg;base64,' ~ img_url %}
                                             {% endif %}
 
-                                            <div class="img-container position-relative rounded overflow-hidden" style="width: 58px; height: 58px;">
+                                            <div class="img-container position-relative rounded overflow-hidden border border-secondary" style="width: 52px; height: 52px; flex-shrink: 0;">
+                                                <!-- ĐÃ XÓA CLASS TRÙNG LẶP 'img-preview-trigger' ĐỂ TRÁNH NỔI ẢNH 2 LẦN -->
                                                 <img src="{{ img_src }}" 
-                                                    class="img-preview-trigger zoomable-img w-100 h-100 object-fit-cover cursor-pointer" 
+                                                    class="zoomable-img w-100 h-100 object-fit-cover cursor-pointer" 
                                                     data-src="{{ img_src }}" 
                                                     alt="Chứng từ {{ loop.index }}"
                                                     onerror="this.style.display='none'; if(this.nextElementSibling) this.nextElementSibling.classList.remove('d-none');">
 
-                                                <div class="w-100 h-100 d-none d-flex flex-column align-items-center justify-content-center text-muted small bg-dark border border-secondary">
-                                                    <i class="fa-solid fa-image-slash text-warning" style="font-size: 12px;"></i>
+                                                <div class="w-100 h-100 d-none d-flex flex-column align-items-center justify-content-center text-muted small bg-dark">
+                                                    <i class="fa-solid fa-image-slash text-warning" style="font-size: 11px;"></i>
                                                 </div>
                                             </div>
                                         {% endfor %}
                                     {% else %}
                                         <!-- KHÔNG CÓ ẢNH -->
-                                        <div class="img-container position-relative rounded overflow-hidden" style="width: 58px; height: 58px;">
-                                            <div class="w-100 h-100 d-flex flex-column align-items-center justify-content-center text-muted small bg-dark rounded border border-secondary">
-                                                <i class="fa-regular fa-image mb-1 fs-6"></i>
-                                                <span style="font-size: 9px;">Không ảnh</span>
+                                        <div class="img-container position-relative rounded overflow-hidden border border-secondary" style="width: 52px; height: 52px; flex-shrink: 0;">
+                                            <div class="w-100 h-100 d-flex flex-column align-items-center justify-content-center text-muted small bg-dark">
+                                                <i class="fa-regular fa-image fs-6"></i>
+                                                <span style="font-size: 8px;">Không ảnh</span>
                                             </div>
                                         </div>
                                     {% endif %}
                                 </div>
 
-                                <!-- VÙNG THÔNG TIN NỘI DUNG CHẤM CÔNG -->
-                                <div class="flex-grow-1 min-w-0">
+                                <!-- VÙNG THÔNG TIN NỘI DUNG CHẤM CÔNG (Chiếm toàn bộ không gian còn lại) -->
+                                <div class="flex-grow-1 min-w-0 w-100">
                                     <p class="mb-2 text-light text-break small line-clamp-2" title="{{ item.noi_dung or '' }}">
                                         {{ item.noi_dung or '' }}
                                     </p>
-                                    <div class="d-flex flex-wrap gap-3 text-muted small">
+                                    <div class="d-flex flex-wrap gap-2.5 text-muted small">
                                         <span>
                                             <i class="fa-regular fa-clock me-1 text-info"></i>
                                             {% if item.thoi_gian %}
@@ -747,7 +749,7 @@
                                             <span><i class="fa-solid fa-boxes-packing me-1 text-success"></i>{{ item.combo }} thiết bị</span>
                                         {% endif %}
                                         {% if img_list | length > 1 %}
-                                            <span class="badge bg-info bg-opacity-10 text-info border border-info border-opacity-25 px-1.5 py-0.5 align-self-center" style="font-size: 10px;">
+                                            <span class="badge bg-info bg-opacity-10 text-info border border-info border-opacity-25 px-1.5 py-0.5" style="font-size: 10px;">
                                                 <i class="fa-solid fa-images me-1"></i>{{ img_list | length }} ảnh
                                             </span>
                                         {% endif %}
@@ -756,7 +758,7 @@
                             </div>
 
                             <!-- Tổng Tiền -->
-                            <div class="d-flex justify-content-between align-items-center bg-dark p-2 px-3 rounded-3 mb-3">
+                            <div class="d-flex justify-content-between align-items-center bg-dark p-2 px-3 rounded-3 mb-3 border border-secondary-subtle">
                                 <span class="small text-muted">Thành tiền:</span>
                                 <span class="fw-bold text-warning fs-6">
                                     {{ "{:,.0f}".format(item.thanh_tien or 0) }} <small class="text-muted fw-normal fs-7">VNĐ</small>
