@@ -3,6 +3,17 @@
 {% block title %}Cấu Hình Phân Quyền Truy Cập{% endblock %}
 
 {% block content %}
+{# --- 1. BẢNG CẤP BẬC VAI TRÒ CHUẨN (ĐỒNG BỘ 100% VỚI PYTHON BACKEND & CSDL) --- #}
+{% set role_levels = {
+    'user': 1,
+    'admin': 2,
+    'super admin': 3,
+    'system admin': 4
+} %}
+
+{% set current_user_role = (current_user.get('role') or '') | string | lower | trim %}
+{% set current_user_level = role_levels.get(current_user_role, 1) %}
+
 <main class="admin-page px-4 sm:px-6 lg:px-8 max-w-7xl mx-auto space-y-6">
 
     <!-- HEADER + NÚT QUAY LẠI & LƯU -->
@@ -14,7 +25,8 @@
                     <span>Quản Lý Phân Quyền Trang (Dynamic RBAC)</span>
                 </h1>
                 <p class="text-xs sm:text-sm text-slate-400 mt-1">
-                    Phân cấp truy cập theo thứ tự: <span class="text-slate-300 font-semibold">User &lt; Admin &lt; Super Admin &lt; System Admin</span>
+                    Đang đăng nhập: <span class="text-cyan-300 font-semibold uppercase">{{ current_user.get('role') }}</span> (Cấp {{ current_user_level }}) &bull;
+                    Chỉ được phép cấu hình quyền cho các vai trò có cấp bậc thấp hơn.
                 </p>
             </div>
 
@@ -26,9 +38,9 @@
                 </a>
 
                 <!-- NÚT LƯU THAY ĐỔI -->
-                <button type="button" onclick="savePermissions()" class="inline-flex items-center gap-2 px-4 py-2 rounded-lg bg-emerald-600 hover:bg-emerald-500 text-white text-xs sm:text-sm font-semibold transition-all shadow-sm shadow-emerald-900/30 group cursor-pointer">
-                    <i class="fa-solid fa-floppy-disk text-emerald-200 group-hover:scale-110 transition-transform"></i>
-                    <span>Lưu Thay Đổi</span>
+                <button type="button" id="btnSavePerms" onclick="savePermissions()" class="inline-flex items-center gap-2 px-4 py-2 rounded-lg bg-emerald-600 hover:bg-emerald-500 text-white text-xs sm:text-sm font-semibold transition-all shadow-sm shadow-emerald-900/30 group cursor-pointer disabled:opacity-50 disabled:cursor-not-allowed">
+                    <i id="btnSaveIcon" class="fa-solid fa-floppy-disk text-emerald-200 group-hover:scale-110 transition-transform"></i>
+                    <span id="btnSaveText">Lưu Thay Đổi</span>
                 </button>
             </div>
         </div>
@@ -43,7 +55,22 @@
                         <th class="p-3.5 font-semibold">Tính Năng / Trang</th>
                         <th class="p-3.5 font-semibold">Phân Nhóm</th>
                         {% for role in all_roles %}
-                        <th class="p-3.5 font-semibold text-center">{{ role }}</th>
+                        {% set role_lower = role | string | lower | trim %}
+                        {% set target_role_level = role_levels.get(role_lower, 1) %}
+                        {% set is_col_disabled = (target_role_level >= current_user_level) %}
+
+                        <th class="p-3.5 font-semibold text-center select-none transition-colors {% if is_col_disabled %}opacity-50 cursor-not-allowed{% else %}cursor-pointer hover:text-cyan-400{% endif %}" 
+                            data-role="{{ role }}"
+                            data-disabled="{{ 'true' if is_col_disabled else 'false' }}"
+                            title="{% if is_col_disabled %}Cột bị khóa: Không thể thao tác vai trò ngang hoặc cao hơn cấp của bạn{% else %}Click để chọn/bỏ chọn tất cả cột {{ role }}{% endif %}"
+                            onclick="toggleColumnRoles(this)">
+                            <span class="inline-flex items-center gap-1 justify-center">
+                                <span>{{ role }}</span>
+                                {% if is_col_disabled %}
+                                <i class="fa-solid fa-lock text-[10px] text-amber-400/80"></i>
+                                {% endif %}
+                            </span>
+                        </th>
                         {% endfor %}
                     </tr>
                 </thead>
@@ -66,15 +93,19 @@
 
                         <!-- Các Cột Checkbox Role -->
                         {% for role in all_roles %}
-                        {% set role_lower = role | lower %}
-                        <!-- Chỉ cố định toàn quyền cho system admin, super admin có thể tự do cấu hình -->
-                        {% set is_system_admin = role_lower in ['system admin'] %}
+                        {% set role_lower = role | string | lower | trim %}
+                        {% set target_role_level = role_levels.get(role_lower, 1) %}
+                        
+                        {# KHÓA NẾU CẤP BẬC ROLE ĐƯỢC CHỌN >= CẤP BẬC NGƯỜI ĐANG ĐĂNG NHẬP #}
+                        {% set is_disabled = (target_role_level >= current_user_level) %}
+                        {% set is_checked = (role_lower in allowed_lower or target_role_level == 4) %}
+
                         <td class="p-3.5 text-center">
-                            <label class="inline-flex items-center justify-center cursor-pointer p-1 rounded hover:bg-slate-800/80">
-                                <input type="checkbox" value="{{ role }}" 
-                                       {% if is_system_admin or role_lower in allowed_lower %}checked{% endif %}
-                                       {% if is_system_admin %}disabled title="System Admin luôn có toàn quyền cố định"{% endif %}
-                                       class="perm-checkbox w-4 h-4 rounded border-slate-700 text-cyan-600 focus:ring-0 focus:ring-offset-0 bg-slate-800 disabled:opacity-50 disabled:cursor-not-allowed">
+                            <label class="inline-flex items-center justify-center p-1 rounded {% if not is_disabled %}cursor-pointer hover:bg-slate-800/80{% else %}cursor-not-allowed{% endif %}">
+                                <input type="checkbox" value="{{ role }}" data-role="{{ role_lower }}"
+                                       {% if is_checked %}checked{% endif %}
+                                       {% if is_disabled %}disabled title="Bạn không thể thay đổi quyền của vai trò ngang hoặc cao hơn cấp bậc của bạn"{% endif %}
+                                       class="perm-checkbox w-4 h-4 rounded border-slate-700 text-cyan-600 focus:ring-0 focus:ring-offset-0 bg-slate-800 disabled:opacity-40 disabled:cursor-not-allowed">
                             </label>
                         </td>
                         {% endfor %}
@@ -97,15 +128,39 @@
 
 {% block scripts %}
 <script>
+// Đọc dữ liệu an toàn từ data-* attributes (Tránh lỗi VS Code Linter)
+function toggleColumnRoles(headerEl) {
+    const isColDisabled = headerEl.dataset.disabled === 'true';
+    if (isColDisabled) return;
+
+    const roleName = headerEl.dataset.role || '';
+    const roleLower = roleName.toLowerCase().trim();
+    const checkboxes = document.querySelectorAll(`.perm-checkbox[data-role="${roleLower}"]:not([disabled])`);
+    if (!checkboxes.length) return;
+
+    const allChecked = Array.from(checkboxes).every(cb => cb.checked);
+    checkboxes.forEach(cb => cb.checked = !allChecked);
+}
+
+// Lưu Cấu Hình Phân Quyền
 async function savePermissions() {
     const rows = document.querySelectorAll('#permTable tbody tr[data-id]');
     if (!rows.length) return;
+
+    const btn = document.getElementById('btnSavePerms');
+    const icon = document.getElementById('btnSaveIcon');
+    const text = document.getElementById('btnSaveText');
+
+    // Trạng thái Loading
+    btn.disabled = true;
+    icon.className = 'fa-solid fa-spinner fa-spin text-emerald-200';
+    text.innerText = 'Đang lưu...';
 
     const payload = [];
 
     rows.forEach(tr => {
         const id = tr.dataset.id;
-        // Lấy tất cả các checkbox được check (bao gồm cả các checkbox disabled của system admin)
+        // Lấy tất cả checkbox được checked (kể cả checkbox disabled để bảo toàn quyền cũ của các role bị khóa)
         const checkedRoles = Array.from(tr.querySelectorAll('.perm-checkbox:checked')).map(cb => cb.value);
         payload.push({ id: id, allowed_roles: checkedRoles });
     });
@@ -118,13 +173,18 @@ async function savePermissions() {
         });
         
         const json = await res.json();
-        if (json.success) {
+        if (res.ok && json.success) {
             alert('✅ ' + (json.message || 'Lưu cấu hình phân quyền thành công!'));
         } else {
             alert('❌ ' + (json.message || 'Lưu thất bại!'));
         }
     } catch (err) {
         alert('❌ Lỗi kết nối máy chủ: ' + err.message);
+    } finally {
+        // Trả lại trạng thái nút
+        btn.disabled = false;
+        icon.className = 'fa-solid fa-floppy-disk text-emerald-200 group-hover:scale-110 transition-transform';
+        text.innerText = 'Lưu Thay Đổi';
     }
 }
 </script>
