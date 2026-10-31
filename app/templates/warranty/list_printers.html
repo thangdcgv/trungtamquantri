@@ -5,6 +5,9 @@
 {% block content %}
 <main class="admin-page px-4 sm:px-6 lg:px-8 max-w-7xl mx-auto space-y-6">
     
+    <!-- Kiểm tra quyền thao tác (Thêm, Sửa, Xóa) dựa trên page_permissions của trang list_printers -->
+    {% set can_manage_printer = can_access('list_printers', current_user) %}
+
     <!-- HEADER HUB -->
     <header class="welcome-shell p-4 sm:p-5 rounded-xl bg-slate-900/80 border border-slate-800 backdrop-blur-md">
         <div class="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
@@ -18,10 +21,14 @@
                 </p>
             </div>
             <div class="flex items-center gap-2 shrink-0">
+                {% if can_manage_printer %}
+                <!-- Nút Thêm Máy In Mới (Chỉ hiện khi có quyền) -->
                 <button type="button" onclick="openPrinterModal()" class="inline-flex items-center gap-2 px-3.5 py-2 rounded-lg bg-cyan-600 hover:bg-cyan-500 text-white text-xs sm:text-sm font-medium transition-all shadow-sm shadow-cyan-900/30 cursor-pointer active:scale-95">
                     <i class="fa-solid fa-plus text-xs"></i>
                     <span>Thêm Máy In Mới</span>
                 </button>
+                {% endif %}
+                
                 <a href="/warranty/list" class="inline-flex items-center gap-2 px-3.5 py-2 rounded-lg bg-slate-800 hover:bg-slate-700 border border-slate-700 text-slate-200 text-xs sm:text-sm font-medium transition-all">
                     <i class="fa-solid fa-arrow-left text-xs text-slate-400"></i>
                     <span>Quay lại</span>
@@ -118,8 +125,9 @@
                             {{ (item.updated_at or '')[:16].replace('T', ' ') if item.updated_at else '-' }}
                         </td>
 
-                        <!-- Thao tác -->
+                        <!-- Thao tác (Chỉ hiển thị nút Sửa/Xóa nếu user có quyền can_manage_printer) -->
                         <td class="p-3 text-right">
+                            {% if can_manage_printer %}
                             <div class="flex items-center justify-end gap-1.5">
                                 <button type="button" 
                                         data-item='{{ item | tojson | safe }}'
@@ -137,11 +145,14 @@
                                     <i class="fa-solid fa-trash-can text-xs"></i>
                                 </button>
                             </div>
+                            {% else %}
+                            <span class="text-slate-500 italic text-[11px]">Chỉ xem</span>
+                            {% endif %}
                         </td>
                     </tr>
                     {% else %}
                     <tr id="emptyDbRow">
-                        <td colspan="7" class="p-8 text-center text-slate-500">
+                        <td colspan="6" class="p-8 text-center text-slate-500">
                             <i class="fa-solid fa-box-open text-2xl mb-2 text-slate-600 block"></i>
                             Chưa có dòng máy in/thiết bị nào trong danh mục.
                         </td>
@@ -150,7 +161,7 @@
                     
                     <!-- Hàng báo không tìm thấy kết quả tìm kiếm -->
                     <tr id="noResultRow" class="hidden">
-                        <td colspan="7" class="p-8 text-center text-slate-500">
+                        <td colspan="6" class="p-8 text-center text-slate-500">
                             <i class="fa-solid fa-magnifying-glass text-2xl mb-2 text-slate-600 block"></i>
                             Không tìm thấy thiết bị nào phù hợp với bộ lọc.
                         </td>
@@ -160,7 +171,8 @@
         </div>
     </section>
 
-    <!-- MODAL THÊM / SỬA MÁY IN -->
+    <!-- MODAL THÊM / SỬA MÁY IN (Chỉ render/hiển thị khi có quyền quản lý) -->
+    {% if can_manage_printer %}
     <div id="printerModal" class="fixed inset-0 z-50 hidden bg-slate-950/80 backdrop-blur-sm flex items-center justify-center p-4">
         <div class="bg-slate-900 border border-slate-800 rounded-xl w-full max-w-md overflow-hidden shadow-2xl">
             
@@ -182,7 +194,6 @@
                     <input type="text" id="brand_name" name="brand_name" list="brand_list" required placeholder="VD: Epson, Canon, Brother, Mimaki..." 
                            class="w-full bg-slate-800 border border-slate-700 text-white text-xs rounded-lg p-2.5 focus:ring-1 focus:ring-cyan-500 outline-none">
                     <datalist id="brand_list">
-                        <!-- Danh sách thương hiệu máy in & thiết bị phổ biến -->
                         <option value="Epson"></option>
                         <option value="Canon"></option>
                         <option value="HP"></option>
@@ -225,6 +236,7 @@
             </form>
         </div>
     </div>
+    {% endif %}
 </main>
 {% endblock %}
 
