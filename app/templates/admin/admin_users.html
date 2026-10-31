@@ -183,13 +183,10 @@
                             {% set can_manage = false %}
                             {% if can_see %}
                                 {% if current_role == 'system admin' %}
-                                    <!-- System Admin có quyền cao nhất, quản lý được tất cả các cấp -->
                                     {% set can_manage = true %}
                                 {% elif current_role == 'super admin' and u_role != 'system admin' %}
-                                    <!-- Super Admin quản lý được super admin, admin, user - NHƯNG KHÔNG ĐƯỢC CHẠM VÀO system admin -->
                                     {% set can_manage = true %}
                                 {% elif current_role == 'admin' and u_role == 'user' %}
-                                    <!-- Admin thường chỉ quản lý được user -->
                                     {% set can_manage = true %}
                                 {% endif %}
                             {% endif %}
@@ -213,7 +210,6 @@
                                 <td><span title="{{ u.email }}">{{ u.email or 'N/A' }}</span></td>
                                 <td>
                                     {% if can_manage %}
-                                    <!-- Sửa lại action trỏ đúng route update-role nhận auth_id -->
                                     <form action="/admin/users/update-role/{{ u.auth_id }}" method="POST">
                                         <select name="role" class="select-role-custom" onchange="this.form.submit()">
                                             <option value="User" {% if u.role=='User' %}selected{% endif %}>User</option>
@@ -231,9 +227,7 @@
                                 <td>
                                     {% if can_manage %}
                                     <div class="actions-flex">
-                                        <!-- Dùng u|tojson để chuyển đối tượng sang JSON cho modal -->
                                         <button type="button" class="btn-action-icon btn-action-edit" data-user="{{ u|tojson|forceescape }}" onclick="openEditModalFromBtn(this)">Sửa</button>
-                                        <!-- Sửa lại action xóa trỏ tới auth_id thay vì id -->
                                         <form action="/admin/users/delete/{{ u.auth_id }}" method="POST" onsubmit="return confirm('Xóa tài khoản này?');" style="margin:0">
                                             <button type="submit" class="btn-action-icon btn-action-delete">Xóa</button>
                                         </form>
@@ -256,7 +250,7 @@
     </div>
 </div>
 
-<!-- MODAL: Thêm Tài Khoản -->
+<!-- MODAL: Thêm Tài Khoản (Đã bỏ nhập username thủ công, tự động trích xuất từ email) -->
 <div class="modal-overlay" id="addModal">
     <div class="modal-card">
         <div class="modal-header">
@@ -266,12 +260,31 @@
         <form action="/admin/users/add" method="POST">
             <div class="modal-body">
                 <div class="form-grid-layout">
-                    <div class="form-field-half"><label class="field-label">Họ và tên</label><input type="text" name="ho_ten" class="input-control" required></div>
-                    <div class="form-field-half"><label class="field-label">Tên đăng nhập</label><input type="text" name="username" class="input-control" required></div>
-                    <div class="form-field-half"><label class="field-label">Email</label><input type="email" name="email" class="input-control" required></div>
-                    <div class="form-field-half"><label class="field-label">Mật khẩu</label><input type="password" name="password" class="input-control" required></div>
-                    <div class="form-field-half"><label class="field-label">Chức danh</label><input type="text" name="chuc_danh" class="input-control"></div>
-                    <div class="form-field-half"><label class="field-label">Số điện thoại</label><input type="text" name="so_dien_thoai" class="input-control"></div>
+                    <div class="form-field-half">
+                        <label class="field-label">Họ và tên</label>
+                        <input type="text" name="ho_ten" class="input-control" required>
+                    </div>
+                    <div class="form-field-half">
+                        <label class="field-label">Tên đăng nhập (Tự động từ Email)</label>
+                        <input type="text" id="add_username_display" class="input-control" readonly style="opacity:0.7; cursor:not-allowed;" placeholder="Sẽ tự động điền theo email...">
+                        <input type="hidden" name="username" id="add_username_hidden">
+                    </div>
+                    <div class="form-field-half">
+                        <label class="field-label">Email</label>
+                        <input type="email" name="email" id="add_email_input" class="input-control" required oninput="autoExtractUsername(this.value)">
+                    </div>
+                    <div class="form-field-half">
+                        <label class="field-label">Mật khẩu</label>
+                        <input type="password" name="password" class="input-control" required>
+                    </div>
+                    <div class="form-field-half">
+                        <label class="field-label">Chức danh</label>
+                        <input type="text" name="chuc_danh" class="input-control">
+                    </div>
+                    <div class="form-field-half">
+                        <label class="field-label">Số điện thoại</label>
+                        <input type="text" name="so_dien_thoai" class="input-control">
+                    </div>
                     <div class="form-field-full">
                         <label class="field-label">Phòng ban</label>
                         <select name="department" class="input-control">
@@ -306,17 +319,30 @@
         <form id="editUserForm" action="" method="POST">
             <div class="modal-body">
                 <div class="form-grid-layout">
-                    <div class="form-field-half"><label class="field-label">Họ và tên</label><input type="text" id="edit_ho_ten" name="ho_ten" class="input-control" required></div>
-                    <div class="form-field-half"><label class="field-label">Tên đăng nhập</label><input type="text" id="edit_username" name="username" class="input-control" readonly style="opacity:0.6; cursor:not-allowed;"></div>
-                    <div class="form-field-half"><label class="field-label">Email</label><input type="email" id="edit_email" name="email" class="input-control" required></div>
-                    
-                    <!-- QUAN TRỌNG: Đổi tên name thành new_password để khớp backend -->
-                    <div class="form-field-half"><label class="field-label">Mật khẩu mới (Bỏ trống nếu không đổi)</label><input type="password" name="new_password" class="input-control" placeholder="••••••••"></div>
-                    
-                    <div class="form-field-half"><label class="field-label">Chức danh</label><input type="text" id="edit_chuc_danh" name="chuc_danh" class="input-control"></div>
-                    <div class="form-field-half"><label class="field-label">Số điện thoại</label><input type="text" id="edit_so_dien_thoai" name="so_dien_thoai" class="input-control"></div>
-                    
-                    <!-- Bổ sung chọn Role trong modal sửa để tránh mất quyền -->
+                    <div class="form-field-half">
+                        <label class="field-label">Họ và tên</label>
+                        <input type="text" id="edit_ho_ten" name="ho_ten" class="input-control" required>
+                    </div>
+                    <div class="form-field-half">
+                        <label class="field-label">Tên đăng nhập</label>
+                        <input type="text" id="edit_username" name="username" class="input-control" readonly style="opacity:0.6; cursor:not-allowed;">
+                    </div>
+                    <div class="form-field-half">
+                        <label class="field-label">Email</label>
+                        <input type="email" id="edit_email" name="email" class="input-control" required>
+                    </div>
+                    <div class="form-field-half">
+                        <label class="field-label">Mật khẩu mới (Bỏ trống nếu không đổi)</label>
+                        <input type="password" name="new_password" class="input-control" placeholder="••••••••">
+                    </div>
+                    <div class="form-field-half">
+                        <label class="field-label">Chức danh</label>
+                        <input type="text" id="edit_chuc_danh" name="chuc_danh" class="input-control">
+                    </div>
+                    <div class="form-field-half">
+                        <label class="field-label">Số điện thoại</label>
+                        <input type="text" id="edit_so_dien_thoai" name="so_dien_thoai" class="input-control">
+                    </div>
                     <div class="form-field-half">
                         <label class="field-label">Quyền hạn (Role)</label>
                         <select id="edit_role" name="role" class="input-control">
@@ -326,7 +352,6 @@
                             <option value="super admin">Super Admin</option>
                         </select>
                     </div>
-
                     <div class="form-field-half">
                         <label class="field-label">Phòng ban</label>
                         <select id="edit_department" name="department" class="input-control">
@@ -353,12 +378,26 @@
 function openModal(id) { document.getElementById(id)?.classList.add('active'); }
 function closeModal(id) { document.getElementById(id)?.classList.remove('active'); }
 
+// Hàm tự động trích xuất tên đăng nhập từ phần trước dấu @ của email
+function autoExtractUsername(emailVal) {
+    const displayInput = document.getElementById('add_username_display');
+    const hiddenInput = document.getElementById('add_username_hidden');
+    
+    if (emailVal && emailVal.includes('@')) {
+        const extracted = emailVal.split('@')[0].trim().toLowerCase();
+        displayInput.value = extracted;
+        hiddenInput.value = extracted;
+    } else {
+        displayInput.value = '';
+        hiddenInput.value = '';
+    }
+}
+
 function openEditModalFromBtn(btn) {
     try {
         const userData = JSON.parse(btn.getAttribute('data-user'));
         const form = document.getElementById('editUserForm');
         
-        // QUAN TRỌNG: Dùng userData.auth_id thay vì userData.id để khớp với route backend
         form.action = '/admin/users/edit/' + userData.auth_id;
         
         document.getElementById('edit_ho_ten').value = userData.ho_ten || '';
