@@ -29,6 +29,7 @@ TEMPLATES_DIR = (
 DEVICE_TYPE_DESKTOP = "desktop"
 DEVICE_TYPE_MOBILE = "mobile"
 
+DEFAULT_REDIRECT_URL = "/"
 
 # =========================================================
 # HELPER FUNCTIONS
@@ -173,15 +174,6 @@ async def get_current_user_or_redirect(request: Request) -> Optional[Dict[str, A
     return user
 
 
-def get_redirect_url_by_role(role: str) -> str:
-    role_clean = str(role or "user").strip().lower()
-    if role_clean == "admin":
-        return "/cham-cong"
-    if role_clean in SUPER_ADMIN_ROLES:
-        return "/admin"
-    return "/"
-
-
 # =========================================================
 # 1. ĐĂNG NHẬP
 # =========================================================
@@ -189,7 +181,7 @@ def get_redirect_url_by_role(role: str) -> str:
 async def login_page(request: Request):
     if request.session.get("user_id"):
         return RedirectResponse(
-            url=get_redirect_url_by_role(request.session.get("role")),
+            url=DEFAULT_REDIRECT_URL,
             status_code=status.HTTP_303_SEE_OTHER,
         )
     return render_template(request, "auth/login.html", {"error": None})
@@ -296,7 +288,7 @@ async def login(request: Request, email: str = Form(...), password: str = Form(.
     if kicked_count:
         logger.info(f"User {auth_id} đăng nhập từ {device_type}, {kicked_count} thiết bị cùng loại bị đăng xuất.")
 
-    return RedirectResponse(url=get_redirect_url_by_role(role), status_code=status.HTTP_303_SEE_OTHER)
+    return RedirectResponse(url=DEFAULT_REDIRECT_URL)
 
 
 # =========================================================
