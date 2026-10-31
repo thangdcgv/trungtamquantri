@@ -1,15 +1,14 @@
 import logging
 import zoneinfo
 from datetime import datetime
-from pathlib import Path
 from typing import Any, Dict, List, Optional
 
 from fastapi import APIRouter, Depends, Form, HTTPException, Request, status
-from fastapi.responses import HTMLResponse, JSONResponse, RedirectResponse
+from fastapi.responses import HTMLResponse, RedirectResponse
 from starlette.concurrency import run_in_threadpool
 
 from app.auth import require_login
-from app.permissions import can_access, load_permissions_cache
+from app.permissions import can_access
 from app.templates_config import templates
 from config import supabase, supabase_admin
 
@@ -28,19 +27,8 @@ ROLE_RANKS: Dict[str, int] = {
 }
 
 ALLOWED_ADMIN_ROLES = ["admin", "system admin", "super admin"]
-
 DEPARTMENTS = ["KTSC", "KTLD", "KD", "CSKH", "KT", "GN", "ALL"]
 VALID_DEPARTMENTS = {'KTSC', 'KTLD', 'KD', 'CSKH', 'KT', 'GN', 'ALL'}
-
-ROLES_LIST = [
-    "Super Admin", 
-    "System Admin", 
-    "Kỹ Thuật Viên", 
-    "Kế Toán", 
-    "Kinh Doanh", 
-    "Chăm Sóc Khách Hàng", 
-    "Giao Nhận"
-]
 
 
 # ==========================================
@@ -69,14 +57,12 @@ templates.env.filters["vn_time"] = format_vn_time
 # HÀM BỔ TRỢ & DEPENDENCIES
 # ==========================================
 def normalize_role(role_name: Optional[str]) -> str:
-    """Chuẩn hóa role: Bỏ khoảng trắng -> viết thường."""
     if not role_name:
         return "user"
     return str(role_name).strip().lower()
 
 
 def normalize_dept(dept_name: Optional[str]) -> str:
-    """Chuẩn hóa phòng ban, trả về mặc định KTSC nếu không hợp lệ."""
     if not dept_name or not str(dept_name).strip():
         return "KTSC"
     cleaned = str(dept_name).strip().upper()
@@ -101,7 +87,6 @@ def can_manage_target_role(current_role: str, target_role: str) -> bool:
 
 
 async def get_current_admin(request: Request) -> Dict[str, Any]:
-    """Dependency kiểm tra đăng nhập + lấy phòng ban từ session."""
     user_id = request.session.get('user_id')
     raw_role = request.session.get('role', 'User')
     raw_dept = request.session.get('department', 'KTSC')
@@ -127,19 +112,6 @@ async def get_current_admin(request: Request) -> Dict[str, Any]:
     }
 
 
-def require_roles(allowed_roles: list[str]):
-    async def role_checker(current_user: dict = Depends(get_current_admin)):
-        user_role = str(current_user.get("role", "")).strip().lower()
-        allowed_clean = [r.lower() for r in allowed_roles]
-        if user_role in ("super admin", "system admin", "user") or user_role in allowed_clean:
-            return current_user
-        raise HTTPException(
-            status_code=status.HTTP_403_FORBIDDEN,
-            detail="Bạn không có quyền truy cập chức năng này!"
-        )
-    return role_checker
-
-
 # ==========================================
 # 1. DASHBOARD CHÍNH
 # ==========================================
@@ -148,7 +120,7 @@ async def admin_dashboard(request: Request, admin: dict = Depends(get_current_ad
     return templates.TemplateResponse(
         request=request,
         name="admin/admin.html",
-        context={"current_user": admin}
+        context={"request": request, "current_user": admin}
     )
 
 
@@ -157,6 +129,9 @@ async def admin_dashboard(request: Request, admin: dict = Depends(get_current_ad
 # ==========================================
 @router.get("/users", response_class=HTMLResponse)
 async def list_users(request: Request, admin: dict = Depends(get_current_admin)):
+    if not can_access('admin_users', admin):
+        return HTMLResponse("<h2>⚠️ Bạn không có quyền truy cập Quản Lý Tài Khoản!</h2>", status_code=403)
+
     users = []
     error_msg = request.session.pop("error_message", None)
     success_msg = request.session.pop("success_message", None)
@@ -179,6 +154,7 @@ async def list_users(request: Request, admin: dict = Depends(get_current_admin))
         request=request,
         name="admin/admin_users.html",
         context={
+            "request": request,
             "users": users,
             "current_user": admin,
             "current_dept": current_dept,
@@ -193,7 +169,7 @@ async def list_users(request: Request, admin: dict = Depends(get_current_admin))
 async def add_user(
     request: Request,
     ho_ten: str = Form(...),
-    username: Optional[str] = Form(None), # 💡 Cho phép optional, tự động lấy từ email nếu thiếu
+    username: Optional[str] = Form(None),
     email: str = Form(...),
     password: str = Form(...),
     chuc_danh: Optional[str] = Form(None),
@@ -201,13 +177,12 @@ async def add_user(
     department: str = Form("KTSC"),
     admin: dict = Depends(get_current_admin)
 ):
+    if not can_access('admin_users', admin):
+        request.session["error_message"] = "⛔ Bạn không có quyền thêm tài khoản!"
+        return RedirectResponse(url="/admin/users", status_code=303)
+
     try:
-        if admin["role_clean"] not in ["super admin", "system admin", "admin"]:
-            raise HTTPException(403, "Không có quyền thêm tài khoản.")
-        
         email_clean = email.strip().lower()
-        
-        # 💡 Tự động trích xuất username từ phần trước @ nếu không có sẵn
         username_clean = username.strip() if username and username.strip() else email_clean.split("@")[0]
 
         dept_clean = normalize_dept(department)
@@ -253,7 +228,7 @@ async def edit_user(
     request: Request,
     user_id: str,
     ho_ten: str = Form(...),
-    email: Optional[str] = Form(None),       # 💡 Đã bổ sung nhận tham số email từ form
+    email: Optional[str] = Form(None),
     username: Optional[str] = Form(None),
     role: str = Form("User"),
     department: str = Form("KTSC"),
@@ -262,6 +237,10 @@ async def edit_user(
     new_password: Optional[str] = Form(None),
     admin: dict = Depends(get_current_admin)
 ):
+    if not can_access('admin_users', admin):
+        request.session["error_message"] = "⛔ Bạn không có quyền chỉnh sửa tài khoản!"
+        return RedirectResponse(url="/admin/users", status_code=303)
+
     try:
         res = await run_in_threadpool(
             lambda: supabase_admin.table('quan_tri_vien')
@@ -291,7 +270,6 @@ async def edit_user(
             if admin["role_clean"] not in ["system admin", "super admin"]:
                 raise Exception("Chỉ Quản trị hệ thống mới được chuyển phòng ban.")
 
-        # 💡 Cập nhật mật khẩu trên Supabase Auth nếu có nhập mới
         if new_password:
             if len(new_password) < 6:
                 raise Exception("Mật khẩu phải có ít nhất 6 ký tự.")
@@ -301,7 +279,6 @@ async def edit_user(
                 {"password": new_password}
             )
 
-        # 💡 Cập nhật Email trên Supabase Auth nếu email thay đổi
         email_clean = email.strip().lower() if email else old_email
         if email_clean and email_clean != old_email:
             await run_in_threadpool(
@@ -331,42 +308,9 @@ async def edit_user(
         request.session["success_message"] = "✅ Đã cập nhật tài khoản thành công!"
 
     except Exception as e:
-        error_msg = str(e)
-        if "violates check constraint" in error_msg and "department" in error_msg:
-            error_msg = f"❌ Phòng ban không hợp lệ. Giá trị gửi: '{department}'"
-        logger.error(f"EDIT ERR: {error_msg}")
-        request.session["error_message"] = error_msg
+        logger.error(f"EDIT ERR: {e}")
+        request.session["error_message"] = str(e)
 
-    return RedirectResponse(url="/admin/users", status_code=303)
-
-@router.post("/users/update-role/{user_id}")
-async def update_user_role(
-    request: Request,
-    user_id: str,
-    role: str = Form(...),
-    admin: dict = Depends(get_current_admin)
-):
-    try:
-        res = await run_in_threadpool(
-            lambda: supabase_admin.table('quan_tri_vien').select('auth_id,role,department').eq("auth_id", user_id).execute()
-        )
-        if not res or not res.data:
-            raise Exception("Không tìm thấy tài khoản.")
-        target = res.data[0]
-        target_role = target["role"]
-
-        if not can_manage_target_role(admin["role_clean"], target_role):
-            raise Exception("Không có quyền quản lý tài khoản này.")
-        if not can_manage_target_role(admin["role_clean"], role):
-            raise Exception(f"Không có quyền gán quyền {role}.")
-
-        await run_in_threadpool(
-            lambda: supabase_admin.table('quan_tri_vien').update({"role": role.strip()}).eq("auth_id", user_id).execute()
-        )
-        request.session["success_message"] = "✅ Đã cập nhật quyền hạn!"
-    except Exception as e:
-        logger.error(f"UPDATE ROLE ERR: {e}")
-        request.session["error_message"] = f"Lỗi cập nhật quyền: {str(e)}"
     return RedirectResponse(url="/admin/users", status_code=303)
 
 
@@ -376,6 +320,10 @@ async def delete_user(
     user_id: str,
     admin: dict = Depends(get_current_admin)
 ):
+    if not can_access('admin_users', admin):
+        request.session["error_message"] = "⛔ Bạn không có quyền xóa tài khoản!"
+        return RedirectResponse(url="/admin/users", status_code=303)
+
     try:
         res = await run_in_threadpool(
             lambda: supabase_admin.table('quan_tri_vien').select('auth_id,role,department,ho_ten').eq("auth_id", user_id).execute()
@@ -407,56 +355,13 @@ async def delete_user(
 
 
 # ==========================================
-# 3. CẤU HÌNH PHÂN QUYỀN TRANG (DYNAMIC RBAC)
-# ==========================================
-@router.get("/phan-quyen", response_class=HTMLResponse)
-async def page_permissions_ui(request: Request, user: dict = Depends(require_login)):
-    if not can_access('page_permissions', user):
-        return HTMLResponse("<h2>⚠️ Bạn không có quyền truy cập trang cấu hình phân quyền!</h2>", status_code=403)
-        
-    try:
-        res = supabase_admin.table("page_permissions").select("*").order("category").execute()
-        permissions_data = res.data or []
-    except Exception as e:
-        logger.error(f"Error fetching page permissions: {e}")
-        permissions_data = []
-
-    return templates.TemplateResponse(
-        request=request,
-        name="admin/page_permissions.html",
-        context={
-            "request": request,
-            "current_user": user,
-            "permissions": permissions_data,
-            "all_roles": ROLES_LIST
-        }
-    )
-
-
-@router.post("/phan-quyen/save")
-async def save_permissions(request: Request, user: dict = Depends(require_login)):
-    if not can_access('page_permissions', user):
-        return JSONResponse(status_code=403, content={"success": False, "message": "Không có quyền thực hiện!"})
-        
-    try:
-        data = await request.json()
-        for item in data:
-            supabase_admin.table("page_permissions").update({
-                "allowed_roles": item.get("allowed_roles", [])
-            }).eq("id", item["id"]).execute()
-            
-        load_permissions_cache()
-        return {"success": True, "message": "Đã lưu cấu hình phân quyền thành công!"}
-    except Exception as e:
-        logger.error(f"SAVE PERMISSION ERR: {e}")
-        return JSONResponse(status_code=500, content={"success": False, "message": f"Lỗi lưu phân quyền: {str(e)}"})
-
-
-# ==========================================
-# 4. CẤU HÌNH CHẤM CÔNG
+# 3. CẤU HÌNH CHẤM CÔNG
 # ==========================================
 @router.get("/config-cham-cong", response_class=HTMLResponse)
 async def get_config_cham_cong(request: Request, admin: dict = Depends(get_current_admin)):
+    if not can_access('config_cham_cong', admin):
+        return HTMLResponse("<h2>⚠️ Bạn không có quyền truy cập Cấu Hình Chấm Công!</h2>", status_code=403)
+
     config_dict = {}
     try:
         if supabase:
@@ -468,14 +373,20 @@ async def get_config_cham_cong(request: Request, admin: dict = Depends(get_curre
                     if k: config_dict[k] = v
     except Exception as e:
         logger.error(f"Lỗi cấu hình chấm công: {e}")
+
     return templates.TemplateResponse(
-        request=request, name="installation/config_cham_cong.html",
-        context={"config": config_dict, "current_user": admin}
+        request=request, 
+        name="installation/config_cham_cong.html",
+        context={"request": request, "config": config_dict, "current_user": admin}
     )
 
 
 @router.post("/config-cham-cong/save")
 async def save_config_cham_cong(request: Request, admin: dict = Depends(get_current_admin)):
+    if not can_access('config_cham_cong', admin):
+        request.session["error_message"] = "⛔ Bạn không có quyền lưu cấu hình chấm công!"
+        return RedirectResponse(url="/admin/config-cham-cong", status_code=303)
+
     try:
         form_data = await request.form()
         upsert_payload = []
@@ -496,15 +407,16 @@ async def save_config_cham_cong(request: Request, admin: dict = Depends(get_curr
 
 
 # ==========================================
-# 5. NHẬT KÝ HỆ THỐNG & AUDIT LOGS
+# 4. NHẬT KÝ HỆ THỐNG & AUDIT LOGS
 # ==========================================
 @router.get("/logs", response_class=HTMLResponse)
 async def list_system_logs(
     request: Request, level: Optional[str] = None, status_filter: Optional[str] = None, page: int = 1,
     admin: dict = Depends(get_current_admin)
 ):
-    if admin["role_clean"] not in ["super admin", "system admin"]:
-        raise HTTPException(403, "Không truy cập được.")
+    if not can_access('system_logs', admin):
+        return HTMLResponse("<h2>⚠️ Bạn không có quyền truy cập Nhật Ký Hệ Thống!</h2>", status_code=403)
+
     logs = []
     limit = 20
     offset = (page - 1) * limit
@@ -521,39 +433,16 @@ async def list_system_logs(
         logger.error(f"LOG ERR: {e}")
     return templates.TemplateResponse(
         request=request, name="admin/admin_logs.html",
-        context={"logs": logs, "current_user": admin,
+        context={"request": request, "logs": logs, "current_user": admin,
                  "current_level": level or "", "current_status": status_filter or "", "page": page}
     )
 
 
-@router.post("/logs/resolve/{log_id}")
-async def resolve_log(log_id: int, request: Request, admin: dict = Depends(get_current_admin)):
-    try:
-        await run_in_threadpool(lambda: supabase.table('system_logs').update(
-            {'status': 'RESOLVED'}).eq('id', log_id).execute())
-        request.session["success_message"] = "Đã đánh dấu!"
-    except Exception as e:
-        request.session["error_message"] = f"Lỗi: {str(e)}"
-    return RedirectResponse(url="/admin/logs", status_code=303)
-
-
-@router.post("/logs/clear")
-async def clear_logs(request: Request, admin: dict = Depends(get_current_admin)):
-    try:
-        await run_in_threadpool(lambda: supabase.table('system_logs').delete().in_(
-            'status', ['RESOLVED', 'IGNORED']).execute())
-        request.session["success_message"] = "Đã dọn dẹp!"
-    except Exception as e:
-        request.session["error_message"] = f"Lỗi: {str(e)}"
-    return RedirectResponse(url="/admin/logs", status_code=303)
-
-
 @router.get("/audit-logs", response_class=HTMLResponse)
 async def get_audit_logs(request: Request, current_user: dict = Depends(require_login)):
-    role_clean = normalize_role(current_user.get("role"))
-    if role_clean not in ['super admin', 'system admin']:
-        raise HTTPException(403, "Bị từ chối")
-    
+    if not can_access('audit_logs', current_user):
+        return HTMLResponse("<h2>⚠️ Bạn không có quyền truy cập Nhật Ký Kiểm Toán!</h2>", status_code=403)
+
     res = await run_in_threadpool(
         lambda: supabase.table("audit_logs").select("*").order("created_at", desc=True).limit(100).execute()
     )
@@ -561,5 +450,5 @@ async def get_audit_logs(request: Request, current_user: dict = Depends(require_
     
     return templates.TemplateResponse(
         request=request, name="admin/audit_logs.html",
-        context={"current_user": current_user, "logs": audit_data}
+        context={"request": request, "current_user": current_user, "logs": audit_data}
     )

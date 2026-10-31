@@ -4,20 +4,20 @@ import uvicorn
 from fastapi import FastAPI, Request, status
 from fastapi.responses import FileResponse, HTMLResponse, JSONResponse
 from fastapi.staticfiles import StaticFiles
-from fastapi.templating import Jinja2Templates
 from starlette.middleware.sessions import SessionMiddleware
 from fastapi.middleware.cors import CORSMiddleware
-from fastapi.middleware.gzip import GZipMiddleware  # ✅ Thêm
+from fastapi.middleware.gzip import GZipMiddleware
 from fastapi.exceptions import RequestValidationError
 from starlette.concurrency import run_in_threadpool
 from uvicorn.middleware.proxy_headers import ProxyHeadersMiddleware
 
 from config import supabase, SUPABASE_URL, SUPABASE_KEY
 
-# Import routers (giữ nguyên)
+# === IMPORT ROUTERS ===
 from app.routes import router as main_router
 from app.auth import router as auth_router
-from app.admin.admin_routes import router as admin_router
+from app.admin.admin_routes import router as admin_router               # 👈 Đã sửa tên file (bỏ 's')
+from app.admin.admin_permissions import router as admin_perm_router       # 👈 Đã bổ sung Router Phân Quyền
 from app.warranty.warranty import router as warranty_router
 from app.cham_cong import router as cham_cong_router
 from app.admin.admin_key import router as kho_key_router, api_router as kho_key_api_router
@@ -28,7 +28,8 @@ from app.warranty.warranty_policy_routes import router as warranty_policy_router
 from app.inventory import router as inventory_router, api_router as inventory_api_router
 from app.warranty.list_printers import router as list_printers_router, api_router as list_printers_api_router
 from app.warranty.warranty_lookup import router as warranty_lookup_router
-from app.permissions import can_access
+
+from app.permissions import can_access, load_permissions_cache
 from app.templates_config import templates
 
 
@@ -41,7 +42,7 @@ app = FastAPI(
 # === 0. Proxy Headers (cho Hugging Face / HTTPS đằng sau proxy) ===
 app.add_middleware(ProxyHeadersMiddleware, trusted_hosts=["*"])
 
-# === 0.5. GZip — GIẢM 2.1MB HTML xuống ~200KB ✅ ===
+# === 0.5. GZip — GIẢM HTML xuống ~200KB ===
 app.add_middleware(GZipMiddleware, minimum_size=1000)
 
 # === 1. Session Middleware ===
@@ -50,7 +51,7 @@ app.add_middleware(
     SessionMiddleware,
     secret_key=SECRET_KEY,
     same_site="lax",
-    https_only=False  # Đổi thành True nếu chạy HTTPS thật
+    https_only=False
 )
 
 # === 2. CORS ===
@@ -63,15 +64,13 @@ ALLOWED_ORIGINS = [origin.strip() for origin in raw_origins.split(",") if origin
 app.add_middleware(
     CORSMiddleware,
     allow_origins=ALLOWED_ORIGINS,
-    allow_origin_regex=r"https://.*\.hf\.space",  # ✅ Hỗ trợ wildcard *.hf.space
+    allow_origin_regex=r"https://.*\.hf\.space",
     allow_credentials=True,
     allow_methods=["*"],
     allow_headers=["*"],
 )
 
-# === Templates & Static ===
-
-# Đăng ký các biến & hàm dùng chung toàn cục cho Jinja2
+# === TEMPLATES & STATIC (ĐÃ XÓA CODE LẶP) ===
 templates.env.globals["SUPABASE_URL"] = SUPABASE_URL
 templates.env.globals["SUPABASE_KEY"] = SUPABASE_KEY
 templates.env.globals["can_access"] = can_access
@@ -79,18 +78,18 @@ templates.env.globals["can_access"] = can_access
 os.makedirs("app/static", exist_ok=True)
 app.mount("/static", StaticFiles(directory="app/static"), name="static")
 
-# Thêm hàm can_access vào Jinja2
-templates.env.globals["can_access"] = can_access
-os.makedirs("app/static", exist_ok=True)
-app.mount("/static", StaticFiles(directory="app/static"), name="static")
+# === KHỞI TẠO CACHE PHÂN QUYỀN KHI KICK OFF SERVER ===
+@app.on_event("startup")
+async def on_startup():
+    await run_in_threadpool(load_permissions_cache)
 
-# === Favicon ===
+# === FAVICON ===
 @app.get('/favicon.png', include_in_schema=False)
 @app.get('/favicon.ico', include_in_schema=False)
 async def favicon():
     return FileResponse('app/static/favicon.png')
 
-# === Validation Error Handler ===
+# === VALIDATION ERROR HANDLER ===
 @app.exception_handler(RequestValidationError)
 async def validation_exception_handler(request: Request, exc: RequestValidationError):
     error_messages = []
@@ -103,7 +102,7 @@ async def validation_exception_handler(request: Request, exc: RequestValidationE
         content={"success": False, "message": "Lỗi định dạng dữ liệu (422)", "details": error_messages}
     )
 
-# === Log lỗi CSDL ===
+# === LOG LỖI CSDL ===
 async def log_error_to_db(request: Request, exc: Exception, module: str = "System"):
     if not supabase:
         return
@@ -122,12 +121,11 @@ async def log_error_to_db(request: Request, exc: Exception, module: str = "Syste
     except Exception as db_err:
         print(f"❌ Lỗi ghi system_logs: {db_err}")
 
-# === Global Exception Handler — ✅ ĐÃ SỬA INDENTATION ===
+# === GLOBAL EXCEPTION HANDLER ===
 @app.exception_handler(Exception)
 async def global_exception_handler(request: Request, exc: Exception):
     await log_error_to_db(request, exc)
 
-    # ✅ Toàn bộ code bên dưới PHẢI thụt vào trong hàm
     accept = request.headers.get("accept", "")
     if request.url.path.startswith("/api/") or "application/json" in accept:
         return JSONResponse(
@@ -144,10 +142,11 @@ async def global_exception_handler(request: Request, exc: Exception):
         status_code=status.HTTP_500_INTERNAL_SERVER_ERROR
     )
 
-# === ĐĂNG KÝ ROUTERS (giữ nguyên) ===
+# === ĐĂNG KÝ ROUTERS (ĐÃ BỔ SUNG ADMIN_PERM_ROUTER) ===
 app.include_router(main_router)
 app.include_router(auth_router)
 app.include_router(admin_router)
+app.include_router(admin_perm_router)  # 👈 Đã đăng ký router phân quyền
 app.include_router(cham_cong_router)
 app.include_router(kho_key_router)
 app.include_router(quan_ly_key_router)
@@ -164,7 +163,7 @@ app.include_router(inventory_api_router)
 app.include_router(warranty_lookup_router)
 
 
-# === Chạy ===
+# === CHẠY SERVER ===
 if __name__ == "__main__":
     port = int(os.getenv("PORT", 7860))
     uvicorn.run("main:app", host="0.0.0.0", port=port, reload=False)

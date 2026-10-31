@@ -1,39 +1,27 @@
 import calendar
 import io
 import logging
-from datetime import datetime
-from pathlib import Path
-from typing import Optional, Dict, Any
+from datetime import date, datetime, timedelta
+from typing import Any, Dict, List, Optional
 from urllib.parse import quote
-from datetime import datetime, timedelta
 from zoneinfo import ZoneInfo
 
 import numpy as np
 import pandas as pd
 from fastapi import APIRouter, Depends, HTTPException, Query, Request
 from fastapi.responses import HTMLResponse, JSONResponse, StreamingResponse
-from app.templates_config import templates
+from starlette.concurrency import run_in_threadpool
 
 from app.auth import require_login
-from config import supabase
+from app.permissions import can_access
+from app.templates_config import templates
+from config import supabase_admin
 
 logger = logging.getLogger(__name__)
 
-# =========================================================
-# CẤU HÌNH TEMPLATES & ROUTER
-# =========================================================
-BASE_DIR = Path(__file__).resolve().parent
-TEMPLATES_DIR = (
-    BASE_DIR.parent / "templates"
-    if (BASE_DIR.parent / "templates").exists()
-    else BASE_DIR / "templates"
-)
-
 router = APIRouter(prefix="/admin/report", tags=["Báo cáo & Thống kê"])
 
-# ZoneInfo cho Việt Nam
 VN_TZ = ZoneInfo("Asia/Ho_Chi_Minh")
-
 ALLOWED_ADMIN_ROLES = {"admin", "super admin", "system admin"}
 NUMERIC_COLS = [
     "quang_duong", "combo", "device_cost", "distance_cost",
@@ -47,7 +35,7 @@ NUMERIC_COLS = [
 # =========================================================
 
 def _parse_month_range(month_str: str) -> tuple[str, str]:
-    """Parse chuỗi tháng (MM/YYYY hoặc YYYY) thành mốc thời gian ISO start/end có múi giờ +07:00."""
+    """Parse chuỗi tháng (MM/YYYY hoặc YYYY) thành mốc thời gian ISO start/end chuẩn múi giờ +07:00."""
     try:
         clean_str = str(month_str).strip()
         if "/" in clean_str:
@@ -57,15 +45,14 @@ def _parse_month_range(month_str: str) -> tuple[str, str]:
             end_d = sel_dt.date().replace(day=last_day)
         else:
             year = int(clean_str)
-            start_d = datetime(year, 1, 1).date()
-            end_d = datetime(year, 12, 31).date()
+            start_d = date(year, 1, 1)
+            end_d = date(year, 12, 31)
     except Exception:
-        now = datetime.now()
+        now = datetime.now(VN_TZ)
         start_d = now.date().replace(day=1)
         last_day = calendar.monthrange(now.year, now.month)[1]
         end_d = now.date().replace(day=last_day)
 
-    # Thêm offset +07:00 chuẩn múi giờ Việt Nam cho PostgreSQL timestamptz
     start_ts = f"{start_d.strftime('%Y-%m-%d')}T00:00:00+07:00"
     end_ts = f"{end_d.strftime('%Y-%m-%d')}T23:59:59+07:00"
     return start_ts, end_ts
@@ -79,12 +66,12 @@ def get_filtered_report_data(
     selected_tt: str = "Tất cả",
     search: str = ""
 ) -> pd.DataFrame:
-    """Query dữ liệu từ Supabase theo chuẩn Schema và chuyển đổi sang Pandas DataFrame."""
+    """Query dữ liệu từ Supabase và chuyển đổi sang Pandas DataFrame."""
     start_ts, end_ts = _parse_month_range(month)
 
-    # 1. Query Database (Bổ sung .limit(5000) để không bị cắt bớt dữ liệu)
+    # 1. Query Database qua supabase_admin & tăng limit lên 5000
     query = (
-        supabase.table("cham_cong")
+        supabase_admin.table("cham_cong")
         .select("*")
         .gte("thoi_gian", start_ts)
         .lte("thoi_gian", end_ts)
@@ -97,7 +84,6 @@ def get_filtered_report_data(
     elif selected_nv and selected_nv != "Tất cả":
         query = query.or_(f"username.eq.{selected_nv},ten.eq.{selected_nv}")
 
-    # Lọc Trạng thái
     if selected_tt and selected_tt != "Tất cả":
         query = query.eq("trang_thai", selected_tt)
 
@@ -109,7 +95,7 @@ def get_filtered_report_data(
 
     df = pd.DataFrame(data)
 
-    # 2. Chuẩn hóa Cột dữ liệu & Chuỗi hiển thị
+    # 2. Chuẩn hóa Cột dữ liệu
     df["Tên"] = df["ten"].fillna(df["username"]).fillna("N/A")
 
     if "thoi_gian" in df.columns:
@@ -118,14 +104,12 @@ def get_filtered_report_data(
     else:
         df["Thời Gian Str"] = ""
 
-    # Ép kiểu dữ liệu số hàng loạt
     for col in NUMERIC_COLS:
         if col in df.columns:
             df[col] = pd.to_numeric(df[col], errors="coerce").fillna(0.0)
         else:
             df[col] = 0.0
 
-    # Chuẩn hóa văn bản
     string_cols = {
         "so_hoa_don": "",
         "noi_dung": "",
@@ -139,7 +123,7 @@ def get_filtered_report_data(
         else:
             df[col] = default_val
 
-    # 3. Lọc Từ khóa Tìm kiếm (Search)
+    # 3. Lọc Tìm kiếm
     if search and search.strip():
         search_lower = search.lower().strip()
         mask = (
@@ -157,7 +141,7 @@ def get_filtered_report_data(
 # =========================================================
 
 def _build_excel_report(df_display: pd.DataFrame, month: str) -> io.BytesIO:
-    """Khởi tạo Workbook Excel định dạng chuẩn bao gồm bảng chi tiết và tổng hợp."""
+    """Khởi tạo Workbook Excel định dạng chuẩn."""
     df_export = df_display.sort_values("Thời Gian").copy() if "Thời Gian" in df_display.columns else df_display.copy()
     df_export["STT"] = range(1, len(df_export) + 1)
     df_export["Ngày"] = df_export["Thời Gian"].dt.strftime("%d/%m/%Y") if "Thời Gian" in df_export.columns else ""
@@ -168,7 +152,6 @@ def _build_excel_report(df_display: pd.DataFrame, month: str) -> io.BytesIO:
         wb = writer.book
         ws = wb.add_worksheet("BaoCaoChiTiet")
 
-        # Định dạng Styles
         fmt_title = wb.add_format({"bold": True, "font_size": 14, "font_name": "Segoe UI", "align": "center", "valign": "vcenter", "bg_color": "#1F4E79", "font_color": "white", "border": 1})
         fmt_header = wb.add_format({"bold": True, "font_size": 10, "font_name": "Segoe UI", "align": "center", "valign": "vcenter", "bg_color": "#2F5597", "font_color": "white", "border": 1, "text_wrap": True})
         fmt_center = wb.add_format({"border": 1, "align": "center", "valign": "vcenter", "font_name": "Segoe UI"})
@@ -183,9 +166,8 @@ def _build_excel_report(df_display: pd.DataFrame, month: str) -> io.BytesIO:
 
         fmt_sum_header = wb.add_format({"bold": True, "font_size": 10, "font_name": "Segoe UI", "align": "center", "valign": "vcenter", "bg_color": "#E2EFDA", "border": 1, "text_wrap": True})
         fmt_sum_total = wb.add_format({"bold": True, "font_size": 10, "font_name": "Segoe UI", "align": "left", "valign": "vcenter", "bg_color": "#D9EAD3", "border": 1})
-        fmt_sum_money_total = wb.add_format({"bold": True, "font_size": 10, "font_name": "Segoe UI", "align": "right", "valign": "vcenter", "num_format": "#,##0", "bg_color": "#D9EAD3", "border": 1})
+        fmt_sum_money_total = wb.add_format({"bold": True, "font_size": 10, "font_name": "Segoe UI", "align": "right", "valign": "vcenter", "num_format": "#,##0", "bg_color": "#D9EAD3", "font_name": "Segoe UI"})
 
-        # 1. Render Bảng Chi Tiết (Cột A -> P)
         headers = [
             "STT", "Ngày", "Số HĐ", "Nhân viên", "Nội dung / Địa chỉ", "Số máy", "Quãng đường",
             "Tiền máy", "Tiền KM", "Thợ phụ", "Đi tỉnh", "Ngoài giờ", "Phụ phí", "Thành tiền", "Ghi chú", "Trạng thái"
@@ -207,7 +189,6 @@ def _build_excel_report(df_display: pd.DataFrame, month: str) -> io.BytesIO:
             ws.write(curr, 5, row["combo"], fmt_center)
             ws.write(curr, 6, row["Quãng đường Str"], fmt_center)
             
-            # Tiền tệ
             ws.write(curr, 7, row["device_cost"], fmt_money)
             ws.write(curr, 8, row["distance_cost"], fmt_money)
             ws.write(curr, 9, row["tho_phu_cost"], fmt_money)
@@ -219,7 +200,6 @@ def _build_excel_report(df_display: pd.DataFrame, month: str) -> io.BytesIO:
             ws.write(curr, 14, row["ghi_chu_duyet"], fmt_left)
             ws.write(curr, 15, row["trang_thai"], fmt_center)
 
-        # Dòng Tổng Cộng Bảng Chính
         total_row = start_row + len(df_export)
         excel_start_line = start_row + 1
         excel_end_line = total_row
@@ -232,7 +212,6 @@ def _build_excel_report(df_display: pd.DataFrame, month: str) -> io.BytesIO:
         ws.write(total_row, 14, "", fmt_total_lbl)
         ws.write(total_row, 15, "", fmt_total_lbl)
 
-        # 2. Khung Chính Sách (Cột R -> X)
         policy_text = (
             "1. ĐƠN GIÁ CÔNG LẮP ĐẶT THEO KHOẢNG CÁCH (NỘI THÀNH):\n"
             "   • Dưới 20km  : 30.000 đ/máy\n"
@@ -249,7 +228,6 @@ def _build_excel_report(df_display: pd.DataFrame, month: str) -> io.BytesIO:
         ws.merge_range("R1:X1", "📌 CHÍNH SÁCH PHỤ CẤP LẮP ĐẶT & BẢO HÀNH", fmt_policy_title)
         ws.merge_range("R2:X10", policy_text, fmt_policy_box)
 
-        # 3. Bảng Tổng Hợp Theo Nhân Viên (Cột R -> X)
         df_approved = df_export[df_export["trang_thai"] == "Đã duyệt"]
         if df_approved.empty:
             df_approved = df_export
@@ -282,7 +260,6 @@ def _build_excel_report(df_display: pd.DataFrame, month: str) -> io.BytesIO:
             ws.write(r_idx, 23, s_row["tong_tien"], fmt_money)
             r_idx += 1
 
-        # Dòng Tổng Cộng Bảng Nhân Viên
         ws.write(r_idx, 17, "TỔNG CỘNG", fmt_sum_total)
         ws.write(r_idx, 18, summary_df["tong_don"].sum(), fmt_sum_total)
         ws.write(r_idx, 19, summary_df["tien_may"].sum(), fmt_sum_money_total)
@@ -293,7 +270,6 @@ def _build_excel_report(df_display: pd.DataFrame, month: str) -> io.BytesIO:
         ws.write(r_idx, 22, tong_phu_cap, fmt_sum_money_total)
         ws.write(r_idx, 23, summary_df["tong_tien"].sum(), fmt_sum_money_total)
 
-        # 4. Cấu hình Độ Rộng Cột
         col_widths = [5, 12, 12, 18, 32, 8, 12, 12, 12, 12, 12, 12, 12, 15, 25, 12]
         for idx, width in enumerate(col_widths):
             ws.set_column(idx, idx, width)
@@ -313,16 +289,20 @@ def _build_excel_report(df_display: pd.DataFrame, month: str) -> io.BytesIO:
 # =========================================================
 
 @router.get("", response_class=HTMLResponse)
-def report_page(request: Request, current_user: dict = Depends(require_login)):
+async def report_page(request: Request, current_user: dict = Depends(require_login)):
     """Render giao diện HTML trang báo cáo."""
+    if not can_access('report_cham_cong', current_user):
+        return HTMLResponse("<h2>⚠️ Bạn không có quyền truy cập Báo cáo Chấm công!</h2>", status_code=403)
+
     return templates.TemplateResponse(
-        "admin/admin_report.html",
-        {"request": request, "current_user": current_user, "admin": current_user}
+        request=request,
+        name="admin/admin_report.html",
+        context={"request": request, "current_user": current_user, "admin": current_user}
     )
 
 
 @router.get("/api/data")
-def get_report_api_data(
+async def get_report_api_data(
     month: str = Query(...),
     selected_nv: Optional[str] = Query("Tất cả"),
     selected_tt: Optional[str] = Query("Tất cả"),
@@ -330,10 +310,15 @@ def get_report_api_data(
     current_user: dict = Depends(require_login),
 ):
     """API lấy dữ liệu bảng, chỉ số KPIs & biểu đồ."""
+    if not can_access('report_cham_cong', current_user):
+        return JSONResponse(status_code=403, content={"success": False, "message": "Không có quyền truy cập dữ liệu báo cáo"})
+
     user_role = current_user.get("role", "User")
     username = current_user.get("username", "")
 
-    df_filtered = get_filtered_report_data(month, user_role, username, selected_nv, selected_tt, search or "")
+    df_filtered = await run_in_threadpool(
+        get_filtered_report_data, month, user_role, username, selected_nv, selected_tt, search or ""
+    )
 
     if df_filtered.empty:
         return JSONResponse({
@@ -343,7 +328,6 @@ def get_report_api_data(
             "items": []
         })
 
-    # 1. Tính toán KPIs bằng Pandas Mask
     total_orders = len(df_filtered)
     is_approved = df_filtered["trang_thai"] == "Đã duyệt"
     is_pending = df_filtered["trang_thai"] == "Chờ duyệt"
@@ -354,7 +338,6 @@ def get_report_api_data(
     rev_sum = float(df_approved["thanh_tien"].sum()) if not df_approved.empty else 0.0
     pending_sum = float(df_filtered[is_pending]["thanh_tien"].sum()) if not df_filtered[is_pending].empty else 0.0
 
-    # 2. Biểu đồ Doanh thu (Chỉ dành cho Admin)
     chart_data = []
     if user_role in ALLOWED_ADMIN_ROLES and not df_approved.empty:
         chart_grouped = (
@@ -363,16 +346,13 @@ def get_report_api_data(
         )
         chart_data = chart_grouped.to_dict(orient="records")
 
-    # 3. Chuẩn hóa danh sách bản ghi an toàn cho JSON Serializer
     df_items = df_filtered.copy()
     df_items.insert(0, "stt", range(1, len(df_items) + 1))
     df_items.rename(columns={"Tên": "ten", "Thời Gian Str": "thoi_gian_str"}, inplace=True)
 
-    # Xóa cột Timestamp nguyên bản để tránh lỗi serialize pd.Timestamp
     if "Thời Gian" in df_items.columns:
         df_items.drop(columns=["Thời Gian"], inplace=True)
 
-    # Thay thế NaN / NaT / Inf thành None để chuyển thành JSON 'null' chuẩn
     df_items = df_items.replace({np.nan: None, np.inf: None, -np.inf: None})
     df_items = df_items.where(pd.notnull(df_items), None)
 
@@ -392,50 +372,52 @@ def get_report_api_data(
 
 
 @router.get("/employees")
-def get_employee_list(
+async def get_employee_list(
     month: str = Query(...),
     current_user: dict = Depends(require_login)
 ):
-    """API nạp danh sách nhân viên cho Dropdown lọc (Phát sinh chấm công + Phòng KTLD)."""
+    """API nạp danh sách nhân viên cho Dropdown lọc."""
     user_role = current_user.get("role", "User")
     if user_role not in ALLOWED_ADMIN_ROLES:
         return {"employees": []}
 
     start_ts, end_ts = _parse_month_range(month)
 
-    # 1. Lấy danh sách nhân viên có phát sinh dữ liệu chấm công trong tháng
-    cc_res = (
-        supabase.table("cham_cong")
-        .select("ten, username")
-        .gte("thoi_gian", start_ts)
-        .lte("thoi_gian", end_ts)
-        .limit(5000)
-        .execute()
-    )
-    cc_data = cc_res.data or []
-    names = {item.get("ten") or item.get("username") for item in cc_data if item.get("ten") or item.get("username")}
+    def _fetch_employees():
+        cc_res = (
+            supabase_admin.table("cham_cong")
+            .select("ten, username")
+            .gte("thoi_gian", start_ts)
+            .lte("thoi_gian", end_ts)
+            .limit(5000)
+            .execute()
+        )
+        cc_data = cc_res.data or []
+        names = {item.get("ten") or item.get("username") for item in cc_data if item.get("ten") or item.get("username")}
 
-    # 2. Lấy thêm danh sách tất cả nhân viên thuộc phòng KTLD
-    # (Lưu ý: Thay tên bảng "nhan_vien" và cột "phong_ban" / "ho_ten" nếu DB của bạn đặt tên khác)
-    ktld_res = (
-        supabase.table("quan_tri_vien")
-        .select("ho_ten, username")
-        .eq("department", "KTLD")
-        .execute()
-    )
-    ktld_data = ktld_res.data or []
-    for item in ktld_data:
-        name = item.get("ho_ten") or item.get("username")
-        if name:
-            names.add(name)
+        ktld_res = (
+            supabase_admin.table("quan_tri_vien")
+            .select("ho_ten, username")
+            .eq("department", "KTLD")
+            .execute()
+        )
+        ktld_data = ktld_res.data or []
+        for item in ktld_data:
+            name = item.get("ho_ten") or item.get("username")
+            if name:
+                names.add(name)
+        return names
+
+    names = await run_in_threadpool(_fetch_employees)
 
     if not names:
         return {"employees": ["Tất cả"]}
 
     return {"employees": ["Tất cả"] + sorted(list(names))}
 
+
 @router.get("/export-excel")
-def export_report_excel(
+async def export_report_excel(
     month: Optional[str] = Query(None),
     selected_nv: Optional[str] = Query("Tất cả"),
     selected_tt: Optional[str] = Query("Tất cả"),
@@ -443,12 +425,16 @@ def export_report_excel(
     current_user: dict = Depends(require_login),
 ):
     """Endpoint xuất file Excel báo cáo chi tiết."""
-    target_month = month or datetime.now().strftime("%m/%Y")
+    if not can_access('report_cham_cong', current_user):
+        raise HTTPException(status_code=403, detail="⛔ Bạn không có quyền xuất file Excel!")
 
+    target_month = month or datetime.now(VN_TZ).strftime("%m/%Y")
     user_role = current_user.get("role", "User")
     username = current_user.get("username", "")
 
-    df_display = get_filtered_report_data(target_month, user_role, username, selected_nv, selected_tt, search or "")
+    df_display = await run_in_threadpool(
+        get_filtered_report_data, target_month, user_role, username, selected_nv, selected_tt, search or ""
+    )
 
     if df_display.empty:
         raise HTTPException(status_code=400, detail="Không tìm thấy dữ liệu phù hợp để xuất Excel")
@@ -471,6 +457,7 @@ def export_report_excel(
         }
     )
 
+
 # ==========================================
 # BÁO CÁO TỔNG QUÁT SỐ LƯỢNG ĐƠN LẮP ĐẶT
 # ==========================================
@@ -482,51 +469,53 @@ async def bao_cao_lap_dat(
     username: Optional[str] = Query(None),
     user_payload: dict = Depends(require_login)
 ):
+    """Trang Báo cáo Tổng quát Số lượng Đơn Lắp đặt & Phụ cấp."""
+    if not can_access('report_cham_cong', user_payload):
+        return HTMLResponse("<h2>⚠️ Bạn không có quyền truy cập Báo cáo Lắp đặt!</h2>", status_code=403)
+
     try:
         user_role = str(user_payload.get("role") or "user").strip().lower()
         if user_role not in ALLOWED_ADMIN_ROLES:
-            username = user_payload.get("username")  # Bắt buộc chỉ xem báo cáo cá nhân
-        # ==========================================
-        # 1. XỬ LÝ NGÀY MẶC ĐỊNH
-        # ==========================================
-        today = datetime.now(
-            ZoneInfo("Asia/Ho_Chi_Minh")
-        ).date()
+            username = user_payload.get("username")
+
+        today = datetime.now(VN_TZ).date()
 
         if not end_date:
             end_date = today.strftime("%Y-%m-%d")
 
         if not start_date:
-            start_date = (
-                today - timedelta(days=30)
-            ).strftime("%Y-%m-%d")
+            start_date = (today - timedelta(days=30)).strftime("%Y-%m-%d")
 
-        # ==========================================
-        # 2. TRUY VẤN DỮ LIỆU CHẤM CÔNG
-        # ==========================================
-        query = (
-            supabase
-            .table("cham_cong")
-            .select("*")
-            .gte(
-                "thoi_gian",
-                f"{start_date}T00:00:00"
+        # 🟢 ĐÃ KHẮC PHỤC: Chuẩn hóa múi giờ +07:00 tránh lệch 7 tiếng UTC
+        start_ts = f"{start_date}T00:00:00+07:00"
+        end_ts = f"{end_date}T23:59:59+07:00"
+
+        def _fetch_lap_dat_data():
+            query = (
+                supabase_admin
+                .table("cham_cong")
+                .select("*")
+                .gte("thoi_gian", start_ts)
+                .lte("thoi_gian", end_ts)
+                .limit(5000)  # 🟢 ĐÃ KHẮC PHỤC: Thêm limit 5000 tránh bị xén ở mốc 1000
             )
-            .lte(
-                "thoi_gian",
-                f"{end_date}T23:59:59"
+
+            if username:
+                query = query.eq("username", username)
+
+            res_cc = query.execute()
+            
+            users_res = (
+                supabase_admin
+                .table("quan_tri_vien")
+                .select("username, ho_ten")
+                .execute()
             )
-        )
+            return res_cc.data or [], users_res.data or []
 
-        if username:
-            query = query.eq("username", username)
+        # 🟢 ĐÃ KHẮC PHỤC: Chạy bất đồng bộ tránh làm nghẽn Event Loop FastAPI
+        records, all_users = await run_in_threadpool(_fetch_lap_dat_data)
 
-        res = query.execute()
-        records = res.data or []
-
-        # ==========================================
-        # 3. KHỞI TẠO THỐNG KÊ
-        # ==========================================
         staff_summary: Dict[str, Dict[str, Any]] = {}
         daily_trend: Dict[str, int] = {}
 
@@ -534,24 +523,15 @@ async def bao_cao_lap_dat(
         total_payout = 0.0
         total_km = 0.0
 
-        # ==========================================
-        # 4. HÀM CHUYỂN SỐ AN TOÀN
-        # ==========================================
         def to_float(value):
             if value is None or value == "":
                 return 0.0
-
             try:
                 return float(value)
             except (TypeError, ValueError):
                 return 0.0
 
-        # ==========================================
-        # 5. GOM NHÓM DỮ LIỆU
-        # ==========================================
         for item in records:
-
-            # Tên nhân viên
             staff_name = (
                 item.get("ten")
                 or item.get("ho_ten")
@@ -559,30 +539,15 @@ async def bao_cao_lap_dat(
                 or "Chưa rõ"
             )
 
-            # Ngày
             thoi_gian = item.get("thoi_gian")
+            date_str = str(thoi_gian)[:10] if thoi_gian else "N/A"
 
-            if thoi_gian:
-                date_str = str(thoi_gian)[:10]
-            else:
-                date_str = "N/A"
+            money = to_float(item.get("thanh_tien"))
+            km = to_float(item.get("quang_duong"))
 
-            # Tiền và km
-            money = to_float(
-                item.get("thanh_tien")
-            )
-
-            km = to_float(
-                item.get("quang_duong")
-            )
-
-            # Tổng toàn bộ
             total_payout += money
             total_km += km
 
-            # ======================================
-            # Gom theo nhân viên
-            # ======================================
             if staff_name not in staff_summary:
                 staff_summary[staff_name] = {
                     "count": 0,
@@ -594,23 +559,10 @@ async def bao_cao_lap_dat(
             staff_summary[staff_name]["total_money"] += money
             staff_summary[staff_name]["total_km"] += km
 
-            # ======================================
-            # Gom theo ngày
-            # ======================================
-            daily_trend[date_str] = (
-                daily_trend.get(date_str, 0) + 1
-            )
+            daily_trend[date_str] = daily_trend.get(date_str, 0) + 1
 
-        # ==========================================
-        # 6. DANH SÁCH NHÂN VIÊN
-        # ==========================================
         sorted_staff_list = []
-
-        for name, info in sorted(
-            staff_summary.items(),
-            key=lambda x: x[1]["count"],
-            reverse=True
-        ):
+        for name, info in sorted(staff_summary.items(), key=lambda x: x[1]["count"], reverse=True):
             sorted_staff_list.append({
                 "name": name,
                 "count": info["count"],
@@ -618,46 +570,13 @@ async def bao_cao_lap_dat(
                 "total_km": info["total_km"]
             })
 
-        # ==========================================
-        # 7. DỮ LIỆU BIỂU ĐỒ NHÂN VIÊN
-        # ==========================================
-        chart_staff_names = [
-            item["name"]
-            for item in sorted_staff_list
-        ]
+        chart_staff_names = [item["name"] for item in sorted_staff_list]
+        chart_staff_counts = [item["count"] for item in sorted_staff_list]
 
-        chart_staff_counts = [
-            item["count"]
-            for item in sorted_staff_list
-        ]
-
-        # ==========================================
-        # 8. DỮ LIỆU BIỂU ĐỒ THEO NGÀY
-        # ==========================================
         sorted_dates = sorted(daily_trend.keys())
-
         chart_dates = sorted_dates
+        chart_date_counts = [daily_trend[d] for d in sorted_dates]
 
-        chart_date_counts = [
-            daily_trend[d]
-            for d in sorted_dates
-        ]
-
-        # ==========================================
-        # 9. DANH SÁCH USER CHO DROPDOWN
-        # ==========================================
-        users_res = (
-            supabase
-            .table("quan_tri_vien")
-            .select("username, ho_ten")
-            .execute()
-        )
-
-        all_users = users_res.data or []
-
-        # ==========================================
-        # 10. RENDER TEMPLATE
-        # ==========================================
         return templates.TemplateResponse(
             request=request,
             name="admin/admin_report_cham_cong.html",
@@ -681,14 +600,5 @@ async def bao_cao_lap_dat(
         )
 
     except Exception as e:
-        logger.error(
-            f"Lỗi truy vấn báo cáo chấm công: {str(e)}",
-            exc_info=True
-        )
-
-        return HTMLResponse(
-            content=(
-                f"Đã xảy ra lỗi khi tải báo cáo: {str(e)}"
-            ),
-            status_code=500
-        )
+        logger.error(f"Lỗi truy vấn báo cáo chấm công: {str(e)}", exc_info=True)
+        return HTMLResponse(content=f"Đã xảy ra lỗi khi tải báo cáo: {str(e)}", status_code=500)

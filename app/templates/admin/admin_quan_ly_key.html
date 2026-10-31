@@ -16,7 +16,7 @@
 <div class="min-h-screen bg-slate-950 text-slate-100 py-6 px-4 sm:px-6 lg:px-8 space-y-6">
 
     <!-- Kiểm tra quyền thao tác xuất/nạp key cho trang chipless -->
-    {% set can_manage_key = can_access('chipless', current_user) %}
+    {% set can_manage_key = can_access('quan_ly_key', current_user) %}
 
     <!-- TOP HEADER & ACTION BAR -->
     <div class="bg-slate-900/90 backdrop-blur-md p-4 sm:p-5 rounded-2xl border border-slate-800 shadow-xl flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4">

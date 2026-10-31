@@ -116,9 +116,9 @@
                 </div>
                 <div>
                     <h1 class="text-lg font-bold text-slate-100 tracking-tight flex items-center gap-2">
-                        Quản Lý Bảo Hành
+                        Quản Lý Phiếu Bảo Hành
                     </h1>
-                    <p class="text-xs text-slate-400 mt-0.5">Tra cứu, quản lý và áp dụng chính sách bảo hành tự động</p>
+                    <p class="text-xs text-slate-400 mt-0.5">Tra cứu, tạo phiếu và áp dụng chính sách bảo hành tự động</p>
                 </div>
             </div>
         </div>
@@ -135,9 +135,9 @@
             {% endif %}
 
             <!-- Nút điều hướng Danh Sách Máy In -->
-            {% if can_access('list_printers', current_user) %}
+            {% if can_access('list_printer', current_user) %}
             <a href="/warranty/danh-sach-may-in" 
-               class="flex-1 lg:flex-initial inline-flex items-center justify-center gap-2 bg-slate-800 hover:bg-slate-700 text-slate-200 font-semibold px-4 py-2.5 rounded-xl text-xs transition border border-slate-700 shadow-lg shadow-slate-900/40 active:scale-[0.98] cursor-pointer"
+               class="flex-1 lg:flex-initial inline-flex items-center justify-center gap-2 bg-emerald-600/10 hover:bg-emerald-600/20 text-emerald-300 hover:text-emerald-200 font-semibold px-4 py-2.5 rounded-xl text-xs transition border border-emerald-500/30 shadow-lg shadow-emerald-950/30 active:scale-[0.98] cursor-pointer"
                title="Quản lý danh sách máy in">
                 <i class="fa-solid fa-print text-emerald-400"></i>
                 <span>Danh Sách Máy In</span>
@@ -145,14 +145,14 @@
             {% endif %}
 
             <!-- Nút Thêm Hàng Mới -->
-            <button onclick="addInlineRow()" 
+            <button type="button" onclick="addInlineRow()" 
                     class="flex-1 lg:flex-initial inline-flex items-center justify-center gap-2 bg-indigo-600 hover:bg-indigo-500 text-white font-semibold px-4 py-2.5 rounded-xl text-xs transition border border-indigo-500 shadow-lg shadow-indigo-600/30 active:scale-[0.98] cursor-pointer">
                 <i class="fa-solid fa-plus"></i>
                 <span>Thêm Hàng Mới</span>
             </button>
 
             <!-- Nút Lưu Tất Cả (Batch Save) -->
-            <button id="btnSaveBatch" onclick="saveBatchRows()" 
+            <button type="button" id="btnSaveBatch" onclick="saveBatchRows()" 
                     class="hidden flex-1 lg:flex-initial inline-flex items-center justify-center gap-2 bg-amber-600 hover:bg-amber-500 text-white font-semibold px-4 py-2.5 rounded-xl text-xs transition border border-amber-500 shadow-lg shadow-amber-600/30 active:scale-[0.98] cursor-pointer">
                 <i class="fa-solid fa-floppy-disk"></i>
                 <span>Lưu Tất Cả (<span id="newRowCount">0</span>)</span>
@@ -172,8 +172,8 @@
                 <div class="relative flex items-center">
                     <i class="fa-solid fa-barcode absolute left-3 text-slate-500 text-xs pointer-events-none"></i>
                     <input type="text" id="searchInput" name="q" value="{{ request.query_params.get('q', '') }}" 
-                           placeholder="S/N, Khách hàng, SĐT..." autocomplete="off"
-                           class="w-full h-10 pl-8 pr-8 bg-slate-950/80 border border-slate-800 rounded-xl focus:border-indigo-500 focus:ring-1 focus:ring-indigo-500/50 text-xs text-slate-200 placeholder:text-slate-600 outline-none transition">
+                        placeholder="S/N, Khách hàng, SĐT..." autocomplete="off"
+                        class="w-full h-10 pl-8 pr-8 bg-slate-950/80 border border-slate-800 rounded-xl focus:border-indigo-500 focus:ring-1 focus:ring-indigo-500/50 text-xs text-slate-200 placeholder:text-slate-600 outline-none transition">
                     <i id="searchSpinner" class="fa-solid fa-spinner fa-spin absolute right-3 text-indigo-400 text-xs hidden"></i>
                 </div>
             </div>
@@ -203,8 +203,11 @@
                     <select name="created_by" class="w-full h-10 px-3 bg-slate-950/80 border border-slate-800 rounded-xl focus:border-indigo-500 focus:ring-1 focus:ring-indigo-500/50 text-xs text-slate-200 outline-none appearance-none cursor-pointer transition">
                         <option value="" class="bg-slate-900 text-slate-400">-- Tất cả --</option>
                         {% for creator_name in creators %}
-                            {% if creator_name %}
-                                <option value="{{ creator_name }}" class="bg-slate-900 text-slate-200" {% if request.query_params.get('created_by') == creator_name %}selected{% endif %}>{{ creator_name }}</option>
+                            {% set clean_name = creator_name | string | trim %}
+                            {% if clean_name and clean_name != 'None' and clean_name != 'null' %}
+                                <option value="{{ clean_name }}" class="bg-slate-900 text-slate-200" {% if request.query_params.get('created_by') == clean_name %}selected{% endif %}>
+                                    {{ clean_name }}
+                                </option>
                             {% endif %}
                         {% endfor %}
                     </select>
@@ -219,9 +222,9 @@
                 </label>
                 <div class="grid grid-cols-2 gap-1.5">
                     <input type="date" name="start_date" value="{{ request.query_params.get('start_date', '') }}" 
-                           class="w-full h-10 px-2 bg-slate-950/80 border border-slate-800 rounded-xl focus:border-indigo-500 focus:ring-1 focus:ring-indigo-500/50 text-[11px] font-mono text-slate-200 text-center outline-none [color-scheme:dark] transition cursor-pointer">
+                        class="w-full h-10 px-2 bg-slate-950/80 border border-slate-800 rounded-xl focus:border-indigo-500 focus:ring-1 focus:ring-indigo-500/50 text-[11px] font-mono text-slate-200 text-center outline-none [color-scheme:dark] transition cursor-pointer">
                     <input type="date" name="end_date" value="{{ request.query_params.get('end_date', '') }}" 
-                           class="w-full h-10 px-2 bg-slate-950/80 border border-slate-800 rounded-xl focus:border-indigo-500 focus:ring-1 focus:ring-indigo-500/50 text-[11px] font-mono text-slate-200 text-center outline-none [color-scheme:dark] transition cursor-pointer">
+                        class="w-full h-10 px-2 bg-slate-950/80 border border-slate-800 rounded-xl focus:border-indigo-500 focus:ring-1 focus:ring-indigo-500/50 text-[11px] font-mono text-slate-200 text-center outline-none [color-scheme:dark] transition cursor-pointer">
                 </div>
             </div>
 
@@ -267,7 +270,6 @@
                         {% set s_display = (request.session.get('display_name') or user_dict.get('display_name') or current_user.get('display_name') or '') | string | lower | trim %}
                         {% set s_username = (request.session.get('username') or user_dict.get('username') or current_user.get('username') or '') | string | lower | trim %}
 
-                        <!-- Quản lý/Admin có quyền cấu hình chính sách -->
                         {% set is_admin_or_manager = can_access('warranty_policy', current_user) %}
 
                         {% for item in items %}
@@ -283,11 +285,9 @@
                                 db_staff == s_username
                             ) %}
                             
-                            <!-- QUYỀN SỬA: Cho phép TẤT CẢ nhân viên vào được trang này đều được sửa -->
-                            {% set can_edit = can_access('warranty_list', current_user) %}
-
-                            <!-- QUYỀN XÓA: Chỉ Tác giả tạo phiếu HOẶC Quản lý/Admin mới được xóa -->
-                            {% set can_delete = is_author or is_admin_or_manager %}
+                            <!-- Ưu tiên dùng cờ do Backend trả về (nếu có), fallback về logic Jinja2 -->
+                            {% set can_edit = item.can_edit if item.can_edit is defined else can_access('warranty_list', current_user) %}
+                            {% set can_delete = item.can_delete if item.can_delete is defined else (is_author or is_admin_or_manager) %}
 
                         <tr class="hover:bg-slate-800/40 transition border-b border-slate-800/60" 
                             id="row-{{ item.id }}" 
@@ -334,7 +334,7 @@
                                         </span>
                                         {% if item.ink_type and item.ink_type != 'N/A' %}
                                             <span class="text-emerald-400 font-medium ml-1.5">
-                                                - {{ item.ink_type }}
+                                                • {{ item.ink_type }}
                                             </span>
                                         {% endif %}
                                     </div>
@@ -361,7 +361,7 @@
                                     <div class="flex items-center gap-1.5">
                                         <div class="relative flex-1">
                                             <i class="fa-solid fa-magnifying-glass absolute left-2.5 top-1/2 -translate-y-1/2 text-slate-500 text-[10px]"></i>
-                                            <input type="text" list="printerList" 
+                                            <input type="text" 
                                                 class="row-model-input w-full h-8 bg-slate-950 border border-slate-700 focus:border-cyan-500 rounded-lg pl-7 pr-2 text-xs text-slate-100 font-semibold outline-none" 
                                                 value="{% if item.brand_name %}{{ (item.brand_name or '') | upper }} {{ item.model_name }}{% else %}{{ item.model_name }}{% endif %}"
                                                 data-brand="{{ (item.brand_name or '') | upper }}"
@@ -465,7 +465,7 @@
                                 </div>
                                 <div class="flex items-center gap-1.5 text-slate-300 text-[11px] font-mono">
                                     <i class="fa-regular fa-calendar-days text-[10px] text-indigo-400 shrink-0"></i>
-                                    <input type="date" class="row-date w-full bg-transparent border-0 p-0 text-slate-300 text-[11px] font-mono outline-none disabled:bg-transparent disabled:text-slate-300 disabled:opacity-100 [color-scheme:dark]" value="{{ item.purchase_date or item.created_at or '' }}" disabled>
+                                    <input type="date" class="row-date w-full bg-transparent border-0 p-0 text-slate-300 text-[11px] font-mono outline-none disabled:bg-transparent disabled:text-slate-300 disabled:opacity-100 [color-scheme:dark]" value="{{ (item.purchase_date or item.created_at or '')[:10] }}" disabled>
                                 </div>
                             </td>
 
@@ -512,6 +512,99 @@
         </div>
     </div>
 </div>
+
+<!-- =========================================================
+     TEMPLATE CẤU TRÚC HÀNG THÊM MỚI (DÙNG CHO JAVASCRIPT INLINE ADD)
+     ========================================================= -->
+<template id="inlineRowTemplate">
+    <tr class="new-inline-row bg-indigo-950/30 border-b border-indigo-900/50 hover:bg-indigo-900/20 transition">
+        <!-- 1. Serial Number -->
+        <td class="py-2.5 px-3 align-middle min-w-[140px]">
+            <div class="serial-wrapper flex items-center gap-1 bg-slate-950 border border-indigo-500/50 rounded-lg px-2 h-8 focus-within:border-indigo-400 transition">
+                <input type="text" class="row-sn min-w-0 w-full bg-transparent border-0 p-0 text-xs text-indigo-300 font-mono font-semibold uppercase outline-none" placeholder="S/N *" required oninput="this.value = this.value.toUpperCase(); validateSerialInput(this);">
+            </div>
+        </td>
+
+        <!-- 2. Khách hàng & SĐT -->
+        <td class="py-2.5 px-3 align-middle min-w-[180px] space-y-1">
+            <input type="text" class="row-customer min-w-0 w-full bg-slate-950 border border-slate-700 rounded px-2 py-1 text-xs text-slate-100 font-bold outline-none focus:border-indigo-500" placeholder="Tên khách hàng *" required>
+            <input type="text" class="row-phone min-w-0 w-full bg-slate-950 border border-slate-700 rounded px-2 py-0.5 text-[11px] text-slate-300 font-mono outline-none focus:border-indigo-500" placeholder="Số điện thoại *" required oninput="validatePhoneInput(this)">
+        </td>
+
+        <!-- 3. Model / Loại mực / Tình trạng -->
+        <td class="py-2.5 px-3 align-middle min-w-[340px] space-y-1.5">
+            <div class="flex items-center gap-1.5">
+                <div class="relative flex-1">
+                    <i class="fa-solid fa-magnifying-glass absolute left-2.5 top-1/2 -translate-y-1/2 text-slate-500 text-[10px]"></i>
+                    <input type="text" class="row-model-input w-full h-8 bg-slate-950 border border-slate-700 focus:border-cyan-500 rounded-lg pl-7 pr-2 text-xs text-slate-100 font-semibold outline-none" placeholder="Gõ tìm model máy in..." required oninput="onInlineModelChange(this)">
+                </div>
+                <label class="flex items-center gap-1 px-2 h-8 bg-slate-950 border border-slate-700 rounded-lg shrink-0 cursor-pointer select-none opacity-40 cursor-not-allowed">
+                    <input type="checkbox" class="row-new-head w-3.5 h-3.5 rounded bg-slate-900 border-slate-700 text-cyan-500 focus:ring-0 cursor-pointer" disabled onchange="onInlineHeadChange(this)">
+                    <span class="text-[10px] font-semibold text-amber-300 flex items-center gap-1">
+                        <i class="fa-solid fa-sparkles text-[9px]"></i> Đầu phun mới
+                    </span>
+                </label>
+            </div>
+            
+            <div class="grid grid-cols-3 gap-1">
+                <input type="text" class="row-category w-full h-7 bg-slate-900/60 border border-slate-800 text-slate-400 text-[10px] font-medium px-1.5 rounded outline-none pointer-events-none select-none truncate" readonly placeholder="Danh mục">
+
+                <select class="row-condition w-full h-7 bg-slate-950 border border-slate-700 text-emerald-400 text-[10px] font-medium px-1 rounded outline-none" onchange="onInlineConditionChange(this)">
+                    <option value="Máy mới" selected>Máy mới</option>
+                    <option value="Đã qua sử dụng">Đã qua sử dụng</option>
+                </select>
+
+                <select class="row-ink-type w-full h-7 bg-slate-950 border border-slate-700 text-cyan-300 text-[10px] font-semibold px-1 rounded outline-none truncate" required>
+                    <option value="" disabled selected>-- Loại mực * --</option>
+                    {% for ink_opt in ["DYE UV","MỰC CHÍNH HÃNG", "CHUYỂN NHIỆT", "IN PHIM", "PREMIUM DYE", "MỰC PET", "DYE INKTEK", "PIGMENT UV", "PIGMENT ART", "PIGMENT CANON","MỰC LASER", "KHÔNG MỰC","THIẾT BỊ ĐIỆN"] %}
+                        <option value="{{ ink_opt }}">{{ ink_opt }}</option>
+                    {% endfor %}
+                </select>
+            </div>
+        </td>
+
+        <!-- 4. Gói Bảo hành -->
+        <td class="py-2.5 px-3 align-middle min-w-[200px]">
+            <div class="flex flex-col justify-center gap-1 h-[56px]">
+                <span class="text-[9px] font-bold text-slate-400 uppercase tracking-wider">Gói bảo hành</span>
+                <select class="row-policy w-full h-7 bg-amber-500/10 text-amber-300 border border-amber-500/30 text-[10px] font-semibold px-2 rounded-md outline-none focus:border-amber-400 transition" disabled onchange="onInlinePolicyChange(this)">
+                    <option value="NULL">-- Chờ chọn Model --</option>
+                </select>
+            </div>
+        </td>
+
+        <!-- 5. Counter -->
+        <td class="py-2.5 px-3 align-middle min-w-[115px]">
+            <div class="flex flex-col justify-center gap-1 h-[56px]">
+                <span class="text-[9px] font-bold text-slate-400 uppercase tracking-wider text-right">Số Counter</span>
+                <div class="counter-wrapper flex items-center justify-between h-7 bg-slate-950 border border-slate-700 px-2 rounded-md w-full focus-within:border-emerald-400 transition">
+                    <span class="row-counter-unit text-[10px] text-slate-500 font-mono font-bold shrink-0 mr-1 select-none">#</span>
+                    <input type="number" class="row-counter min-w-0 w-full bg-transparent border-0 p-0 focus:ring-0 text-emerald-300 font-mono font-bold text-[11px] text-right outline-none" value="0" min="0" disabled>
+                </div>
+            </div>
+        </td>
+
+        <!-- 6. Ngày mua -->
+        <td class="py-2.5 px-3 align-middle space-y-1 min-w-[145px]">
+            <div class="text-slate-400 font-medium text-[11px] flex items-center gap-1">
+                <i class="fa-solid fa-user-circle text-indigo-400"></i> {{ current_user.get('ho_ten') or current_user.get('username') or 'Tôi' }}
+            </div>
+            <input type="date" class="row-date w-full bg-slate-950 border border-slate-700 rounded px-1 py-0.5 text-slate-200 text-[11px] font-mono outline-none focus:border-indigo-500 [color-scheme:dark]">
+        </td>
+
+        <!-- 7. Thao tác -->
+        <td class="py-2.5 px-3 align-middle text-center min-w-[90px]">
+            <div class="flex justify-center items-center gap-1">
+                <button type="button" onclick="saveSingleRow(this)" class="p-1.5 bg-emerald-600 hover:bg-emerald-500 text-white rounded-lg text-xs transition shadow-md cursor-pointer" title="Lưu dòng này">
+                    <i class="fa-solid fa-check"></i>
+                </button>
+                <button type="button" onclick="removeInlineRow(this)" class="p-1.5 bg-slate-800 hover:bg-slate-700 text-rose-400 rounded-lg text-xs transition border border-slate-700 cursor-pointer" title="Hủy dòng này">
+                    <i class="fa-solid fa-trash-can"></i>
+                </button>
+            </div>
+        </td>
+    </tr>
+</template>
 {% endblock %}
 
 {% block scripts %}
@@ -1020,7 +1113,6 @@ function onInlineConditionChange(selectEl) {
 
 function buildPolicyOption(p) {
     const opt = document.createElement('option');
-    // ✅ SỬA LỖI: value gán bằng UUID (p.id), không dùng p.policy_name
     opt.value = p.id;
     opt.textContent = `${p.policy_name} (${p.warranty_months ?? 0}T - ${p.head_warranty_months ?? 0}T)`;
 
@@ -1164,26 +1256,35 @@ function onInlinePolicyChange(selectEl) {
 // 4. THÊM HÀNG MỚI & TRÍCH XUẤT DỮ LIỆU LƯU
 // =========================================================
 async function addInlineRow() {
-    await loadPrintersForInline();
+    try {
+        await loadPrintersForInline();
 
-    document.getElementById('emptyRow')?.remove();
+        document.getElementById('emptyRow')?.remove();
 
-    const tbody = document.getElementById('warrantyTbody');
-    const template = document.getElementById('inlineRowTemplate');
-    if (!tbody || !template) return;
+        const tbody = document.getElementById('warrantyTbody');
+        const template = document.getElementById('inlineRowTemplate');
+        if (!tbody || !template) {
+            console.error('Không tìm thấy #warrantyTbody hoặc #inlineRowTemplate');
+            return;
+        }
 
-    const clone = template.content.cloneNode(true);
-    clone.querySelectorAll('.row-model-input').forEach(stripNativeDatalist);
-    clone.querySelector('.row-date').value = new Date().toLocaleDateString('en-CA');
+        const clone = template.content.cloneNode(true);
+        clone.querySelectorAll('.row-model-input').forEach(stripNativeDatalist);
+        
+        const dateEl = clone.querySelector('.row-date');
+        if (dateEl) dateEl.value = new Date().toLocaleDateString('en-CA');
 
-    const headCb = clone.querySelector('.row-new-head');
-    if (headCb) {
-        headCb.disabled = true;
-        headCb.closest('label')?.classList.add('opacity-40', 'cursor-not-allowed');
+        const headCb = clone.querySelector('.row-new-head');
+        if (headCb) {
+            headCb.disabled = true;
+            headCb.closest('label')?.classList.add('opacity-40', 'cursor-not-allowed');
+        }
+
+        tbody.insertBefore(clone, tbody.firstChild);
+        updateBatchCount();
+    } catch (err) {
+        console.error('Lỗi khi thêm dòng mới:', err);
     }
-
-    tbody.insertBefore(clone, tbody.firstChild);
-    updateBatchCount();
 }
 
 function removeInlineRow(btn) {
@@ -1216,7 +1317,6 @@ function extractRowData(tr) {
     const policyVal = policySelect?.value;
     const policyOpt = policySelect?.options[policySelect.selectedIndex];
     
-    // ✅ Trích xuất UUID policy_id chuẩn xác
     const policyIdVal = (policyVal && policyVal !== 'NULL') ? policyVal : (policyOpt?.getAttribute('data-id') || null);
 
     const categoryVal = tr.querySelector('.row-category')?.value || tr.getAttribute('data-category') || '';
@@ -1236,7 +1336,6 @@ function extractRowData(tr) {
         modelVal = parts.slice(1).join(' ') || parts[0];
     }
 
-    // ✅ Tự động ép UPPERCASE cho brand_name
     brandVal = (brandVal || '').toUpperCase();
 
     let isValid = true;
@@ -1635,19 +1734,21 @@ function openPrinterModal(btn, prefill) {
     currentActiveModelInput = tr ? tr.querySelector('.row-model-input') : null;
 
     const printerForm = document.getElementById('printerForm');
-    printerForm.reset();
-    if (prefill) {
-        if (printerForm.brand_name) printerForm.brand_name.value = (prefill.brand || '').toUpperCase();
-        if (printerForm.model_code) printerForm.model_code.value = (prefill.model || '').toUpperCase();
+    if (printerForm) {
+        printerForm.reset();
+        if (prefill) {
+            if (printerForm.brand_name) printerForm.brand_name.value = (prefill.brand || '').toUpperCase();
+            if (printerForm.model_code) printerForm.model_code.value = (prefill.model || '').toUpperCase();
+        }
     }
-    document.getElementById('printerModalTitle').innerHTML =
-        '<i class="fa-solid fa-print text-emerald-400"></i> Thêm Dòng Máy In Mới';
-    document.getElementById('printerModal').classList.remove('hidden');
+    const title = document.getElementById('printerModalTitle');
+    if (title) title.innerHTML = '<i class="fa-solid fa-print text-emerald-400"></i> Thêm Dòng Máy In Mới';
+    document.getElementById('printerModal')?.classList.remove('hidden');
 }
 
 function closePrinterModal() {
     currentActiveModelInput = null;
-    document.getElementById('printerModal').classList.add('hidden');
+    document.getElementById('printerModal')?.classList.add('hidden');
 }
 
 function fillModelInput(printer) {
@@ -1709,5 +1810,27 @@ async function savePrinter(e) {
         setBusy(btnSubmit, false);
     }
 }
+
+// =========================================================
+// 9. GÁN TOÀN CỤC VÀO WINDOW ĐỂ TRÁNH LỖI SCOPE KHI GỌI ONCLICK
+// =========================================================
+window.addInlineRow = addInlineRow;
+window.removeInlineRow = removeInlineRow;
+window.saveSingleRow = saveSingleRow;
+window.saveBatchRows = saveBatchRows;
+window.enableEditRow = enableEditRow;
+window.cancelEditRow = cancelEditRow;
+window.saveEditRow = saveEditRow;
+window.onInlineHeadChange = onInlineHeadChange;
+window.onInlineModelChange = onInlineModelChange;
+window.onInlineConditionChange = onInlineConditionChange;
+window.onInlinePolicyChange = onInlinePolicyChange;
+window.openPrinterModal = openPrinterModal;
+window.closePrinterModal = closePrinterModal;
+window.savePrinter = savePrinter;
+window.confirmDelete = confirmDelete;
+window.copyToClipboard = copyToClipboard;
+window.validateSerialInput = validateSerialInput;
+window.validatePhoneInput = validatePhoneInput;
 </script>
 {% endblock %}

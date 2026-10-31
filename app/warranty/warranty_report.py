@@ -1,35 +1,27 @@
 import io
 import logging
-import re
 from datetime import date, datetime, timedelta
-from typing import Dict, List, Optional, Tuple
+from typing import Dict, List, Optional
 from urllib.parse import quote
 
 import pandas as pd
 from fastapi import APIRouter, Depends, HTTPException, Query, Request, status
 from fastapi.responses import HTMLResponse, StreamingResponse
-from fastapi.templating import Jinja2Templates
-from app.templates_config import templates  # 👈 Import sạch sẽ, không bị vòng lặp
+from starlette.concurrency import run_in_threadpool
 
 from app.auth import require_login
-from config import supabase
+from app.permissions import can_access
+from app.templates_config import templates
+from config import supabase_admin
 
 logger = logging.getLogger(__name__)
 
 router = APIRouter(prefix="/admin/bao-cao", tags=["Báo cáo & Thống kê"])
 
-ALLOWED_ADMIN_ROLES = {"super admin", "system admin", "admin"}
 
-
-def require_admin(user: dict = Depends(require_login)) -> dict:
-    """Dependency kiểm tra quyền Admin tập trung & An toàn."""
-    if not isinstance(user, dict) or user.get("role") not in ALLOWED_ADMIN_ROLES:
-        raise HTTPException(
-            status_code=status.HTTP_403_FORBIDDEN,
-            detail="Bạn không có quyền truy cập trung tâm báo cáo!"
-        )
-    return user
-
+# =========================================================
+# HELPER FUNCTIONS
+# =========================================================
 
 def parse_date_safe(date_str: Optional[str], default_date: date) -> date:
     """Parse ngày từ string an toàn, tránh văng lỗi 500 khi nhập sai định dạng."""
@@ -39,64 +31,6 @@ def parse_date_safe(date_str: Optional[str], default_date: date) -> date:
         return datetime.strptime(str(date_str).strip()[:10], "%Y-%m-%d").date()
     except (ValueError, TypeError):
         return default_date
-
-
-def get_model_info(raw_name: str) -> Tuple[str, str]:
-    """Tách chuẩn [Thương hiệu + Mã Model] dự phòng khi cột brand_name/model_name rỗng."""
-    if not raw_name:
-        return "Thiết bị khác", "0"
-
-    raw_clean = str(raw_name).strip()
-    upper_name = raw_clean.upper()
-
-    BRAND_KEYWORDS = [
-        "EPSON", "CANON", "HP", "PANTUM", "BROTHER", 
-        "XEROX", "MÁY CẮT BẾ", "MAY CAT BE", "MÁY CẮT", 
-        "VINFAST", "MOVE", "MIMAKI"
-    ]
-
-    found_brand = None
-    for kw in BRAND_KEYWORDS:
-        if kw in upper_name:
-            if "CẮT" in kw or "CAT" in kw:
-                found_brand = "Máy cắt bế"
-            else:
-                found_brand = kw.capitalize() if kw != "HP" else "HP"
-            break
-
-    clean_text = re.sub(
-        r"(?i)\b(mực|muc|dye|uv|pigment|bảo hành|bao hanh|hộp|hop|đầu|dau|mới|moi|cũ|cu)\b", 
-        "", 
-        raw_clean
-    )
-
-    model_match = re.search(r"([A-Za-z]*\s*\d+[A-Za-z0-9\-]*)", clean_text)
-
-    if model_match:
-        raw_model_code = model_match.group(1).strip()
-        model_code = re.sub(r"\s+", " ", raw_model_code).upper()
-
-        if found_brand:
-            model_code = re.sub(rf"(?i)^{re.escape(found_brand)}\s*", "", model_code).strip()
-
-        if not found_brand:
-            if re.match(r"^(L\d|EP|M\d|XP|WF|SC|LBP\s*\d)", model_code):
-                found_brand = "Canon" if re.match(r"^LBP", model_code) else "Epson"
-            elif re.match(r"^(IX|G\d|TS|IP|MG)", model_code):
-                found_brand = "Canon"
-            elif re.match(r"^(M\d{4}|P\d{4})", model_code):
-                found_brand = "Pantum"
-            elif re.match(r"^(AC|CG|FC)", model_code):
-                found_brand = "Máy cắt bế"
-
-        num_match = re.search(r"\d+", model_code)
-        series_id = num_match.group(0) if num_match else "0"
-        display_name = f"{found_brand} {model_code}" if found_brand else model_code
-            
-        return display_name, series_id
-
-    fallback_name = found_brand if found_brand else raw_clean
-    return fallback_name, "0"
 
 
 def add_months_to_date(source_date: date, months: int) -> date:
@@ -119,7 +53,7 @@ def process_warranty_data_by_range(
     start_date: date,
     end_date: date,
 ) -> Dict:
-    """Xử lý tính toán báo cáo theo khoảng thời gian linh hoạt dựa trên cấu trúc DB mới."""
+    """Xử lý tính toán báo cáo theo khoảng thời gian dựa trên CSDL đã chuẩn hóa."""
     today_date = date.today()
     delta_days = (end_date - start_date).days
     
@@ -128,7 +62,7 @@ def process_warranty_data_by_range(
     valid_records = []
     all_categories = set()
 
-    # Tạo dictionary tra cứu chính sách theo UUID policy_id
+    # Tra cứu chính sách theo UUID policy_id
     policy_by_id = {str(p["id"]): p for p in policies if p.get("id")}
 
     for item in records:
@@ -149,7 +83,6 @@ def process_warranty_data_by_range(
         if category_filter and str(item.get("category")).strip() != category_filter:
             continue
 
-        # 🟢 Khắc phục khớp điều kiện condition chuẩn theo Constraint CSDL ('Máy mới' / 'Đã qua sử dụng')
         cond = str(item.get("condition") or "Máy mới").strip()
         is_new = (cond == "Máy mới" or "mới" in cond.lower())
         machine_type = "✨ Máy mới" if is_new else "🇯🇵 Máy nội địa/Cũ"
@@ -165,8 +98,8 @@ def process_warranty_data_by_range(
 
     sales_timeline: Dict[str, int] = {}
     model_counter: Dict[str, int] = {}
-    model_condition_counts: Dict[Tuple[str, str], Dict] = {}
-    customer_stats: Dict[Tuple[str, str], Dict] = {}
+    model_condition_counts: Dict[tuple, Dict] = {}
+    customer_stats: Dict[tuple, Dict] = {}
 
     active_count = 0
     expired_count = 0
@@ -181,11 +114,9 @@ def process_warranty_data_by_range(
         else:
             used_count += 1
 
-        # 🟢 Lấy thông tin chính sách bằng UUID policy_id
         p_id = str(item.get("policy_id") or "").strip()
         policy = policy_by_id.get(p_id)
 
-        # Đọc tham số bảo hành trực tiếp từ bản ghi phiếu (snapshot) hoặc từ policy
         m_body = item.get("warranty_months") if item.get("warranty_months") is not None else (policy.get("warranty_months", 0) if policy else 0)
         m_head = item.get("head_warranty_months") if item.get("head_warranty_months") is not None else (policy.get("head_warranty_months", 0) if policy else 0)
         m_cart = item.get("cartridge_warranty_months") if item.get("cartridge_warranty_months") is not None else (policy.get("cartridge_warranty_months", 0) if policy else 0)
@@ -224,29 +155,30 @@ def process_warranty_data_by_range(
         reason_str = "✅ Trong hạn" if is_warranty_active else " & ".join(reasons)
         final_policy_name = policy.get("policy_name") if policy else "Mặc định / Tùy chỉnh"
 
+        # Ghép tên Model hiển thị trực tiếp từ brand_name và model_name chuẩn
+        brand_str = str(item.get("brand_name") or "").strip()
+        model_str = str(item.get("model_name") or "").strip()
+        if brand_str and model_str:
+            disp_name = f"{brand_str} {model_str}"
+        elif model_str:
+            disp_name = model_str
+        elif brand_str:
+            disp_name = brand_str
+        else:
+            disp_name = "Thiết bị khác"
+
         if is_warranty_active:
             active_count += 1
         else:
             expired_count += 1
             expired_list.append({
                 "serial_number": str(item.get("serial_number") or "N/A"),
-                "model_name": f"{item.get('brand_name') or ''} {item.get('model_name') or ''}".strip() or "N/A",
+                "model_name": disp_name,
                 "customer_name": str(item.get("customer_name") or "Khách lẻ"),
                 "applied_policy_name": final_policy_name,
                 "reason": reason_str,
             })
 
-        # Ghép tên Model hiển thị từ brand_name và model_name trong CSDL
-        brand_str = str(item.get("brand_name") or "").strip()
-        model_str = str(item.get("model_name") or "").strip()
-        if brand_str and model_str:
-            disp_name = f"{brand_str} {model_str}"
-        elif model_str:
-            disp_name, _ = get_model_info(model_str)
-        else:
-            disp_name = "Thiết bị khác"
-
-        # Bản ghi chi tiết phục vụ xuất Excel
         detailed_export_records.append({
             "customer_name": str(item.get("customer_name") or "Khách lẻ"),
             "phone_number": str(item.get("phone_number") or ""),
@@ -321,7 +253,7 @@ def process_warranty_data_by_range(
 
 
 # =========================================================
-# HELPER BUILD EXCEL BÁO CÁO BẢO HÀNH
+# BUILD EXCEL WORKBOOK
 # =========================================================
 
 def _build_warranty_report_excel(
@@ -336,7 +268,6 @@ def _build_warranty_report_excel(
         wb = writer.book
         ws = wb.add_worksheet("BaoCaoBaoHanh")
 
-        # Định dạng Style
         fmt_title = wb.add_format({
             "bold": True, "font_size": 15, "font_name": "Segoe UI",
             "align": "center", "valign": "vcenter", "bg_color": "#1F4E79",
@@ -361,7 +292,6 @@ def _build_warranty_report_excel(
         fmt_total_lbl = wb.add_format({"bold": True, "border": 1, "align": "right", "valign": "vcenter", "bg_color": "#D9EAD3", "font_name": "Segoe UI"})
         fmt_total_num = wb.add_format({"bold": True, "border": 1, "align": "right", "valign": "vcenter", "num_format": "#,##0", "bg_color": "#D9EAD3", "font_name": "Segoe UI"})
 
-        # Danh sách 17 cột hiển thị
         headers = [
             "STT", "Tên Khách Hàng", "Số Điện Thoại", "Ngày Mua", "Danh Mục",
             "Thương Hiệu & Model", "Số Serial", "Loại Máy", "Trạng Thái BH",
@@ -369,16 +299,13 @@ def _build_warranty_report_excel(
             "Counter Hiện Tại", "Trang Đã In", "BH Thân Máy", "BH Đầu Phun", "BH Hộp Mực"
         ]
 
-        # Khối Tiêu đề (Merge A1 -> Q2 cho đủ 17 cột A-Q)
         ws.merge_range("A1:Q2", "BÁO CÁO THỐNG KÊ CHI TIẾT TÌNH TRẠNG BẢO HÀNH", fmt_title)
         sub_text = f"Giai đoạn từ ngày: {start_date.strftime('%d/%m/%Y')} đến ngày: {end_date.strftime('%d/%m/%Y')}"
         ws.merge_range("A3:Q3", sub_text, fmt_subtitle)
 
-        # Dòng Tiêu đề Bảng
         for col_idx, h_text in enumerate(headers):
             ws.write(3, col_idx, h_text, fmt_header)
 
-        # Ghi Dữ liệu từng dòng
         start_row = 4
         for idx, row in enumerate(detailed_records):
             curr_r = start_row + idx
@@ -391,7 +318,6 @@ def _build_warranty_report_excel(
             ws.write(curr_r, 6, row["serial_number"], fmt_center)
             ws.write(curr_r, 7, row["condition"], fmt_center)
             
-            # Trạng thái BH
             if row["status_str"] == "Trong hạn":
                 ws.write(curr_r, 8, row["status_str"], fmt_active)
             else:
@@ -408,7 +334,6 @@ def _build_warranty_report_excel(
             ws.write(curr_r, 15, row["exp_head_str"], fmt_center)
             ws.write(curr_r, 16, row["exp_cart_str"], fmt_center)
 
-        # Dòng Tổng Cộng
         tot_r = start_row + len(detailed_records)
         excel_start = start_row + 1
         excel_end = tot_r
@@ -419,7 +344,6 @@ def _build_warranty_report_excel(
         ws.write_formula(tot_r, 13, f"=SUM(N{excel_start}:N{excel_end})", fmt_total_num)
         ws.merge_range(tot_r, 14, tot_r, 16, "", fmt_total_lbl)
 
-        # Độ rộng cột
         col_widths = [6, 22, 14, 12, 16, 22, 18, 16, 14, 25, 22, 14, 14, 14, 14, 14, 14]
         for c_i, w in enumerate(col_widths):
             ws.set_column(c_i, c_i, w)
@@ -435,12 +359,15 @@ def _build_warranty_report_excel(
 # 1. TRUNG TÂM BÁO CÁO (Hub)
 @router.get("", response_class=HTMLResponse)
 async def admin_reports_hub(
-    request: Request, user: dict = Depends(require_admin)
+    request: Request, user: dict = Depends(require_login)
 ):
+    if not can_access('reports_hub', user):
+        return HTMLResponse("<h2>⚠️ Bạn không có quyền truy cập Trung Tâm Báo Cáo!</h2>", status_code=403)
+
     return templates.TemplateResponse(
         request=request,
         name="admin/admin_reports_hub.html",
-        context={"current_user": user},
+        context={"request": request, "current_user": user},
     )
 
 
@@ -452,8 +379,11 @@ async def report_warranty_page(
     condition: Optional[str] = Query(None),
     start_date: Optional[str] = Query(None),
     end_date: Optional[str] = Query(None),
-    user: dict = Depends(require_admin),
+    user: dict = Depends(require_login),
 ):
+    if not can_access('report_warranty', user):
+        return HTMLResponse("<h2>⚠️ Bạn không có quyền truy cập Báo Cáo Bảo Hành!</h2>", status_code=403)
+
     today = date.today()
     parsed_start = parse_date_safe(start_date, today - timedelta(days=60))
     parsed_end = parse_date_safe(end_date, today)
@@ -462,15 +392,20 @@ async def report_warranty_page(
         parsed_start, parsed_end = parsed_end, parsed_start
 
     try:
-        res_rec = (
-            supabase.table("warranty_records")
-            .select("*")
-            .gte("purchase_date", parsed_start.strftime("%Y-%m-%d"))
-            .lte("purchase_date", parsed_end.strftime("%Y-%m-%d"))
-            .order("created_at", desc=True)
-            .execute()
-        )
-        res_pol = supabase.table("warranty_policy").select("*").execute()
+        def _fetch_db():
+            res_rec = (
+                supabase_admin.table("warranty_records")
+                .select("*")
+                .gte("purchase_date", parsed_start.strftime("%Y-%m-%d"))
+                .lte("purchase_date", parsed_end.strftime("%Y-%m-%d"))
+                .order("created_at", desc=True)
+                .execute()
+            )
+            res_pol = supabase_admin.table("warranty_policy").select("*").execute()
+            return res_rec.data or [], res_pol.data or []
+
+        records_data, policies_data = await run_in_threadpool(_fetch_db)
+
     except Exception as e:
         logger.error(f"Supabase Query Error: {e}", exc_info=True)
         raise HTTPException(
@@ -479,8 +414,8 @@ async def report_warranty_page(
         )
 
     data = process_warranty_data_by_range(
-        records=res_rec.data or [],
-        policies=res_pol.data or [],
+        records=records_data,
+        policies=policies_data,
         category_filter=category,
         condition_filter=condition,
         start_date=parsed_start,
@@ -514,9 +449,11 @@ async def export_warranty_report_excel(
     condition: Optional[str] = Query(None),
     start_date: Optional[str] = Query(None),
     end_date: Optional[str] = Query(None),
-    user: dict = Depends(require_admin),
+    user: dict = Depends(require_login),
 ):
-    """API xuất kết quả Báo cáo Thống kê Bảo hành ra file Excel."""
+    if not can_access('report_warranty', user):
+        raise HTTPException(status_code=403, detail="⛔ Bạn không có quyền xuất file Excel Báo cáo Bảo hành!")
+
     today = date.today()
     parsed_start = parse_date_safe(start_date, today - timedelta(days=60))
     parsed_end = parse_date_safe(end_date, today)
@@ -525,15 +462,20 @@ async def export_warranty_report_excel(
         parsed_start, parsed_end = parsed_end, parsed_start
 
     try:
-        res_rec = (
-            supabase.table("warranty_records")
-            .select("*")
-            .gte("purchase_date", parsed_start.strftime("%Y-%m-%d"))
-            .lte("purchase_date", parsed_end.strftime("%Y-%m-%d"))
-            .order("created_at", desc=True)
-            .execute()
-        )
-        res_pol = supabase.table("warranty_policy").select("*").execute()
+        def _fetch_db():
+            res_rec = (
+                supabase_admin.table("warranty_records")
+                .select("*")
+                .gte("purchase_date", parsed_start.strftime("%Y-%m-%d"))
+                .lte("purchase_date", parsed_end.strftime("%Y-%m-%d"))
+                .order("created_at", desc=True)
+                .execute()
+            )
+            res_pol = supabase_admin.table("warranty_policy").select("*").execute()
+            return res_rec.data or [], res_pol.data or []
+
+        records_data, policies_data = await run_in_threadpool(_fetch_db)
+
     except Exception as e:
         logger.error(f"Supabase Query Error Export Excel: {e}", exc_info=True)
         raise HTTPException(
@@ -542,8 +484,8 @@ async def export_warranty_report_excel(
         )
 
     data = process_warranty_data_by_range(
-        records=res_rec.data or [],
-        policies=res_pol.data or [],
+        records=records_data,
+        policies=policies_data,
         category_filter=category,
         condition_filter=condition,
         start_date=parsed_start,

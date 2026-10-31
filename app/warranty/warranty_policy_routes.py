@@ -1,24 +1,28 @@
+import logging
 from typing import Optional
 from fastapi import APIRouter, Request, Depends, Query, status
 from fastapi.responses import HTMLResponse, JSONResponse, RedirectResponse
-from fastapi.templating import Jinja2Templates
 from pydantic import BaseModel
+from starlette.concurrency import run_in_threadpool
 
 from app.auth import get_current_user_or_redirect, require_login
-from config import supabase
-from app.templates_config import templates  # 👈 Import sạch sẽ, không bị vòng lặp
+from app.permissions import can_access
+from app.templates_config import templates
+from config import supabase_admin
 
+logger = logging.getLogger(__name__)
 
 router = APIRouter(prefix="/admin/chinh-sach-bao-hanh", tags=["Warranty Policy"])
 
 DANH_SACH_LOAI_MAY = ["In phun", "In Laser", "In kim", "Cắt bế", "Máy Scan", "Thiết bị điện", "Thiết bị khác"]
 
+
 # =========================================================================
-# PYDANTIC SCHEMA (Cập nhật đồng bộ với CSDL & Template)
+# PYDANTIC SCHEMA
 # =========================================================================
 class PolicySchema(BaseModel):
     id: Optional[str] = None
-    brand_name: str  # 👈 Bổ sung brand_name thay thế cho printer_id
+    brand_name: str
     policy_name: str
     category: str
     condition: str = "Máy mới"
@@ -50,29 +54,35 @@ async def list_policies(request: Request):
     if not user:
         return RedirectResponse(url="/auth/login", status_code=status.HTTP_303_SEE_OTHER)
 
-    try:
-        # 1. Truy vấn danh sách chính sách (Lấy trực tiếp từ bảng, không cần JOIN list_printer)
-        res_policies = (
-            supabase.table("warranty_policy")
-            .select("*")
-            .order("brand_name", desc=True)
-            .order("policy_name", desc=False)
-            .execute()
-        )
-        policies = res_policies.data if res_policies.data else []
+    # 🛡️ KIỂM TRA PHÂN QUYỀN ĐỘNG DYNAMIC RBAC
+    if not can_access('warranty_policy', user):
+        return HTMLResponse("<h2>⚠️ Bạn không có quyền truy cập Cấu hình Chính sách bảo hành!</h2>", status_code=403)
 
-        # 2. Truy vấn danh mục máy in để lấy danh sách Hãng độc nhất (brand_name) nạp vào Datalist
-        res_printers = (
-            supabase.table("list_printer")
-            .select("brand_name")
-            .execute()
-        )
-        printers = res_printers.data if res_printers.data else []
-        # Lọc ra các hãng duy nhất, loại bỏ giá trị rỗng
-        existing_brands = sorted(list(set(p["brand_name"] for p in printers if p.get("brand_name"))))
+    try:
+        # 1. Truy vấn danh sách chính sách bất đồng bộ
+        def _fetch_data():
+            res_p = (
+                supabase_admin.table("warranty_policy")
+                .select("*")
+                .order("brand_name", desc=True)
+                .order("policy_name", desc=False)
+                .execute()
+            )
+            res_pr = (
+                supabase_admin.table("list_printer")
+                .select("brand_name")
+                .execute()
+            )
+            return res_p.data or [], res_pr.data or []
+
+        policies_data, printers_data = await run_in_threadpool(_fetch_data)
+
+        # Lọc danh sách hãng độc nhất
+        existing_brands = sorted(list(set(p["brand_name"] for p in printers_data if p.get("brand_name"))))
 
     except Exception as db_err:
-        policies = []
+        logger.error(f"❌ Lỗi tải danh sách chính sách bảo hành: {db_err}")
+        policies_data = []
         existing_brands = []
 
     return templates.TemplateResponse(
@@ -81,8 +91,8 @@ async def list_policies(request: Request):
         context={
             "request": request,
             "current_user": user,
-            "policies": policies,
-            "existing_brands": existing_brands, # 👈 Truyền đúng biến cho Template
+            "policies": policies_data,
+            "existing_brands": existing_brands,
             "categories": DANH_SACH_LOAI_MAY,
         }
     )
@@ -94,22 +104,31 @@ async def save_policy(
     current_user: dict = Depends(require_login)
 ):
     """Thêm mới hoặc cập nhật chính sách bảo hành"""
+    # 🛡️ KIỂM TRA PHÂN QUYỀN ĐỘNG
+    if not can_access('warranty_policy', current_user):
+        return JSONResponse(
+            status_code=403, 
+            content={"success": False, "message": "⛔ Bạn không có quyền chỉnh sửa chính sách bảo hành!"}
+        )
+
     try:
         data = payload.model_dump(exclude_none=True) if hasattr(payload, "model_dump") else payload.dict(exclude_none=True)
         policy_id = data.pop("id", None)
 
         if policy_id:
-            # Update chính sách đã có
-            res = supabase.table("warranty_policy").update(data).eq("id", policy_id).execute()
+            res = await run_in_threadpool(
+                lambda: supabase_admin.table("warranty_policy").update(data).eq("id", policy_id).execute()
+            )
         else:
-            # Insert chính sách mới
-            res = supabase.table("warranty_policy").insert(data).execute()
+            res = await run_in_threadpool(
+                lambda: supabase_admin.table("warranty_policy").insert(data).execute()
+            )
 
         return {"success": True, "data": res.data}
     except Exception as e:
         err_msg = str(e)
+        logger.error(f"❌ Lỗi lưu chính sách bảo hành: {err_msg}")
         
-        # Bắt lỗi Unique Constraint của Tên chính sách (warranty_policy_name_key)
         if "23505" in err_msg or "warranty_policy_name_key" in err_msg:
             return JSONResponse(
                 status_code=400, 
@@ -129,10 +148,20 @@ async def toggle_policy_status(
     current_user: dict = Depends(require_login)
 ):
     """Bật/tắt trạng thái chính sách"""
+    # 🛡️ KIỂM TRA PHÂN QUYỀN ĐỘNG
+    if not can_access('warranty_policy', current_user):
+        return JSONResponse(
+            status_code=403, 
+            content={"success": False, "message": "⛔ Bạn không có quyền thay đổi trạng thái chính sách!"}
+        )
+
     try:
-        supabase.table("warranty_policy").update({"is_active": status}).eq("id", policy_id).execute()
+        await run_in_threadpool(
+            lambda: supabase_admin.table("warranty_policy").update({"is_active": status}).eq("id", policy_id).execute()
+        )
         return {"success": True}
     except Exception as e:
+        logger.error(f"❌ Lỗi đổi trạng thái chính sách ID {policy_id}: {e}")
         return JSONResponse(status_code=400, content={"success": False, "message": str(e)})
 
 
@@ -142,8 +171,18 @@ async def delete_policy(
     current_user: dict = Depends(require_login)
 ):
     """Xóa chính sách bảo hành"""
+    # 🛡️ KIỂM TRA PHÂN QUYỀN ĐỘNG
+    if not can_access('warranty_policy', current_user):
+        return JSONResponse(
+            status_code=403, 
+            content={"success": False, "message": "⛔ Bạn không có quyền xóa chính sách bảo hành!"}
+        )
+
     try:
-        supabase.table("warranty_policy").delete().eq("id", policy_id).execute()
+        await run_in_threadpool(
+            lambda: supabase_admin.table("warranty_policy").delete().eq("id", policy_id).execute()
+        )
         return {"success": True}
     except Exception as e:
+        logger.error(f"❌ Lỗi xóa chính sách ID {policy_id}: {e}")
         return JSONResponse(status_code=400, content={"success": False, "message": str(e)})

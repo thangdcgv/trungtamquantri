@@ -4,17 +4,20 @@ import traceback
 from typing import List, Optional
 
 from fastapi import APIRouter, Depends, Form, HTTPException, Query, Request, status
-from fastapi.responses import HTMLResponse, RedirectResponse
+from fastapi.responses import HTMLResponse, JSONResponse, RedirectResponse
 from pydantic import BaseModel, Field
+from starlette.concurrency import run_in_threadpool
 
 from app.auth import get_current_user_or_redirect, require_login
-from config import supabase
+from app.permissions import can_access
 from app.templates_config import templates
+from config import supabase_admin
 
 logger = logging.getLogger(__name__)
 
+
 # =========================================================================
-# HELPER AUTH DEPENDENCY DÀNH CHO API (TRẢ VỀ JSON CHI TIẾT LỖI 401/403)
+# HELPER AUTH DEPENDENCY DÀNH CHO API KHO KEY (ĐỒNG BỘ DYNAMIC RBAC)
 # =========================================================================
 async def verify_admin_user(request: Request):
     user = await get_current_user_or_redirect(request)
@@ -23,18 +26,18 @@ async def verify_admin_user(request: Request):
             status_code=status.HTTP_401_UNAUTHORIZED, 
             detail="Phiên làm việc đã hết hạn. Vui lòng đăng nhập lại."
         )
-    user_role = str(user.get("role", "")).strip().lower()
-    if user_role not in ["admin", "super admin", "system admin"]:
+    # 🛡️ KIỂM TRA PHÂN QUYỀN ĐỘNG QUA PERMISSIONS CACHE
+    if not can_access('kho_key', user):
         raise HTTPException(
             status_code=status.HTTP_403_FORBIDDEN, 
-            detail="Bạn không có quyền quản trị để thực hiện thao tác này."
+            detail="⛔ Bạn không có quyền truy cập Quản Lý Kho Key."
         )
     return user
 
 
 router = APIRouter(prefix="/admin/kho-key", tags=["Admin - Quản Lý Kho Key"])
 
-# Bổ sung dependency bảo mật cho toàn bộ API Kho Key
+# Bổ sung dependency kiểm tra can_access('kho_key') cho toàn bộ API Kho Key
 api_router = APIRouter(
     prefix="/admin/api/kho-key", 
     tags=["Admin API - Kho Key"],
@@ -90,31 +93,33 @@ async def list_kho_key(
     loai_thiet_bi: Optional[str] = Query(None),
     trang_thai: Optional[str] = Query(None)
 ):
-    # 1. Kiểm tra xác thực & quyền Admin
+    # 1. Kiểm tra xác thực
     user = await get_current_user_or_redirect(request)
     if not user:
         return RedirectResponse(url="/auth/login", status_code=303)
 
-    user_role = str(user.get("role", "")).strip().lower()
-    if user_role not in ["admin", "super admin", "system admin"]:
-        return RedirectResponse(url="/admin/quan-ly-key", status_code=303)
+    # 🛡️ 2. KIỂM TRA PHÂN QUYỀN ĐỘNG DYNAMIC RBAC
+    if not can_access('kho_key', user):
+        return HTMLResponse("<h2>⚠️ Bạn không có quyền truy cập Quản Lý Kho Key!</h2>", status_code=403)
 
-    # 2. Truy vấn dữ liệu từ Supabase
+    # 3. Truy vấn dữ liệu từ Supabase bất đồng bộ
     try:
-        query = supabase.table("kho_key").select("*").order("id", desc=True)
+        def _fetch_keys():
+            query = supabase_admin.table("kho_key").select("*").order("id", desc=True)
 
-        if search and search.strip():
-            s = search.strip()
-            # 💡 ĐÃ SỬA: Thay '*' bằng '%' để đúng cú pháp PostgREST ilike
-            query = query.or_(f"ten_may.ilike.%{s}%,ma_key.ilike.%{s}%")
+            if search and search.strip():
+                s = search.strip()
+                query = query.or_(f"ten_may.ilike.%{s}%,ma_key.ilike.%{s}%")
 
-        if loai_thiet_bi and loai_thiet_bi.strip():
-            query = query.eq("loai_thiet_bi", loai_thiet_bi.strip())
+            if loai_thiet_bi and loai_thiet_bi.strip():
+                query = query.eq("loai_thiet_bi", loai_thiet_bi.strip())
 
-        if trang_thai and trang_thai.strip():
-            query = query.eq("trang_thai", trang_thai.strip())
+            if trang_thai and trang_thai.strip():
+                query = query.eq("trang_thai", trang_thai.strip())
 
-        response = query.execute()
+            return query.execute()
+
+        response = await run_in_threadpool(_fetch_keys)
         raw_keys_data = response.data or []
 
     except Exception as db_err:
@@ -125,7 +130,7 @@ async def list_kho_key(
             detail=f"Lỗi truy vấn CSDL Supabase: {str(db_err)}"
         )
 
-    # 3. Render Jinja2 Template
+    # 4. Render Jinja2 Template
     try:
         raw_keys_json = json.dumps(raw_keys_data, default=str, ensure_ascii=False)
         danh_sach_loai_tb_json = json.dumps(DANH_SACH_LOAI_TB, ensure_ascii=False)
@@ -134,6 +139,7 @@ async def list_kho_key(
             request=request,
             name="admin/admin_kho_key.html",
             context={
+                "request": request,
                 "raw_keys": raw_keys_data,
                 "raw_keys_json": raw_keys_json,
                 "danh_sach_loai_tb": DANH_SACH_LOAI_TB,
@@ -168,7 +174,9 @@ async def check_import_keys(payload: CheckImportReq):
         chunk_size = 500
         for i in range(0, len(clean_keys), chunk_size):
             chunk = clean_keys[i:i + chunk_size]
-            res = supabase.table("kho_key").select("ma_key").in_("ma_key", chunk).execute()
+            res = await run_in_threadpool(
+                lambda: supabase_admin.table("kho_key").select("ma_key").in_("ma_key", chunk).execute()
+            )
             if res.data:
                 existing_keys.extend([item["ma_key"] for item in res.data])
 
@@ -191,12 +199,13 @@ async def confirm_import_keys(payload: ConfirmImportReq):
         if not clean_keys:
             raise HTTPException(status_code=400, detail="Danh sách key hợp lệ rỗng.")
 
-        # 💡 ĐÃ SỬA: Lọc trùng theo Chunking an toàn cho danh sách lớn
         existing_keys = set()
         chunk_size = 500
         for i in range(0, len(clean_keys), chunk_size):
             chunk = clean_keys[i:i + chunk_size]
-            res = supabase.table("kho_key").select("ma_key").in_("ma_key", chunk).execute()
+            res = await run_in_threadpool(
+                lambda: supabase_admin.table("kho_key").select("ma_key").in_("ma_key", chunk).execute()
+            )
             if res.data:
                 existing_keys.update(item["ma_key"] for item in res.data)
 
@@ -217,9 +226,10 @@ async def confirm_import_keys(payload: ConfirmImportReq):
             for k in valid_keys
         ]
 
-        # Batch insert theo chunk 500 bản ghi
         for i in range(0, len(records), chunk_size):
-            supabase.table("kho_key").insert(records[i:i + chunk_size]).execute()
+            await run_in_threadpool(
+                lambda: supabase_admin.table("kho_key").insert(records[i:i + chunk_size]).execute()
+            )
 
         return {
             "status": "success", 
@@ -239,29 +249,28 @@ async def bulk_update_limit(payload: BulkUpdateLimitReq):
         ten_may = payload.ten_may.strip()
         new_limit = payload.new_limit
 
-        # 1. Cập nhật giới hạn mới
-        supabase.table("kho_key")\
-            .update({"gioi_han": new_limit})\
-            .eq("loai_thiet_bi", loai_tb)\
-            .eq("ten_may", ten_may)\
-            .execute()
-        
-        # 2. Cập nhật trạng thái 'Còn lượt'
-        supabase.table("kho_key")\
-            .update({"trang_thai": "Còn lượt"})\
-            .eq("loai_thiet_bi", loai_tb)\
-            .eq("ten_may", ten_may)\
-            .lt("da_dung", new_limit)\
-            .execute()
+        def _update():
+            supabase_admin.table("kho_key")\
+                .update({"gioi_han": new_limit})\
+                .eq("loai_thiet_bi", loai_tb)\
+                .eq("ten_may", ten_may)\
+                .execute()
+            
+            supabase_admin.table("kho_key")\
+                .update({"trang_thai": "Còn lượt"})\
+                .eq("loai_thiet_bi", loai_tb)\
+                .eq("ten_may", ten_may)\
+                .lt("da_dung", new_limit)\
+                .execute()
 
-        # 3. Cập nhật trạng thái 'Hết lượt'
-        supabase.table("kho_key")\
-            .update({"trang_thai": "Hết lượt"})\
-            .eq("loai_thiet_bi", loai_tb)\
-            .eq("ten_may", ten_may)\
-            .gte("da_dung", new_limit)\
-            .execute()
+            supabase_admin.table("kho_key")\
+                .update({"trang_thai": "Hết lượt"})\
+                .eq("loai_thiet_bi", loai_tb)\
+                .eq("ten_may", ten_may)\
+                .gte("da_dung", new_limit)\
+                .execute()
 
+        await run_in_threadpool(_update)
         return {"status": "success"}
     except Exception as e:
         raise HTTPException(status_code=400, detail=str(e))
@@ -270,14 +279,17 @@ async def bulk_update_limit(payload: BulkUpdateLimitReq):
 @api_router.post("/bulk-delete")
 async def bulk_delete(payload: BulkDeleteReq):
     try:
-        query = supabase.table("kho_key").delete()\
-            .eq("loai_thiet_bi", payload.loai_thiet_bi.strip())\
-            .eq("ten_may", payload.ten_may.strip())
-            
-        if payload.type_del == "safe":
-            query = query.eq("da_dung", 0)
-            
-        query.execute()
+        def _delete():
+            query = supabase_admin.table("kho_key").delete()\
+                .eq("loai_thiet_bi", payload.loai_thiet_bi.strip())\
+                .eq("ten_may", payload.ten_may.strip())
+                
+            if payload.type_del == "safe":
+                query = query.eq("da_dung", 0)
+                
+            query.execute()
+
+        await run_in_threadpool(_delete)
         return {"status": "success"}
     except Exception as e:
         raise HTTPException(status_code=400, detail=str(e))
@@ -293,7 +305,6 @@ async def save_batch_details(items: List[KeyItemRow]):
         to_update = []
 
         for item in items:
-            # Tương thích Pydantic v1 và v2 (bỏ sẵn id ra khỏi payload)
             data = item.model_dump(exclude={"id"}) if hasattr(item, "model_dump") else item.dict(exclude={"id"})
             data["ten_may"] = data["ten_may"].strip()
             data["ma_key"] = data["ma_key"].strip()
@@ -301,20 +312,19 @@ async def save_batch_details(items: List[KeyItemRow]):
             data["trang_thai"] = "Hết lượt" if data["da_dung"] >= data["gioi_han"] else "Còn lượt"
 
             if item.id:
-                # Lưu dưới dạng Tuple: (id_cần_update, dict_dữ_liệu_mới)
                 to_update.append((item.id, data))
             else:
                 to_insert.append(data)
 
-        # 1. Batch Insert (1 request duy nhất cho toàn bộ dòng mới)
-        if to_insert:
-            supabase.table("kho_key").insert(to_insert).execute()
+        def _execute_save():
+            if to_insert:
+                supabase_admin.table("kho_key").insert(to_insert).execute()
 
-        # 2. Update từng dòng (Payload sạch, không chứa cột id)
-        if to_update:
-            for item_id, update_payload in to_update:
-                supabase.table("kho_key").update(update_payload).eq("id", item_id).execute()
+            if to_update:
+                for item_id, update_payload in to_update:
+                    supabase_admin.table("kho_key").update(update_payload).eq("id", item_id).execute()
 
+        await run_in_threadpool(_execute_save)
         return {"status": "success", "inserted": len(to_insert), "updated": len(to_update)}
     except Exception as e:
         raise HTTPException(status_code=400, detail=f"Lỗi lưu danh sách key: {str(e)}")
@@ -333,8 +343,8 @@ async def add_key_form(
     gioi_han: int = Form(1)
 ):
     user = await get_current_user_or_redirect(request)
-    if not user or str(user.get("role", "")).strip().lower() not in ["admin", "super admin", "system admin"]:
-        return RedirectResponse(url="/auth/login", status_code=303)
+    if not user or not can_access('kho_key', user):
+        return RedirectResponse(url="/admin/kho-key?error=no_permission", status_code=303)
 
     if gioi_han <= 0:
         return RedirectResponse(url="/admin/kho-key?error=invalid_limit", status_code=303)
@@ -344,7 +354,9 @@ async def add_key_form(
         if not keys_raw:
             return RedirectResponse(url="/admin/kho-key?error=empty_key", status_code=303)
 
-        res = supabase.table("kho_key").select("ma_key").in_("ma_key", keys_raw).execute()
+        res = await run_in_threadpool(
+            lambda: supabase_admin.table("kho_key").select("ma_key").in_("ma_key", keys_raw).execute()
+        )
         existing_keys = set(item["ma_key"] for item in res.data) if res.data else set()
         
         valid_keys = [k for k in keys_raw if k not in existing_keys]
@@ -363,7 +375,9 @@ async def add_key_form(
             for k in valid_keys
         ]
 
-        supabase.table("kho_key").insert(records).execute()
+        await run_in_threadpool(
+            lambda: supabase_admin.table("kho_key").insert(records).execute()
+        )
         return RedirectResponse(url=f"/admin/kho-key?msg=added_success&added={len(valid_keys)}", status_code=303)
     except Exception as e:
         raise HTTPException(status_code=400, detail=f"Lỗi khi thêm key: {str(e)}")
@@ -380,8 +394,8 @@ async def update_key_form(
     da_dung: int = Form(...)
 ):
     user = await get_current_user_or_redirect(request)
-    if not user or str(user.get("role", "")).strip().lower() not in ["admin", "super admin", "system admin"]:
-        return RedirectResponse(url="/auth/login", status_code=303)
+    if not user or not can_access('kho_key', user):
+        return RedirectResponse(url="/admin/kho-key?error=no_permission", status_code=303)
 
     if gioi_han <= 0 or da_dung < 0:
         raise HTTPException(status_code=400, detail="Giới hạn hoặc lượt đã dùng không hợp lệ.")
@@ -396,7 +410,9 @@ async def update_key_form(
             "da_dung": da_dung,
             "trang_thai": trang_thai
         }
-        supabase.table("kho_key").update(update_payload).eq("id", key_id).execute()
+        await run_in_threadpool(
+            lambda: supabase_admin.table("kho_key").update(update_payload).eq("id", key_id).execute()
+        )
         return RedirectResponse(url="/admin/kho-key?msg=updated_success", status_code=303)
     except Exception as e:
         raise HTTPException(status_code=400, detail=f"Lỗi khi cập nhật key ID {key_id}: {str(e)}")
@@ -405,11 +421,13 @@ async def update_key_form(
 @router.post("/delete/{key_id}")
 async def delete_key_form(request: Request, key_id: int):
     user = await get_current_user_or_redirect(request)
-    if not user or str(user.get("role", "")).strip().lower() not in ["admin", "super admin", "system admin"]:
-        return RedirectResponse(url="/auth/login", status_code=303)
+    if not user or not can_access('kho_key', user):
+        return RedirectResponse(url="/admin/kho-key?error=no_permission", status_code=303)
 
     try:
-        supabase.table("kho_key").delete().eq("id", key_id).execute()
+        await run_in_threadpool(
+            lambda: supabase_admin.table("kho_key").delete().eq("id", key_id).execute()
+        )
         return RedirectResponse(url="/admin/kho-key?msg=deleted_success", status_code=303)
     except Exception as e:
         raise HTTPException(status_code=400, detail=f"Lỗi khi xóa key ID {key_id}: {str(e)}")

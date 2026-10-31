@@ -5,12 +5,13 @@ from zoneinfo import ZoneInfo
 
 from fastapi import APIRouter, Depends, HTTPException, Query, Request, status
 from fastapi.responses import HTMLResponse, JSONResponse, RedirectResponse
-from fastapi.templating import Jinja2Templates
-from pydantic import BaseModel, Field
+from pydantic import BaseModel
+from starlette.concurrency import run_in_threadpool
 
 from app.auth import get_current_user_or_redirect, require_login
-from config import supabase
+from app.permissions import can_access
 from app.templates_config import templates
+from config import supabase_admin
 
 logger = logging.getLogger(__name__)
 
@@ -155,7 +156,7 @@ def format_date_vn(dt_str: Optional[str]) -> str:
 
 
 def resolve_device_name(device_input: str) -> str:
-    """Ánh xạ ID/Slug thiết bị (VD: 'may_in') thành Tên chuẩn CSDL ('Máy in' hoặc 'Máy cắt bế')."""
+    """Ánh xạ ID/Slug thiết bị thành Tên chuẩn CSDL."""
     if not device_input:
         return "Máy in"
     clean_input = device_input.strip()
@@ -170,7 +171,7 @@ def resolve_device_name(device_input: str) -> str:
 
 
 def extract_username(user_dict: dict) -> str:
-    """Rút gọn danh tính KTV ưu tiên theo thứ tự (An toàn với None / Missing values)."""
+    """Rút gọn danh tính KTV ưu tiên theo thứ tự."""
     if not isinstance(user_dict, dict):
         return "Kỹ thuật viên"
     
@@ -195,11 +196,10 @@ class ConfirmSuccessReq(BaseModel):
     sdt_khach_hang: Optional[str] = None
     ghi_chu: Optional[str] = ""
 
-# ĐÃ ĐIỀU CHỈNH SCHEMA NẠP KEY NHANH THEO YÊU CẦU MỚI
 class NapKeyNhanhSchema(BaseModel):
     ma_key: str
-    loai_thiet_bi: str  # "Máy in" hoặc "Máy cắt bế"
-    ten_may: str        # Tên máy (Bắt buộc)
+    loai_thiet_bi: str
+    ten_may: str
     ghi_chu: Optional[str] = ""
     confirm_create: Optional[bool] = False
 
@@ -222,11 +222,15 @@ async def trang_quan_ly_key(
     if not user:
         return RedirectResponse(url="/auth/login", status_code=status.HTTP_303_SEE_OTHER)
 
+    # 🛡️ KIỂM TRA PHÂN QUYỀN TRUY CẬP TRANG
+    if not can_access('quan_ly_key', user):
+        return HTMLResponse("<h2>⚠️ Bạn không có quyền truy cập trang Quản Lý Key!</h2>", status_code=403)
+
     search_keyword = search.strip() if search else ""
     history_logs = []
 
     try:
-        query = supabase.table("quan_ly_key").select("*")
+        query = supabase_admin.table("quan_ly_key").select("*")
 
         if search_keyword:
             pattern = f"%{search_keyword}%"
@@ -241,10 +245,11 @@ async def trang_quan_ly_key(
             query = query.or_(or_clause)
 
         limit_count = 15 if search_keyword else 10
-        res_hist = query.order("id", desc=True).limit(limit_count).execute()
+        res_hist = await run_in_threadpool(
+            lambda: query.order("id", desc=True).limit(limit_count).execute()
+        )
 
         history_logs = res_hist.data or []
-        
         for h in history_logs:
             dt_val = h.get("thoi_gian") or h.get("created_at") or h.get("ngay_tao")
             h["thoi_gian_fmt"] = format_date_vn(dt_val)
@@ -268,10 +273,14 @@ async def trang_quan_ly_key(
 @router.get("/api/quan-ly-key/search-live")
 async def search_live(
     q: Optional[str] = Query(None), 
-    loai_thiet_bi: Optional[str] = Query(None)
+    loai_thiet_bi: Optional[str] = Query(None),
+    current_user: dict = Depends(require_login)  # 🛡️ Yêu cầu đăng nhập
 ):
+    if not can_access('quan_ly_key', current_user):
+        return {"status": "error", "message": "Bị từ chối quyền truy cập!", "items": []}
+
     try:
-        query = supabase.table("quan_ly_key").select("*")
+        query = supabase_admin.table("quan_ly_key").select("*")
 
         if loai_thiet_bi:
             query = query.eq("loai_thiet_bi", resolve_device_name(loai_thiet_bi))
@@ -285,7 +294,7 @@ async def search_live(
                 f"ghi_chu.ilike.{pattern}"
             )
 
-        res = query.order("id", desc=True).limit(50).execute()
+        res = await run_in_threadpool(lambda: query.order("id", desc=True).limit(50).execute())
         items = res.data or []
 
         for h in items:
@@ -299,24 +308,32 @@ async def search_live(
 
 
 # =========================================================================
-# 2. CÁC API ENDPOINTS
+# 2. CÁC API ENDPOINTS BẢO MẬT
 # =========================================================================
 
 @api_router.get("/config-schema")
-async def get_config_schema():
+async def get_config_schema(current_user: dict = Depends(require_login)):
     return {"status": "success", "devices": DEVICE_CONFIGS}
 
 
 @api_router.get("/get-models")
-async def get_models(loai_thiet_bi: str = Query(...)):
+async def get_models(
+    loai_thiet_bi: str = Query(...),
+    current_user: dict = Depends(require_login)  # 🛡️ Đã bổ sung require_login
+):
+    if not can_access('quan_ly_key', current_user):
+        raise HTTPException(status_code=403, detail="Không có quyền truy cập")
+
     try:
         real_device_name = resolve_device_name(loai_thiet_bi)
 
-        res = supabase.table("kho_key")\
-            .select("ten_may, gioi_han, da_dung")\
-            .eq("trang_thai", "Còn lượt")\
-            .eq("loai_thiet_bi", real_device_name)\
-            .execute()
+        res = await run_in_threadpool(
+            lambda: supabase_admin.table("kho_key")
+                .select("ten_may, gioi_han, da_dung")
+                .eq("trang_thai", "Còn lượt")
+                .eq("loai_thiet_bi", real_device_name)
+                .execute()
+        )
 
         if not res.data:
             return {"models": []}
@@ -337,17 +354,26 @@ async def get_models(loai_thiet_bi: str = Query(...)):
 
 
 @api_router.get("/get-available-key")
-async def get_available_key(loai_thiet_bi: str = Query(...), ten_may: str = Query(...)):
+async def get_available_key(
+    loai_thiet_bi: str = Query(...), 
+    ten_may: str = Query(...),
+    current_user: dict = Depends(require_login)  # 🛡️ Bổ sung bảo mật chống xem trộm Key
+):
+    if not can_access('quan_ly_key', current_user):
+        raise HTTPException(status_code=403, detail="Không có quyền truy cập Key")
+
     try:
         real_device_name = resolve_device_name(loai_thiet_bi)
 
-        res = supabase.table("kho_key").select("*")\
-            .eq("loai_thiet_bi", real_device_name)\
-            .eq("ten_may", ten_may.strip())\
-            .eq("trang_thai", "Còn lượt")\
-            .order("da_dung", desc=False)\
-            .order("ngay_nhap", desc=False)\
-            .execute()
+        res = await run_in_threadpool(
+            lambda: supabase_admin.table("kho_key").select("*")
+                .eq("loai_thiet_bi", real_device_name)
+                .eq("ten_may", ten_may.strip())
+                .eq("trang_thai", "Còn lượt")
+                .order("da_dung", desc=False)
+                .order("ngay_nhap", desc=False)
+                .execute()
+        )
 
         available_keys = [
             k for k in (res.data or [])
@@ -383,6 +409,10 @@ async def confirm_success_action(
     request: Request,
     current_user: dict = Depends(require_login)
 ):
+    # 🛡️ KIỂM TRA PHÂN QUYỀN THỰC THI THAO TÁC XUẤT KEY
+    if not can_access('quan_ly_key', current_user):
+        raise HTTPException(status_code=403, detail="⛔ Bạn không có quyền xuất Key!")
+
     try:
         dinh_danh = payload.dinh_danh_may.strip()
         if not dinh_danh:
@@ -394,11 +424,15 @@ async def confirm_success_action(
         real_device_name = resolve_device_name(payload.loai_thiet_bi)
 
         # 1. Kiểm tra trùng Serial/Định danh trong lịch sử
-        res_check = supabase.table("quan_ly_key").select("id").eq("so_seri", dinh_danh).execute()
+        res_check = await run_in_threadpool(
+            lambda: supabase_admin.table("quan_ly_key").select("id").eq("so_seri", dinh_danh).execute()
+        )
         is_duplicate = len(res_check.data) > 0 if res_check.data else False
 
         # 2. Kiểm tra lại trạng thái Key từ CSDL kho_key
-        res_key = supabase.table("kho_key").select("*").eq("id", payload.key_id).execute()
+        res_key = await run_in_threadpool(
+            lambda: supabase_admin.table("kho_key").select("*").eq("id", payload.key_id).execute()
+        )
         if not res_key.data:
             raise HTTPException(
                 status_code=status.HTTP_404_NOT_FOUND, 
@@ -433,7 +467,9 @@ async def confirm_success_action(
             "ghi_chu": payload.ghi_chu
         }
         
-        insert_res = supabase.table("quan_ly_key").insert(data_history).execute()
+        insert_res = await run_in_threadpool(
+            lambda: supabase_admin.table("quan_ly_key").insert(data_history).execute()
+        )
         if not insert_res.data:
             raise HTTPException(
                 status_code=status.HTTP_500_INTERNAL_SERVER_ERROR, 
@@ -444,10 +480,12 @@ async def confirm_success_action(
         next_da_dung = da_dung + 1
         next_status = "Còn lượt" if next_da_dung < gioi_han else "Hết lượt"
 
-        supabase.table("kho_key").update({
-            "da_dung": next_da_dung,
-            "trang_thai": next_status
-        }).eq("id", key_info["id"]).execute()
+        await run_in_threadpool(
+            lambda: supabase_admin.table("kho_key").update({
+                "da_dung": next_da_dung,
+                "trang_thai": next_status
+            }).eq("id", key_info["id"]).execute()
+        )
 
         return {
             "status": "success",
@@ -472,25 +510,33 @@ async def report_fail_retry_action(
     payload: ReportFailReq,
     current_user: dict = Depends(require_login)
 ):
+    # 🛡️ KIỂM TRA PHÂN QUYỀN BÁO LỖI KEY
+    if not can_access('quan_ly_key', current_user):
+        raise HTTPException(status_code=403, detail="⛔ Bạn không có quyền thực hiện thao tác này!")
+
     try:
         username_ktv = extract_username(current_user)
         real_device_name = resolve_device_name(payload.loai_thiet_bi)
 
         # 1. Đánh dấu Key bị lỗi trong `kho_key`
-        supabase.table("kho_key").update({
-            "trang_thai": "Báo lỗi"
-        }).eq("id", payload.key_id).execute()
+        await run_in_threadpool(
+            lambda: supabase_admin.table("kho_key").update({
+                "trang_thai": "Báo lỗi"
+            }).eq("id", payload.key_id).execute()
+        )
 
         logger.warning(f"[KEY FAILED]: KTV '{username_ktv}' đã đánh dấu Key ID {payload.key_id} là 'Báo lỗi'")
 
         # 2. Tìm Key thay thế tiếp theo trong kho
-        res_next = supabase.table("kho_key").select("*")\
-            .eq("loai_thiet_bi", real_device_name)\
-            .eq("ten_may", payload.ten_may.strip())\
-            .eq("trang_thai", "Còn lượt")\
-            .order("da_dung", desc=False)\
-            .order("ngay_nhap", desc=False)\
-            .execute()
+        res_next = await run_in_threadpool(
+            lambda: supabase_admin.table("kho_key").select("*")
+                .eq("loai_thiet_bi", real_device_name)
+                .eq("ten_may", payload.ten_may.strip())
+                .eq("trang_thai", "Còn lượt")
+                .order("da_dung", desc=False)
+                .order("ngay_nhap", desc=False)
+                .execute()
+        )
 
         available_keys = [
             k for k in (res_next.data or [])
@@ -526,34 +572,35 @@ async def report_fail_retry_action(
         )
 
 
-# API NẠP KEY NHANH ĐÃ CẬP NHẬT THEO 3 YÊU CẦU MỚI
 @api_router.post("/nap-key-nhanh")
 async def api_nap_key_nhanh(
     data: NapKeyNhanhSchema,
     current_user: dict = Depends(require_login)
 ):
+    # 🛡️ KIỂM TRA PHÂN QUYỀN NẠP KEY NHANH
+    if not can_access('quan_ly_key', current_user):
+        return JSONResponse(
+            status_code=403,
+            content={"success": False, "message": "⛔ Bạn không có quyền nạp Key nhanh!"}
+        )
+
     ma_key = data.ma_key.strip().upper()
     ten_may = data.ten_may.strip().upper()
 
-    if not ma_key:
+    if not ma_key or not ten_may:
         raise HTTPException(
             status_code=status.HTTP_400_BAD_REQUEST, 
-            detail="Mã Key không được để trống!"
-        )
-
-    if not ten_may:
-        raise HTTPException(
-            status_code=status.HTTP_400_BAD_REQUEST, 
-            detail="Tên máy không được để trống!"
+            detail="Mã Key và Tên máy không được để trống!"
         )
 
     try:
         username_ktv = extract_username(current_user)
-        # 1. Loại thiết bị lưu chính xác "Máy in" hoặc "Máy cắt bế"
         real_device_name = resolve_device_name(data.loai_thiet_bi)
 
-        # 2. Truy vấn kiểm tra key trong kho_key
-        res_key = supabase.table("kho_key").select("*").eq("ma_key", ma_key).execute()
+        # 1. Kiểm tra key trong kho_key
+        res_key = await run_in_threadpool(
+            lambda: supabase_admin.table("kho_key").select("*").eq("ma_key", ma_key).execute()
+        )
         existing_keys = res_key.data or []
 
         if existing_keys:
@@ -574,10 +621,12 @@ async def api_nap_key_nhanh(
             da_dung_moi = da_dung + 1
             trang_thai_moi = "Hết lượt" if da_dung_moi >= gioi_han else "Còn lượt"
 
-            supabase.table("kho_key").update({
-                "da_dung": da_dung_moi,
-                "trang_thai": trang_thai_moi
-            }).eq("id", key_item["id"]).execute()
+            await run_in_threadpool(
+                lambda: supabase_admin.table("kho_key").update({
+                    "da_dung": da_dung_moi,
+                    "trang_thai": trang_thai_moi
+                }).eq("id", key_item["id"]).execute()
+            )
 
             luot_con_lai = gioi_han - da_dung_moi
 
@@ -593,7 +642,6 @@ async def api_nap_key_nhanh(
                     }
                 )
 
-            # Tự động tạo mới key trong kho (Khởi tạo 2 lượt, dùng 1 lượt)
             new_key_data = {
                 "ten_may": ten_may,
                 "ma_key": ma_key,
@@ -602,19 +650,23 @@ async def api_nap_key_nhanh(
                 "trang_thai": "Còn lượt",
                 "loai_thiet_bi": real_device_name
             }
-            supabase.table("kho_key").insert(new_key_data).execute()
+            await run_in_threadpool(
+                lambda: supabase_admin.table("kho_key").insert(new_key_data).execute()
+            )
             luot_con_lai = 1
 
-        # 3. Ghi nhật ký chuẩn xác vào bảng `quan_ly_key`
+        # 2. Ghi nhật ký chuẩn xác vào bảng `quan_ly_key`
         log_entry = {
-            "loai_thiet_bi": real_device_name, # "Máy in" hoặc "Máy cắt bế"
-            "ten_may": ten_may,                 # Tên máy tương ứng cột ten_may
+            "loai_thiet_bi": real_device_name,
+            "ten_may": ten_may,
             "username": username_ktv,
             "so_seri": "-",
             "key_chipless": ma_key,
-            "ghi_chu": data.ghi_chu or f"Nạp nhanh bởi KTV {username_ktv}" # Ghi chú tương ứng cột ghi_chu
+            "ghi_chu": data.ghi_chu or f"Nạp nhanh bởi KTV {username_ktv}"
         }
-        supabase.table("quan_ly_key").insert(log_entry).execute()
+        await run_in_threadpool(
+            lambda: supabase_admin.table("quan_ly_key").insert(log_entry).execute()
+        )
 
         return {
             "success": True,

@@ -17,6 +17,9 @@ from fastapi.templating import Jinja2Templates
 from app.auth import require_login
 from config import supabase  # Supabase client instance
 from app.templates_config import templates
+from app.permissions import can_access, ROLE_LEVELS
+from config import supabase_admin
+from starlette.concurrency import run_in_threadpool
 
 logger = logging.getLogger(__name__)
 
@@ -933,32 +936,50 @@ async def view_danh_sach_cham_cong(
     ktv: Optional[str] = Query(None),
     limit: int = Query(100)
 ):
-    """Giao diện danh sách đơn phân quyền theo User / Admin chuẩn 100% Schema DB"""
+    """Giao diện danh sách chấm công phân quyền theo Role & Cô lập dữ liệu theo Phòng ban."""
+    # 1. KIỂM TRA QUYỀN TRUY CẬP TRANG (DYNAMIC RBAC)
+    if not can_access('danh_sach_cham_cong', current_user):
+        return HTMLResponse("<h2>⚠️ Bạn không có quyền truy cập trang Bảng Chấm Công!</h2>", status_code=403)
+
     try:
-        # 1. ĐỌC DỮ LIỆU USER AN TOÀN (HỖ TRỢ CẢ DICT LẪN OBJECT)
+        # 2. ĐỌC THÔNG TIN USER AN TOÀN (ROLE & DEPARTMENT)
         if isinstance(current_user, dict):
             raw_role = current_user.get("role") or "User"
             current_username = current_user.get("username") or ""
+            current_dept = str(current_user.get("department") or "KTSC").strip().upper()
         else:
             raw_role = getattr(current_user, "role", "User")
             current_username = getattr(current_user, "username", "")
+            current_dept = str(getattr(current_user, "department", "KTSC")).strip().upper()
 
         user_role_clean = str(raw_role).strip().lower()
-        is_admin = user_role_clean in ADMIN_ROLES
+        user_level = ROLE_LEVELS.get(user_role_clean, 1)
+
+        # Quyền Admin (Cấp >= 2) & Phạm vi xem toàn bộ công ty (System/Super Admin hoặc Department ALL)
+        is_admin = user_level >= 2
+        has_full_scope = (user_role_clean in ["system admin", "super admin"]) or (current_dept == "ALL")
 
         now = datetime.now()
-        current_year = now.year
-        current_month = now.month
+        selected_month = now.month if thang is None else thang
+        selected_year = now.year if nam is None else nam
 
-        selected_month = current_month if thang is None else thang
-        selected_year = current_year if nam is None else nam
+        # 3. PHÂN QUYỀN VÀ CÔ LẬP DỮ LIỆU (DEPARTMENT SCOPE)
+        # Bắt đầu dựng Query
+        query = supabase_admin.table("cham_cong").select("*")
 
-        # 2. Query dữ liệu từ Supabase
-        query = supabase.table("cham_cong").select("*")
-
-        # 3. PHÂN QUYỀN
         if not is_admin:
+            # User thường: Chỉ xem chấm công của chính mình
             query = query.eq("username", current_username)
+        elif not has_full_scope:
+            # Admin phòng ban: Chỉ xem danh sách nhân viên thuộc phòng ban của mình
+            dept_users_res = await run_in_threadpool(
+                lambda: supabase_admin.table("quan_tri_vien")
+                    .select("username")
+                    .eq("department", current_dept)
+                    .execute()
+            )
+            dept_usernames = [u["username"] for u in (dept_users_res.data or []) if u.get("username")]
+            query = query.in_("username", dept_usernames if dept_usernames else ["__NONE__"])
 
         # 4. LỌC THEO TRẠNG THÁI
         if status_filter and status_filter in ["Chờ duyệt", "Đã duyệt", "Từ chối"]:
@@ -972,10 +993,7 @@ async def view_danh_sach_cham_cong(
         if selected_year > 0:
             if selected_month > 0:
                 start_date = f"{selected_year}-{selected_month:02d}-01T00:00:00"
-                if selected_month == 12:
-                    end_date = f"{selected_year + 1}-01-01T00:00:00"
-                else:
-                    end_date = f"{selected_year}-{selected_month + 1:02d}-01T00:00:00"
+                end_date = f"{selected_year + 1}-01-01T00:00:00" if selected_month == 12 else f"{selected_year}-{selected_month + 1:02d}-01T00:00:00"
                 query = query.gte("thoi_gian", start_date).lt("thoi_gian", end_date)
             else:
                 query = query.gte("thoi_gian", f"{selected_year}-01-01T00:00:00").lt("thoi_gian", f"{selected_year + 1}-01-01T00:00:00")
@@ -990,104 +1008,49 @@ async def view_danh_sach_cham_cong(
                 f"so_hoa_don.ilike.%{clean_search}%"
             )
 
-        # 8. TRUY VẤN VÀ SẮP XẾP GẦN NHẤT
-        res = query.order("id", desc=True).limit(limit).execute()
+        # 8. THỰC THI TRUY VẤN BẤT ĐỒNG BỘ (TRÁNH BLOCK EVENT LOOP)
+        res = await run_in_threadpool(lambda: query.order("id", desc=True).limit(limit).execute())
         danh_sach = res.data or []
-        
-        for idx, item in enumerate(danh_sach):
-            try:
-                danh_sach[idx] = parse_datetime_field(item)
-            except Exception as parse_err:
-                logger.warning(f"Lỗi parse datetime cho ID {item.get('id')}: {parse_err}")
 
-        # ✅ 9. LẤY DANH SÁCH KTV CHO BỘ LỌC (KTLD + CÓ PHÁT SINH CHẤM CÔNG TRONG THÁNG)
+        # Chuẩn hóa DateTime & Hình Ảnh
+        for item in danh_sach:
+            try:
+                parse_datetime_field(item)
+            except Exception as parse_err:
+                logger.warning(f"Lỗi parse datetime ID {item.get('id')}: {parse_err}")
+
+            img_path = item.get("hinh_anh") or item.get("image_url") or ""
+            if not img_path or str(img_path).strip().lower() in ["none", "null", "undefined", ""]:
+                item["hinh_anh_valid"] = None
+            else:
+                item["hinh_anh_valid"] = str(img_path).strip()
+
+        # 9. LẤY DANH SÁCH KTV CHO BỘ LỌC (CÔ LẬP THEO PHÒNG BAN)
         danh_sach_ktv = []
         if is_admin:
             try:
-                ktv_map = {}  # Map lưu dạng {username: display_name}
+                ktv_map = {}
+                # Tìm danh sách nhân viên thuộc phạm vi quản lý
+                emp_query = supabase_admin.table("quan_tri_vien").select("username, ho_ten")
+                if not has_full_scope:
+                    emp_query = emp_query.eq("department", current_dept)
 
-                # 9.1 Lấy tất cả nhân viên thuộc phòng 'KTLD'
-                ktld_res = (
-                    supabase.table("quan_tri_vien")
-                    .select("username, ho_ten")
-                    .eq("department", "KTLD")
-                    .execute()
-                )
-                if ktld_res.data:
-                    for emp in ktld_res.data:
-                        u_val = emp.get("username") if isinstance(emp, dict) else getattr(emp, "username", None)
-                        h_val = emp.get("ho_ten") if isinstance(emp, dict) else getattr(emp, "ho_ten", None)
-                        if u_val:
-                            ktv_map[u_val] = h_val or u_val
+                emp_res = await run_in_threadpool(lambda: emp_query.execute())
+                for emp in (emp_res.data or []):
+                    u_val = emp.get("username")
+                    h_val = emp.get("ho_ten")
+                    if u_val:
+                        ktv_map[u_val] = h_val or u_val
 
-                # 9.2 Lấy các tài khoản có chấm công TRONG THÁNG/NĂM ĐANG LỌC
-                if selected_year > 0 and selected_month > 0:
-                    s_date = f"{selected_year}-{selected_month:02d}-01T00:00:00"
-                    e_date = f"{selected_year + 1}-01-01T00:00:00" if selected_month == 12 else f"{selected_year}-{selected_month + 1:02d}-01T00:00:00"
-                    
-                    cc_res = (
-                        supabase.table("cham_cong")
-                        .select("username")
-                        .gte("thoi_gian", s_date)
-                        .lt("thoi_gian", e_date)
-                        .execute()
-                    )
-                else:
-                    cc_res = supabase.table("cham_cong").select("username").execute()
-
-                attended_usernames = set()
-                if cc_res.data:
-                    for item in cc_res.data:
-                        u = item.get("username") if isinstance(item, dict) else getattr(item, "username", None)
-                        if u:
-                            attended_usernames.add(u)
-
-                # 9.3 Bổ sung họ tên cho các KTV có chấm công nhưng chưa có trong map phòng KTLD
-                missing_usernames = [u for u in attended_usernames if u not in ktv_map]
-                if missing_usernames:
-                    emp_res = (
-                        supabase.table("quan_tri_vien")
-                        .select("username, ho_ten")
-                        .in_("username", missing_usernames)
-                        .execute()
-                    )
-                    if emp_res.data:
-                        for emp in emp_res.data:
-                            u_val = emp.get("username") if isinstance(emp, dict) else getattr(emp, "username", None)
-                            h_val = emp.get("ho_ten") if isinstance(emp, dict) else getattr(emp, "ho_ten", None)
-                            if u_val:
-                                ktv_map[u_val] = h_val or u_val
-
-                    # Trường hợp tài khoản chấm công không tìm thấy thông tin trong quan_tri_vien
-                    for u in missing_usernames:
-                        if u not in ktv_map:
-                            ktv_map[u] = u
-
-                # 9.4 Chuyển thành danh sách Tuple [(username, display_name)] & Sắp xếp A-Z theo tên
                 danh_sach_ktv = sorted(
                     [(u, name) for u, name in ktv_map.items()],
                     key=lambda x: str(x[1]).lower()
                 )
-
             except Exception as ktv_err:
                 logger.error(f"Lỗi tải danh sách KTV: {ktv_err}")
 
         error_message = request.session.pop("error_message", None)
-        #10 chuẩn hóa hình ảnh
-        # Bổ sung logic chuẩn hóa hình ảnh trước khi render
-        for item in danh_sach:
-            try:
-                # Chuẩn hóa trường hình ảnh (sửa tên cột 'hinh_anh' / 'image_url' đúng với DB của bạn)
-                img_path = item.get("hinh_anh") or item.get("image_url") or ""
-                
-                # Nếu đường dẫn không hợp lệ hoặc chứa chữ "null"/"undefined"
-                if not img_path or str(img_path).strip().lower() in ["none", "null", "undefined", ""]:
-                    item["hinh_anh_valid"] = None
-                else:
-                    item["hinh_anh_valid"] = str(img_path).strip()
-                    
-            except Exception as img_err:
-                item["hinh_anh_valid"] = None
+
         # 10. RENDER TEMPLATE
         return templates.TemplateResponse(
             request=request,
@@ -1112,5 +1075,5 @@ async def view_danh_sach_cham_cong(
             }
         )
     except Exception as e:
-        logger.error(f"Lỗi tải danh sách chấm công: {str(e)}")
+        logger.error(f"Lỗi tải danh sách chấm công: {str(e)}", exc_info=True)
         return HTMLResponse(content=f"<h3>Lỗi hệ thống: {str(e)}</h3>", status_code=500)
