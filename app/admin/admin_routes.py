@@ -193,7 +193,7 @@ async def list_users(request: Request, admin: dict = Depends(get_current_admin))
 async def add_user(
     request: Request,
     ho_ten: str = Form(...),
-    username: str = Form(...),
+    username: Optional[str] = Form(None), # 💡 Cho phép optional, tự động lấy từ email nếu thiếu
     email: str = Form(...),
     password: str = Form(...),
     chuc_danh: Optional[str] = Form(None),
@@ -205,6 +205,11 @@ async def add_user(
         if admin["role_clean"] not in ["super admin", "system admin", "admin"]:
             raise HTTPException(403, "Không có quyền thêm tài khoản.")
         
+        email_clean = email.strip().lower()
+        
+        # 💡 Tự động trích xuất username từ phần trước @ nếu không có sẵn
+        username_clean = username.strip() if username and username.strip() else email_clean.split("@")[0]
+
         dept_clean = normalize_dept(department)
         if admin["department"] != "ALL" and dept_clean != admin["department"] and admin["role_clean"] == "admin":
             raise Exception("Chỉ được thêm tài khoản trong phòng ban của mình.")
@@ -212,10 +217,10 @@ async def add_user(
         auth_res = await run_in_threadpool(
             supabase_admin.auth.admin.create_user,
             {
-                "email": email.strip(),
+                "email": email_clean,
                 "password": password,
                 "email_confirm": True,
-                "user_metadata": {"ho_ten": ho_ten.strip(), "username": username.strip()}
+                "user_metadata": {"ho_ten": ho_ten.strip(), "username": username_clean}
             }
         )
         if not auth_res or not auth_res.user:
@@ -225,8 +230,8 @@ async def add_user(
 
         insert_payload = {
             "auth_id": auth_id,
-            "username": username.strip(),
-            "email": email.strip(),
+            "username": username_clean,
+            "email": email_clean,
             "ho_ten": ho_ten.strip(),
             "chuc_danh": chuc_danh.strip() if chuc_danh else None,
             "so_dien_thoai": so_dien_thoai.strip() if so_dien_thoai else None,
@@ -248,6 +253,7 @@ async def edit_user(
     request: Request,
     user_id: str,
     ho_ten: str = Form(...),
+    email: Optional[str] = Form(None),       # 💡 Đã bổ sung nhận tham số email từ form
     username: Optional[str] = Form(None),
     role: str = Form("User"),
     department: str = Form("KTSC"),
@@ -259,7 +265,7 @@ async def edit_user(
     try:
         res = await run_in_threadpool(
             lambda: supabase_admin.table('quan_tri_vien')
-                .select('auth_id,role,department')
+                .select('auth_id,role,department,email')
                 .eq("auth_id", user_id)
                 .execute()
         )
@@ -270,6 +276,7 @@ async def edit_user(
         target_auth_id = target["auth_id"]
         target_role = target["role"]
         target_dept = target.get("department", "KTSC")
+        old_email = target.get("email")
 
         if not can_manage_target_role(admin["role_clean"], target_role):
             raise Exception(f"Không sửa được tài khoản cấp {target_role}.")
@@ -284,6 +291,7 @@ async def edit_user(
             if admin["role_clean"] not in ["system admin", "super admin"]:
                 raise Exception("Chỉ Quản trị hệ thống mới được chuyển phòng ban.")
 
+        # 💡 Cập nhật mật khẩu trên Supabase Auth nếu có nhập mới
         if new_password:
             if len(new_password) < 6:
                 raise Exception("Mật khẩu phải có ít nhất 6 ký tự.")
@@ -293,8 +301,18 @@ async def edit_user(
                 {"password": new_password}
             )
 
+        # 💡 Cập nhật Email trên Supabase Auth nếu email thay đổi
+        email_clean = email.strip().lower() if email else old_email
+        if email_clean and email_clean != old_email:
+            await run_in_threadpool(
+                supabase_admin.auth.admin.update_user_by_id,
+                target_auth_id,
+                {"email": email_clean}
+            )
+
         update_payload = {
             "ho_ten": ho_ten.strip(),
+            "email": email_clean,
             "role": role.strip(),
             "department": dept_clean,
             "chuc_danh": chuc_danh.strip() if chuc_danh else None,
@@ -310,7 +328,7 @@ async def edit_user(
                 .execute()
         )
 
-        request.session["success_message"] = "✅ Đã cập nhật tài khoản!"
+        request.session["success_message"] = "✅ Đã cập nhật tài khoản thành công!"
 
     except Exception as e:
         error_msg = str(e)
@@ -320,7 +338,6 @@ async def edit_user(
         request.session["error_message"] = error_msg
 
     return RedirectResponse(url="/admin/users", status_code=303)
-
 
 @router.post("/users/update-role/{user_id}")
 async def update_user_role(
