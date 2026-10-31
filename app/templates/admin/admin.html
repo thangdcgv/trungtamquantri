@@ -300,10 +300,12 @@
     <section class="admin-shell" aria-label="Trung tâm điều khiển">
         <div class="admin-grid">
             
-            <!-- Module 1: Quản Lý Kho Key Chipless -->
-            {% if current_user and current_user.role in ['super admin', 'system admin'] %}
-            <!-- Dành cho Super Admin / System Admin: Truy cập bình thường -->
-            <a href="/admin/kho-key" class="admin-card accent-key">
+            <!-- 1. Quản Lý Kho Key Chipless (page_key: kho_key) -->
+            {% set can_kho_key = can_access('kho_key', current_user) %}
+            <a href="{% if can_kho_key %}/admin/kho-key{% else %}javascript:void(0);{% endif %}" 
+               {% if not can_kho_key %}onclick="alert('⚠️ Truy cập bị từ chối: Chức năng Quản lý Kho Key bị giới hạn với quyền tài khoản của bạn!')"{% endif %}
+               class="admin-card accent-key"
+               {% if not can_kho_key %}style="opacity: 0.5; cursor: not-allowed; filter: grayscale(40%);"{% endif %}>
                 <div>
                     <div class="admin-card-header">
                         <div class="icon-box" aria-hidden="true">
@@ -321,46 +323,20 @@
                     </div>
                 </div>
                 <div class="btn-action">
-                    <span>Truy cập kho key</span>
+                    <span>{% if can_kho_key %}Truy cập kho key{% else %}Bị giới hạn quyền{% endif %}</span>
                     <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" aria-hidden="true">
                         <line x1="5" y1="12" x2="19" y2="12"></line>
                         <polyline points="12 5 19 12 12 19"></polyline>
                     </svg>
                 </div>
             </a>
-            {% else %}
-            <!-- Dành cho các cấp quyền khác: Vẫn hiển thị card nhưng mờ đi và nảy cảnh báo khi bấm -->
-            <a href="javascript:void(0);" 
-            onclick="alert('⚠️ Truy cập bị từ chối: Chức năng này bị giới hạn với quyền tài khoản của bạn!')" 
-            class="admin-card accent-key" 
-            style="opacity: 0.5; cursor: not-allowed; filter: grayscale(40%);">
-                <div>
-                    <div class="admin-card-header">
-                        <div class="icon-box" aria-hidden="true">
-                            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor">
-                                <circle cx="7.5" cy="15.5" r="4.5"></circle>
-                                <path d="m10.7 12.3 8.8-8.8m-3.5 0h3.5v3.5m-3.5 0.5 2 2"></path>
-                            </svg>
-                        </div>
-                        <div>
-                            <h2 class="card-title">Quản Lý Kho Key</h2>
-                            <p class="card-desc">
-                                Nhập lô Key mới hàng loạt, lọc kiểm tra tồn kho theo loại thiết bị, điều chỉnh giới hạn lượt dùng và chỉnh sửa chi tiết.
-                            </p>
-                        </div>
-                    </div>
-                </div>
-                <div class="btn-action">
-                    <span>Bị giới hạn quyền</span>
-                    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" aria-hidden="true">
-                        <line x1="5" y1="12" x2="19" y2="12"></line>
-                        <polyline points="12 5 19 12 12 19"></polyline>
-                    </svg>
-                </div>
-            </a>
-            {% endif %}
-            <!-- CARD MỚI: QUẢN LÝ & KIỂM DUYỆT KHO -->
-            <a href="/inventory/admin/review" class="admin-card" style="border-left: 4px solid #0d9488;">
+
+            <!-- 2. Kiểm Duyệt Kho & Seri (page_key: inventory_review) -->
+            {% set can_inventory_review = can_access('inventory_review', current_user) %}
+            <a href="{% if can_inventory_review %}/inventory/admin/review{% else %}javascript:void(0);{% endif %}" 
+               {% if not can_inventory_review %}onclick="alert('⚠️ Truy cập bị từ chối: Chức năng Kiểm duyệt Kho & Seri bị giới hạn với quyền tài khoản của bạn!')"{% endif %}
+               class="admin-card" 
+               style="border-left: 4px solid #0d9488; {% if not can_inventory_review %}opacity: 0.5; cursor: not-allowed; filter: grayscale(40%);{% endif %}">
                 <div>
                     <div class="admin-card-header">
                         <div class="icon-box" aria-hidden="true" style="background: rgba(13, 148, 136, 0.1); color: #0d9488;">
@@ -379,15 +355,20 @@
                     </div>
                 </div>
                 <div class="btn-action" style="color: #0d9488;">
-                    <span>Truy cập kiểm duyệt</span>
+                    <span>{% if can_inventory_review %}Truy cập kiểm duyệt{% else %}Bị giới hạn quyền{% endif %}</span>
                     <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" aria-hidden="true">
                         <line x1="5" y1="12" x2="19" y2="12"></line>
                         <polyline points="12 5 19 12 12 19"></polyline>
                     </svg>
                 </div>
             </a>
-            <!-- Module 2: Quản Lý Tài Khoản -->
-            <a href="/admin/users" class="admin-card accent-users">
+
+            <!-- 3. Quản Lý Tài Khoản (page_key: admin_users) -->
+            {% set can_admin_users = can_access('admin_users', current_user) %}
+            <a href="{% if can_admin_users %}/admin/users{% else %}javascript:void(0);{% endif %}" 
+               {% if not can_admin_users %}onclick="alert('⚠️ Truy cập bị từ chối: Chức năng Quản lý Tài khoản bị giới hạn với quyền tài khoản của bạn!')"{% endif %}
+               class="admin-card accent-users"
+               {% if not can_admin_users %}style="opacity: 0.5; cursor: not-allowed; filter: grayscale(40%);"{% endif %}>
                 <div>
                     <div class="admin-card-header">
                         <div class="icon-box" aria-hidden="true">
@@ -407,7 +388,7 @@
                     </div>
                 </div>
                 <div class="btn-action">
-                    <span>Quản lý người dùng</span>
+                    <span>{% if can_admin_users %}Quản lý người dùng{% else %}Bị giới hạn quyền{% endif %}</span>
                     <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" aria-hidden="true">
                         <line x1="5" y1="12" x2="19" y2="12"></line>
                         <polyline points="12 5 19 12 12 19"></polyline>
@@ -415,8 +396,12 @@
                 </div>
             </a>
 
-            <!-- Module 3: Cấu Hình Chấm Công -->
-            <a href="/admin/config-cham-cong" class="admin-card accent-config">
+            <!-- 4. Cấu Hình Chấm Công (page_key: config_cham_cong) -->
+            {% set can_config_cham_cong = can_access('config_cham_cong', current_user) %}
+            <a href="{% if can_config_cham_cong %}/admin/config-cham-cong{% else %}javascript:void(0);{% endif %}" 
+               {% if not can_config_cham_cong %}onclick="alert('⚠️ Truy cập bị từ chối: Chức năng Cấu hình Chấm công bị giới hạn với quyền tài khoản của bạn!')"{% endif %}
+               class="admin-card accent-config"
+               {% if not can_config_cham_cong %}style="opacity: 0.5; cursor: not-allowed; filter: grayscale(40%);"{% endif %}>
                 <div>
                     <div class="admin-card-header">
                         <div class="icon-box" aria-hidden="true">
@@ -441,15 +426,20 @@
                     </div>
                 </div>
                 <div class="btn-action">
-                    <span>Thay đổi cấu hình</span>
+                    <span>{% if can_config_cham_cong %}Thay đổi cấu hình{% else %}Bị giới hạn quyền{% endif %}</span>
                     <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" aria-hidden="true">
                         <line x1="5" y1="12" x2="19" y2="12"></line>
                         <polyline points="12 5 19 12 12 19"></polyline>
                     </svg>
                 </div>
             </a>
-            <!-- Module Mới: Cấu Hình Bảo Hành -->
-            <a href="/admin/chinh-sach-bao-hanh" class="admin-card accent-policy">
+
+            <!-- 5. Cấu Hình Bảo Hành (page_key: warranty_policy) -->
+            {% set can_warranty_policy = can_access('warranty_policy', current_user) %}
+            <a href="{% if can_warranty_policy %}/admin/chinh-sach-bao-hanh{% else %}javascript:void(0);{% endif %}" 
+               {% if not can_warranty_policy %}onclick="alert('⚠️ Truy cập bị từ chối: Chức năng Cấu hình Bảo hành bị giới hạn với quyền tài khoản của bạn!')"{% endif %}
+               class="admin-card accent-policy"
+               {% if not can_warranty_policy %}style="opacity: 0.5; cursor: not-allowed; filter: grayscale(40%);"{% endif %}>
                 <div>
                     <div class="admin-card-header">
                         <div class="icon-box" aria-hidden="true">
@@ -467,15 +457,20 @@
                     </div>
                 </div>
                 <div class="btn-action">
-                    <span>Quản lý chính sách</span>
+                    <span>{% if can_warranty_policy %}Quản lý chính sách{% else %}Bị giới hạn quyền{% endif %}</span>
                     <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" aria-hidden="true">
                         <line x1="5" y1="12" x2="19" y2="12"></line>
                         <polyline points="12 5 19 12 12 19"></polyline>
                     </svg>
                 </div>
             </a>
-            <!-- Module 4: Báo Cáo & Thống Kê -->
-            <a href="/admin/bao-cao" class="admin-card accent-report">
+
+            <!-- 6. Báo Cáo & Thống Kê (page_key: warranty_report) -->
+            {% set can_warranty_report = can_access('warranty_report', current_user) %}
+            <a href="{% if can_warranty_report %}/admin/bao-cao{% else %}javascript:void(0);{% endif %}" 
+               {% if not can_warranty_report %}onclick="alert('⚠️ Truy cập bị từ chối: Chức năng Báo cáo & Thống kê bị giới hạn với quyền tài khoản của bạn!')"{% endif %}
+               class="admin-card accent-report"
+               {% if not can_warranty_report %}style="opacity: 0.5; cursor: not-allowed; filter: grayscale(40%);"{% endif %}>
                 <div>
                     <div class="admin-card-header">
                         <div class="icon-box" aria-hidden="true">
@@ -494,7 +489,7 @@
                     </div>
                 </div>
                 <div class="btn-action">
-                    <span>Trung tâm báo cáo</span>
+                    <span>{% if can_warranty_report %}Trung tâm báo cáo{% else %}Bị giới hạn quyền{% endif %}</span>
                     <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" aria-hidden="true">
                         <line x1="5" y1="12" x2="19" y2="12"></line>
                         <polyline points="12 5 19 12 12 19"></polyline>
@@ -502,10 +497,12 @@
                 </div>
             </a>
 
-            <!-- Module 5: Giám Sát Log Lỗi System -->
-            {% if current_user and current_user.role in ['super admin', 'system admin'] %}
-            <!-- Dành cho Super Admin / System Admin: Truy cập bình thường -->
-            <a href="/admin/logs" class="admin-card accent-logs">
+            <!-- 7. Giám Sát Log Lỗi System (page_key: system_logs) -->
+            {% set can_system_logs = can_access('system_logs', current_user) %}
+            <a href="{% if can_system_logs %}/admin/logs{% else %}javascript:void(0);{% endif %}" 
+               {% if not can_system_logs %}onclick="alert('⚠️ Truy cập bị từ chối: Chức năng Giám sát Log Lỗi bị giới hạn với quyền tài khoản của bạn!')"{% endif %}
+               class="admin-card accent-logs"
+               {% if not can_system_logs %}style="opacity: 0.5; cursor: not-allowed; filter: grayscale(40%);"{% endif %}>
                 <div>
                     <div class="admin-card-header">
                         <div class="icon-box" aria-hidden="true">
@@ -524,18 +521,20 @@
                     </div>
                 </div>
                 <div class="btn-action">
-                    <span>Xem nhật ký lỗi</span>
+                    <span>{% if can_system_logs %}Xem nhật ký lỗi{% else %}Bị giới hạn quyền{% endif %}</span>
                     <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" aria-hidden="true">
                         <line x1="5" y1="12" x2="19" y2="12"></line>
                         <polyline points="12 5 19 12 12 19"></polyline>
                     </svg>
                 </div>
             </a>
-            {% endif %}
-            <!-- Module 6: Giám Sát Thay Đổi Hệ Thống (Audit Logs) -->
-            {% if current_user and current_user.role in ['super admin', 'system admin'] %}
-            <!-- Dành cho Super Admin / System Admin: Truy cập bình thường -->
-            <a href="/admin/audit-logs" class="admin-card accent-audit">
+
+            <!-- 8. Giám Sát Thay Đổi Hệ Thống (page_key: audit_logs) -->
+            {% set can_audit_logs = can_access('audit_logs', current_user) %}
+            <a href="{% if can_audit_logs %}/admin/audit-logs{% else %}javascript:void(0);{% endif %}" 
+               {% if not can_audit_logs %}onclick="alert('⚠️ Truy cập bị từ chối: Chức năng Giám sát Thay đổi chỉ dành cho Quản trị viên cấp cao!')"{% endif %}
+               class="admin-card accent-audit"
+               {% if not can_audit_logs %}style="opacity: 0.5; cursor: not-allowed; filter: grayscale(40%);"{% endif %}>
                 <div>
                     <div class="admin-card-header">
                         <div class="icon-box" aria-hidden="true">
@@ -554,7 +553,7 @@
                     </div>
                 </div>
                 <div class="btn-action">
-                    <span>Xem nhật ký thay đổi</span>
+                    <span>{% if can_audit_logs %}Xem nhật ký thay đổi{% else %}Bị giới hạn quyền{% endif %}</span>
                     <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" aria-hidden="true">
                         <line x1="5" y1="12" x2="19" y2="12"></line>
                         <polyline points="12 5 19 12 12 19"></polyline>
@@ -562,41 +561,12 @@
                 </div>
             </a>
             
-            {% else %}
-            <!-- Dành cho các cấp quyền khác: Bị mờ và nảy cảnh báo -->
-            <a href="javascript:void(0);" 
-            onclick="alert('⚠️ Truy cập bị từ chối: Chức năng Giám sát Thay đổi chỉ dành cho Quản trị viên cấp cao!')" 
-            class="admin-card accent-audit" 
-            style="opacity: 0.5; cursor: not-allowed; filter: grayscale(40%);">
-                <div>
-                    <div class="admin-card-header">
-                        <div class="icon-box" aria-hidden="true">
-                            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
-                                <path d="M3 12a9 9 0 1 0 9-9 9.75 9.75 0 0 0-6.74 2.74L3 8"></path>
-                                <path d="M3 3v5h5"></path>
-                                <path d="M12 7v5l4 2"></path>
-                            </svg>
-                        </div>
-                        <div>
-                            <h2 class="card-title">Giám Sát Thay Đổi</h2>
-                            <p class="card-desc">
-                                Theo dõi nhật ký thao tác (Audit Logs), truy vết lịch sử thêm/sửa/xóa dữ liệu, kiểm tra địa chỉ IP và tài khoản thực hiện trên hệ thống.
-                            </p>
-                        </div>
-                    </div>
-                </div>
-                <div class="btn-action">
-                    <span>Bị giới hạn quyền</span>
-                    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" aria-hidden="true">
-                        <line x1="5" y1="12" x2="19" y2="12"></line>
-                        <polyline points="12 5 19 12 12 19"></polyline>
-                    </svg>
-                </div>
-            </a>
-            {% endif %}
-            {% if can_access('page_permissions', current_user) %}
-            <!-- Card Cấu hình Phân quyền Truy cập (Dynamic RBAC) -->
-            <a href="/admin/phan-quyen" class="admin-card accent-permissions">
+            <!-- 9. Cấu Hình Phân Quyền Truy Cập (page_key: page_permissions) -->
+            {% set can_page_permissions = can_access('page_permissions', current_user) %}
+            <a href="{% if can_page_permissions %}/admin/phan-quyen{% else %}javascript:void(0);{% endif %}" 
+               {% if not can_page_permissions %}onclick="alert('⚠️ Truy cập bị từ chối: Chức năng Cấu hình Phân quyền bị giới hạn với quyền tài khoản của bạn!')"{% endif %}
+               class="admin-card accent-permissions"
+               {% if not can_page_permissions %}style="opacity: 0.5; cursor: not-allowed; filter: grayscale(40%);"{% endif %}>
                 <div>
                     <div class="admin-card-header">
                         <div class="icon-box" aria-hidden="true">
@@ -614,14 +584,14 @@
                     </div>
                 </div>
                 <div class="btn-action">
-                    <span>Cấu hình phân quyền</span>
+                    <span>{% if can_page_permissions %}Cấu hình phân quyền{% else %}Bị giới hạn quyền{% endif %}</span>
                     <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" aria-hidden="true">
                         <line x1="5" y1="12" x2="19" y2="12"></line>
                         <polyline points="12 5 19 12 12 19"></polyline>
                     </svg>
                 </div>
             </a>
-            {% endif %}
+
         </div>
     </section>
 </main>
