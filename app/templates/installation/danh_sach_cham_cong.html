@@ -428,6 +428,7 @@
     }
 </style>
 </head>
+{% block content %}
 <body>
 
     <!-- NAVBAR HEADER -->
@@ -443,13 +444,16 @@
                 </div>
             </div>
             <div>
-                {% if user_role in ('admin', 'system admin', 'super admin') %}
+                {% set user_role = (current_user.role if current_user is mapping else request.session.get('role', 'user')) | string | lower | trim %}
+                {% set user_level = {'user': 1, 'admin': 2, 'super admin': 3, 'system admin': 4}.get(user_role, 1) %}
+
+                {% if user_level >= 2 %}
                     <span class="badge bg-danger-subtle text-danger border border-danger-subtle rounded-pill px-3 py-2">
-                        <i class="fa-solid fa-user-shield me-1"></i> Admin
+                        <i class="fa-solid fa-user-shield me-1"></i> {{ current_user.role if current_user is mapping else 'Admin' }}
                     </span>
                 {% else %}
                     <span class="badge bg-primary-subtle text-primary border border-primary-subtle rounded-pill px-3 py-2">
-                        <i class="fa-solid fa-user me-1"></i> {{ current_username }}
+                        <i class="fa-solid fa-user me-1"></i> {{ current_username or current_user.name }}
                     </span>
                 {% endif %}
             </div>
@@ -558,14 +562,14 @@
                         </select>
                     </div>
 
-                    {% if user_role in ('admin', 'system admin', 'super admin') %}
+                    <!-- Chỉ hiển thị bộ lọc KTV cho cấp độ Admin trở lên (Level >= 2) -->
+                    {% if user_level >= 2 %}
                     <div class="col-12 col-md-3">
                         <label class="form-label text-muted extra-small mb-1"><i class="fa-solid fa-user-gear me-1"></i>Kỹ thuật viên</label>
                         <select name="ktv" id="ktvSelect" class="form-select form-select-sm" onchange="this.form.submit()">
                             <option value="Tất cả" {% if selected_ktv == 'Tất cả' or not selected_ktv %}selected{% endif %}>Tất cả kỹ thuật viên</option>
                             {% if danh_sach_ktv %}
                                 {% for username, ten in danh_sach_ktv %}
-                                    <!-- Kiểm tra khớp cả username lẫn ten để tránh lệch giá trị -->
                                     <option value="{{ username }}" {% if selected_ktv == username or selected_ktv == ten %}selected{% endif %}>{{ ten }}</option>
                                 {% endfor %}
                             {% endif %}
@@ -573,7 +577,7 @@
                     </div>
                     {% endif %}
 
-                    <div class="col-12 {% if user_role in ('admin', 'system admin', 'super admin') %}col-md-3{% else %}col-md-6{% endif %}">
+                    <div class="col-12 {% if user_level >= 2 %}col-md-3{% else %}col-md-6{% endif %}">
                         <label class="form-label text-muted extra-small mb-1"><i class="fa-solid fa-list-ol me-1"></i>Hiển thị tối đa</label>
                         <select name="limit" class="form-select form-select-sm" onchange="this.form.submit()">
                             <option value="30" {% if limit == 30 %}selected{% endif %}>30 đơn gần nhất</option>
@@ -676,10 +680,8 @@
                             <!-- Body Card: Ảnh + Chi tiết đơn -->
                             <div class="d-flex gap-3 mb-3 min-w-0">
                                 <div class="img-container position-relative">
-                                    {# 1. Chuẩn hóa chuỗi hình ảnh an toàn #}
                                     {% set raw_img = (item.hinh_anh or '') | string | trim %}
                                     
-                                    {# 2. Kiểm tra nếu có dữ liệu ảnh hợp lệ (không phải null/undefined/rỗng) #}
                                     {% if raw_img and raw_img.lower() not in ['none', 'null', 'undefined', ''] %}
                                         {% if raw_img.startswith('http://') or raw_img.startswith('https://') or raw_img.startswith('/') or raw_img.startswith('data:') %}
                                             {% set img_src = raw_img %}
@@ -687,20 +689,17 @@
                                             {% set img_src = 'data:image/jpeg;base64,' ~ raw_img %}
                                         {% endif %}
 
-                                        {# Thẻ ảnh chính kèm sự kiện onerror khi ảnh hỏng/bị xóa trên Supabase #}
                                         <img src="{{ img_src }}" 
                                             class="img-preview-trigger zoomable-img w-100 h-100 object-fit-cover" 
                                             data-src="{{ img_src }}" 
                                             alt="Chứng từ"
                                             onerror="this.style.display='none'; if(this.nextElementSibling) this.nextElementSibling.classList.remove('d-none');">
 
-                                        {# Khối hiển thị khi ảnh bị lỗi 404 hoặc đường dẫn hỏng #}
                                         <div class="w-100 h-100 d-none d-flex flex-column align-items-center justify-content-center text-muted small bg-dark rounded border border-secondary">
                                             <i class="fa-solid fa-image-slash mb-1 fs-5 text-warning"></i>
                                             <span style="font-size: 10px;">Ảnh đã xóa</span>
                                         </div>
                                     {% else %}
-                                        {# Khối hiển thị khi bản ghi không có ảnh #}
                                         <div class="w-100 h-100 d-flex flex-column align-items-center justify-content-center text-muted small bg-dark rounded border border-secondary">
                                             <i class="fa-regular fa-image mb-1 fs-5"></i>
                                             <span style="font-size: 10px;">Không có ảnh</span>
@@ -751,27 +750,27 @@
                         </div>
 
                         <!-- Footer Actions: Phân quyền Admin & User chính chủ -->
-                        {% set is_admin = user_role in ('admin', 'system admin') %}
-                        {% set is_owner = (current_user and item.username == current_user.username) %}
+                        {% set is_admin = (user_level >= 2) %}
+                        {% set is_owner = (current_user and item.username == (current_user.username if current_user is mapping else current_user)) %}
                         {% set can_user_edit = (is_owner and item.trang_thai != 'Đã duyệt') %}
 
                         {% if is_admin or can_user_edit %}
                         <div class="pt-2 border-top border-secondary-subtle d-flex justify-content-between align-items-center mt-2">
                             <div class="d-flex gap-2">
-                                <!-- Nút Sửa dành cho Admin HOẶC User chính chủ chưa duyệt -->
+                                <!-- Nút Sửa: Admin HOẶC User chính chủ chưa duyệt -->
                                 <a href="/cham-cong/form?edit_id={{ item.id }}" class="btn btn-action-sm btn-outline-warning">
                                     <i class="fa-solid fa-pen-to-square me-1"></i> Sửa
                                 </a>
 
-                                <!-- Nút Xóa: Admin cấp cao HOẶC User chính chủ chưa duyệt -->
-                                {% if user_role in ('system admin', 'super admin') or can_user_edit %}
+                                <!-- Nút Xóa: Admin cấp cao (Level >= 3) HOẶC User chính chủ chưa duyệt -->
+                                {% if user_level >= 3 or can_user_edit %}
                                     <button type="button" class="btn btn-danger btn-sm" onclick="deleteChamCong('{{ item.id }}')">
                                         🗑️ Xóa
                                     </button>
                                 {% endif %}
                             </div>
 
-                            <!-- Nhóm nút Phê duyệt chỉ dành riêng cho Admin -->
+                            <!-- Nhóm nút Phê duyệt chỉ dành riêng cho Admin (Level >= 2) -->
                             {% if is_admin %}
                             <div class="d-flex gap-2">
                                 {% if item.trang_thai != 'Từ chối' %}
@@ -873,6 +872,8 @@
             </div>
         </div>
     </div>
+</body>
+{% endblock %}
 
     <!-- JAVASCRIPT HANDLERS -->
     <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/js/bootstrap.bundle.min.js"></script>
