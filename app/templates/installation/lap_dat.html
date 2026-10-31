@@ -448,49 +448,46 @@
 
             <!-- BƯỚC 1: TẢI ẢNH HÓA ĐƠN -->
             <div class="step-card" id="stepCardImage">
-            <div class="step-title d-flex align-items-center justify-content-between">
-                <div>
-                    <span class="step-badge">1</span>Ảnh Hóa đơn <span class="text-danger">*</span>
+                <div class="step-title d-flex align-items-center justify-content-between">
+                    <div>
+                        <span class="step-badge">1</span>Ảnh Hóa đơn <span class="text-danger">*</span>
+                    </div>
+                    <span id="imgStatusBadge" class="badge {% if edit_data and edit_data.hinh_anh %}bg-success{% else %}bg-secondary{% endif %}">
+                        {% if edit_data and edit_data.hinh_anh %}Đã có ảnh{% else %}Chưa chọn ảnh{% endif %}
+                    </span>
                 </div>
-                <span id="imgStatusBadge" class="badge {% if edit_data and edit_data.hinh_anh %}bg-success{% else %}bg-secondary{% endif %}">
-                    {% if edit_data and edit_data.hinh_anh %}Đã có ảnh{% else %}Chưa chọn ảnh{% endif %}
-                </span>
-            </div>
-            
-            <!-- Vùng Upload Ảnh -->
-            <div class="upload-zone" id="uploadZone" onclick="document.getElementById('fileInput').click();">
-                <i class="fa-solid fa-camera fs-1 text-info mb-3"></i>
-                <h6 class="fw-bold text-white mb-1">Chọn ảnh hóa đơn</h6>
-                <p class="text-warning mb-0" style="font-size: 0.8rem;">Tự động nén dung lượng trước khi gửi</p>
                 
-                <!-- Đã bỏ capture="environment" để mở menu chọn của hệ điều hành -->
-                <input class="d-none" type="file" id="fileInput" name="file" accept="image/*">
-                <input type="hidden" id="existing_image_url" name="existing_image_url" value="{{ edit_data.hinh_anh if edit_data else '' }}">
-            </div>
+                <!-- Vùng Upload Ảnh -->
+                <div class="upload-zone text-center p-3 border border-dashed rounded cursor-pointer" id="uploadZone" onclick="document.getElementById('fileInput').click();">
+                    <i class="fa-solid fa-camera fs-1 text-info mb-2"></i>
+                    <h6 class="fw-bold text-white mb-1">Tải ảnh hóa đơn</h6>
+                    <p class="text-warning mb-0" style="font-size: 0.8rem;">Chọn ảnh • Tự nén dung lượng</p>
+                    
+                    <!-- Thêm thuộc tính multiple và đổi name thành files[] -->
+                    <input class="d-none" type="file" id="fileInput" name="files" accept="image/*" multiple>
+                    <input type="hidden" id="existing_image_url" name="existing_image_url" value="{{ edit_data.hinh_anh if edit_data else '' }}">
+                </div>
 
-            <!-- Thông báo lỗi khi thiếu ảnh -->
-            <div id="imageErrorMessage" class="text-danger small mt-2 fw-bold hidden">
-                <i class="fa-solid fa-triangle-exclamation me-1"></i> Vui lòng chụp hoặc tải lên ảnh hóa đơn đính kèm!
-            </div>
-            
-            <!-- Vùng Xem Trước Ảnh -->
-            <div id="previewArea" class="mt-3 {% if not edit_data or not edit_data.hinh_anh %}hidden{% endif %}">
-                <div class="d-flex justify-content-between align-items-center mb-3 px-1">
-                    <span class="small fw-medium text-light"><i class="fa-solid fa-image text-info me-1"></i> Xem trước:</span>
-                    <div class="d-flex gap-2">
-                        <button type="button" class="btn btn-sm btn-outline-custom px-3 py-1" id="btnRotate">
-                            <i class="fa-solid fa-rotate-right text-info"></i> Xoay
-                        </button>
-                        <button type="button" class="btn btn-sm btn-outline-custom border-danger text-danger px-3 py-1" id="btnClearImg">
-                            <i class="fa-solid fa-trash"></i> Xóa
+                <!-- Thông báo lỗi khi thiếu ảnh -->
+                <div id="imageErrorMessage" class="text-danger small mt-2 fw-bold d-none">
+                    <i class="fa-solid fa-triangle-exclamation me-1"></i> Vui lòng chọn ít nhất 1 ảnh hóa đơn!
+                </div>
+                
+                <!-- Vùng Xem Trước Nhiều Ảnh (Preview Area) -->
+                <div id="previewArea" class="mt-3 {% if not edit_data or not edit_data.hinh_anh %}d-none{% endif %}">
+                    <div class="d-flex justify-content-between align-items-center mb-2 px-1">
+                        <span class="small fw-medium text-light">
+                            <i class="fa-solid fa-images text-info me-1"></i> Danh sách ảnh (<span id="imageCount">0</span>):
+                        </span>
+                        <button type="button" class="btn btn-sm btn-outline-danger px-2 py-1" id="btnClearAll">
+                            <i class="fa-solid fa-trash me-1"></i>Xóa tất cả
                         </button>
                     </div>
-                </div>
-                <div class="image-preview-wrapper text-center shadow-inner">
-                    <img id="imagePreview" src="{{ edit_data.hinh_anh if edit_data else '' }}" alt="Preview Hóa Đơn">
+                    
+                    <!-- Lưới hiển thị thumbnail danh sách ảnh -->
+                    <div id="imagePreviewGrid" class="row g-2"></div>
                 </div>
             </div>
-        </div>
 
             <!-- BƯỚC 2: LOẠI HÌNH LÀM VIỆC -->
             <div class="step-card">
@@ -684,9 +681,39 @@
 {% endblock %}
 
 {% block scripts %}
-
-
 <script>
+    // --- QUẢN LÝ DỮ LIỆU FILE TẢI LÊN ---
+    let dtContainer = new DataTransfer();
+
+    // EXPOSE HÀM TOÀN CỤC ĐỂ GỌI TRỰC TIẾP TỪ ONCLICK TRÊN HTML
+    window.adjustQty = function(inputId, change) {
+        const input = document.getElementById(inputId);
+        if (input) {
+            let currentVal = parseInt(input.value) || 0;
+            currentVal = Math.max(0, currentVal + change);
+            input.value = currentVal;
+            
+            input.style.opacity = '0.5';
+            setTimeout(() => input.style.opacity = '1', 100);
+        }
+    };
+
+    window.toggleSearchBox = function(e) {
+        if (e) {
+            e.preventDefault();
+            e.stopPropagation();
+        }
+        const box = document.getElementById('searchInvoiceBox');
+        if (box) {
+            box.classList.toggle('d-none');
+            box.classList.toggle('hidden');
+            if (!box.classList.contains('d-none') && !box.classList.contains('hidden')) {
+                const input = document.getElementById('search_hd_input');
+                if (input) input.focus();
+            }
+        }
+    };
+
     document.addEventListener("DOMContentLoaded", function() {
         // 1. Active menu tab
         const navItems = document.querySelectorAll('.bottom-nav .nav-item');
@@ -698,29 +725,16 @@
             }
         });
         
-        // 2. Khởi tạo trạng thái giao diện
+        // 2. Khởi tạo trạng thái giao diện & Xem trước nếu có dữ liệu cũ
         updateUI();
+        initExistingImages();
         validateImageState();
     });
-
-    // --- STEPPER NUMERIC (+ / -) ---
-    function adjustQty(inputId, change) {
-        const input = document.getElementById(inputId);
-        if (input) {
-            let currentVal = parseInt(input.value) || 0;
-            currentVal = Math.max(0, currentVal + change);
-            input.value = currentVal;
-            
-            input.style.opacity = '0.5';
-            setTimeout(() => input.style.opacity = '1', 100);
-        }
-    }
 
     // --- AUTO-TRIM & UPPERCASE SỐ HÓA ĐƠN ---
     const soHoaDonInput = document.getElementById('so_hoa_don');
     if (soHoaDonInput) {
         soHoaDonInput.addEventListener('input', function() {
-            // Tự động xóa khoảng trắng và chuyển chữ hoa
             this.value = this.value.toUpperCase().replace(/\s+/g, '');
         });
     }
@@ -729,8 +743,9 @@
     const btnSearch = document.getElementById('btnSearchInvoice');
     if (btnSearch) {
         btnSearch.addEventListener('click', async function() {
-            const hdInput = document.getElementById('search_hd_input').value.trim().toUpperCase();
+            const hdInput = document.getElementById('search_hd_input')?.value.trim().toUpperCase();
             const msgDiv = document.getElementById('searchResultMsg');
+            if (!msgDiv) return;
             
             if (!hdInput) {
                 msgDiv.className = "mt-3 small text-danger";
@@ -760,29 +775,29 @@
         });
     }
 
-    // --- QUẢN LÝ UPLOAD ẢNH, PREVIEW & BÁO LỖI ---
+    // --- QUẢN LÝ UPLOAD NHIỀU ẢNH, PREVIEW & BÁO LỖI ---
     const fileInput = document.getElementById('fileInput');
     const existingImgInput = document.getElementById('existing_image_url');
     const uploadZone = document.getElementById('uploadZone');
     const imgErrorMsg = document.getElementById('imageErrorMessage');
     const previewArea = document.getElementById('previewArea');
-    const imagePreview = document.getElementById('imagePreview');
-    const btnRotate = document.getElementById('btnRotate');
-    const btnClearImg = document.getElementById('btnClearImg');
+    const previewGrid = document.getElementById('imagePreviewGrid');
+    const imageCountSpan = document.getElementById('imageCount');
     const imgStatusBadge = document.getElementById('imgStatusBadge');
-    let currentRotation = 0;
+    const btnClearAll = document.getElementById('btnClearAll');
 
-    // Kiểm tra & cập nhật trạng thái ô ảnh
+    // Hàm kiểm tra & cập nhật badge trạng thái ảnh
     function validateImageState() {
-        const hasNewFile = fileInput && fileInput.files && fileInput.files.length > 0;
+        const fileCount = dtContainer.files.length;
         const hasExistingUrl = existingImgInput && existingImgInput.value && existingImgInput.value.trim() !== "";
+        const totalImages = fileCount + (hasExistingUrl ? 1 : 0);
 
-        if (hasNewFile || hasExistingUrl) {
+        if (totalImages > 0) {
             if (uploadZone) uploadZone.classList.remove('border-danger');
-            if (imgErrorMsg) imgErrorMsg.classList.add('hidden');
+            if (imgErrorMsg) imgErrorMsg.classList.add('d-none', 'hidden');
             if (imgStatusBadge) {
                 imgStatusBadge.className = "badge bg-success";
-                imgStatusBadge.innerText = hasNewFile ? "Đã chọn ảnh mới" : "Đã có ảnh";
+                imgStatusBadge.innerText = `Đã chọn ${totalImages} ảnh`;
             }
             return true;
         } else {
@@ -794,62 +809,135 @@
         }
     }
 
+    // Nạp xem trước từ ảnh cũ (nếu có khi Sửa đơn)
+    function initExistingImages() {
+        if (!existingImgInput || !existingImgInput.value.trim() || !previewGrid) return;
+        
+        const urls = existingImgInput.value.split(',').map(u => u.trim()).filter(Boolean);
+        if (urls.length === 0) return;
+
+        if (previewArea) previewArea.classList.remove('d-none', 'hidden');
+        
+        urls.forEach((url) => {
+            const col = document.createElement('div');
+            col.className = 'col-6 col-sm-4 col-md-3 existing-img-col';
+            col.innerHTML = `
+                <div class="position-relative border rounded overflow-hidden bg-dark text-center" style="height: 110px;">
+                    <img src="${url}" class="w-100 h-100 object-fit-cover" alt="Ảnh hóa đơn">
+                    <span class="badge bg-primary position-absolute bottom-0 start-0 m-1" style="font-size:0.65rem;">Ảnh cũ</span>
+                </div>
+            `;
+            previewGrid.appendChild(col);
+        });
+        updateImageCounter();
+    }
+
+    // Hiển thị lại Grid danh sách các file mới đã chọn
+    function renderPreviews() {
+        if (!previewGrid) return;
+        
+        // Xóa toàn bộ preview ảnh mới (giữ lại ảnh cũ nếu có)
+        const newCols = previewGrid.querySelectorAll('.new-img-col');
+        newCols.forEach(col => col.remove());
+
+        const files = Array.from(dtContainer.files);
+
+        if (files.length === 0 && (!existingImgInput || !existingImgInput.value.trim())) {
+            if (previewArea) previewArea.classList.add('d-none', 'hidden');
+            validateImageState();
+            return;
+        }
+
+        if (previewArea) previewArea.classList.remove('d-none', 'hidden');
+
+        files.forEach((file, index) => {
+            const reader = new FileReader();
+            reader.onload = function(e) {
+                const col = document.createElement('div');
+                col.className = 'col-6 col-sm-4 col-md-3 new-img-col';
+                col.innerHTML = `
+                    <div class="position-relative border border-info rounded overflow-hidden bg-dark text-center" style="height: 110px;">
+                        <img src="${e.target.result}" class="w-100 h-100 object-fit-cover" alt="Preview ${index + 1}">
+                        <button type="button" class="btn btn-sm btn-danger position-absolute top-0 end-0 m-1 p-0 rounded-circle remove-img-btn" 
+                                style="width: 24px; height: 24px; line-height: 1;" data-index="${index}" title="Xóa ảnh này">
+                            <i class="fa-solid fa-xmark text-white"></i>
+                        </button>
+                    </div>
+                `;
+                previewGrid.appendChild(col);
+            };
+            reader.readAsDataURL(file);
+        });
+
+        updateImageCounter();
+        validateImageState();
+    }
+
+    function updateImageCounter() {
+        const fileCount = dtContainer.files.length;
+        const existingCount = (existingImgInput && existingImgInput.value.trim()) ? existingImgInput.value.split(',').filter(Boolean).length : 0;
+        if (imageCountSpan) imageCountSpan.innerText = fileCount + existingCount;
+    }
+
+    // Sự kiện Chọn file từ thiết bị
     if (fileInput) {
         fileInput.addEventListener('change', function(e) {
-            const file = e.target.files[0];
-            if (file) {
+            const files = Array.from(e.target.files);
+            let invalidFormat = false;
+            let overSize = false;
+
+            files.forEach(file => {
                 if (!file.type.startsWith('image/')) {
-                    alert("❌ Tệp chọn không phải là định dạng ảnh!");
-                    this.value = '';
-                    validateImageState();
+                    invalidFormat = true;
                     return;
                 }
-
                 if (file.size > 15 * 1024 * 1024) {
-                    alert("❌ File ảnh quá lớn! Vui lòng chọn ảnh nhỏ hơn 15MB.");
-                    this.value = '';
-                    validateImageState();
+                    overSize = true;
                     return;
                 }
+                dtContainer.items.add(file);
+            });
 
-                const reader = new FileReader();
-                reader.onload = function(event) {
-                    imagePreview.src = event.target.result;
-                    previewArea.classList.remove('hidden');
-                    currentRotation = 0;
-                    imagePreview.style.transform = `rotate(0deg)`;
-                    
-                    const rotInput = document.getElementById('image_rotation');
-                    if (rotInput) rotInput.value = 0;
-                    
-                    validateImageState();
-                    previewArea.scrollIntoView({ behavior: 'smooth', block: 'nearest' });
-                };
-                reader.readAsDataURL(file);
+            if (invalidFormat) alert("⚠️ Một số tệp không đúng định dạng ảnh đã bị bỏ qua!");
+            if (overSize) alert("⚠️ Một số tệp vượt quá 15MB đã bị bỏ qua!");
+
+            fileInput.files = dtContainer.files;
+            renderPreviews();
+        });
+    }
+
+    // Sự kiện Xóa LẺ từng ảnh khi bấm nút X
+    if (previewGrid) {
+        previewGrid.addEventListener('click', function(e) {
+            const removeBtn = e.target.closest('.remove-img-btn');
+            if (removeBtn) {
+                const indexToRemove = parseInt(removeBtn.getAttribute('data-index'));
+                
+                const newDt = new DataTransfer();
+                Array.from(dtContainer.files).forEach((file, i) => {
+                    if (i !== indexToRemove) newDt.items.add(file);
+                });
+
+                dtContainer = newDt;
+                if (fileInput) fileInput.files = dtContainer.files;
+                renderPreviews();
             }
         });
     }
 
-    if (btnRotate) {
-        btnRotate.addEventListener('click', function() {
-            currentRotation = (currentRotation + 90) % 360;
-            imagePreview.style.transform = `rotate(${currentRotation}deg)`;
-            const rotInput = document.getElementById('image_rotation');
-            if (rotInput) rotInput.value = currentRotation; 
-        });
-    }
-
-    if (btnClearImg) {
-        btnClearImg.addEventListener('click', function() {
-            if (fileInput) fileInput.value = '';
-            if (imagePreview) imagePreview.src = '';
+    // Sự kiện XÓA TẤT CẢ ảnh
+    if (btnClearAll) {
+        btnClearAll.addEventListener('click', function() {
+            dtContainer = new DataTransfer();
+            if (fileInput) fileInput.files = dtContainer.files;
             if (existingImgInput) existingImgInput.value = '';
-            if (previewArea) previewArea.classList.add('hidden');
+            if (previewGrid) previewGrid.innerHTML = '';
+            if (previewArea) previewArea.classList.add('d-none', 'hidden');
             validateImageState();
         });
     }
 
-    // --- TOGGLE CONDITIONAL BLOCKS ---
+    // --- TOGGLE BẬT/TẮT CÁC BLOCK ĐIỀU KIỆN ---
     const isDiTinh = document.getElementById('is_di_tinh');
     const isHotro = document.getElementById('is_hotro_khac');
     const isNgoaiGio = document.getElementById('is_ngoai_gio');
@@ -860,21 +948,21 @@
 
     function updateUI() {
         if (isDiTinh && isDiTinh.checked) {
-            if (diTinhBlock) diTinhBlock.classList.remove('hidden');
+            if (diTinhBlock) diTinhBlock.classList.remove('d-none', 'hidden');
         } else if (diTinhBlock) {
-            diTinhBlock.classList.add('hidden');
+            diTinhBlock.classList.add('d-none', 'hidden');
         }
 
         if (isHotro && isHotro.checked) {
-            if (diCungBlock) diCungBlock.classList.remove('hidden');
+            if (diCungBlock) diCungBlock.classList.remove('d-none', 'hidden');
         } else if (diCungBlock) {
-            diCungBlock.classList.add('hidden');
+            diCungBlock.classList.add('d-none', 'hidden');
         }
 
         if (isNgoaiGio && isNgoaiGio.checked) {
-            if (ngoaiGioBlock) ngoaiGioBlock.classList.remove('hidden');
+            if (ngoaiGioBlock) ngoaiGioBlock.classList.remove('d-none', 'hidden');
         } else if (ngoaiGioBlock) {
-            ngoaiGioBlock.classList.add('hidden');
+            ngoaiGioBlock.classList.add('d-none', 'hidden');
         }
     }
 
@@ -882,7 +970,7 @@
     if (isHotro) isHotro.addEventListener('change', updateUI);
     if (isNgoaiGio) isNgoaiGio.addEventListener('change', updateUI);
 
-    // --- NÉN ẢNH CLIENT-SIDE TRƯỚC KHU GỬI ---
+    // --- NÉN ẢNH CLIENT-SIDE TRƯỚC KHI GỬI ---
     async function compressImageFile(file, maxWidth = 1600, quality = 0.8) {
         return new Promise((resolve) => {
             if (!file || !file.type.startsWith('image/')) return resolve(file);
@@ -919,45 +1007,27 @@
             image.onerror = () => resolve(file);
         });
     }
-    //function cho nút sửa
-    function toggleSearchBox(e) {
-        if (e) {
-            e.preventDefault();
-            e.stopPropagation();
-        }
-        const box = document.getElementById('searchInvoiceBox');
-        if (box) {
-            box.classList.toggle('d-none');
-            if (!box.classList.contains('d-none')) {
-                const input = document.getElementById('search_hd_input');
-                if (input) input.focus();
-            }
-        }
-    }
-    // --- HÀM VALIDATE FORM TRƯỚC KHU SUBMIT ---
+
+    // --- HÀM VALIDATE FORM TRƯỚC KHI SUBMIT ---
     function validateForm() {
         // 1. Kiểm tra Bắt buộc Ảnh
         const hasValidImage = validateImageState();
         if (!hasValidImage) {
             if (uploadZone) uploadZone.classList.add('border-danger');
-            if (imgErrorMsg) imgErrorMsg.classList.remove('hidden');
+            if (imgErrorMsg) imgErrorMsg.classList.remove('d-none', 'hidden');
             
             const stepCardImg = document.getElementById('stepCardImage') || uploadZone;
             if (stepCardImg) {
                 stepCardImg.scrollIntoView({ behavior: 'smooth', block: 'center' });
             }
-            return "Vui lòng chụp hoặc tải ảnh hóa đơn đính kèm!";
+            return "Vui lòng chụp hoặc tải ít nhất 1 ảnh hóa đơn đính kèm!";
         }
 
         // 2. Kiểm tra số hóa đơn
         const soHoaDonEl = document.getElementById('so_hoa_don');
         const soHoaDon = soHoaDonEl ? soHoaDonEl.value.trim() : "";
-        if (!soHoaDon) {
-            return "Vui lòng nhập số hóa đơn!";
-        }
-        if (soHoaDon.length < 3) {
-            return "Số hóa đơn phải có ít nhất 3 ký tự!";
-        }
+        if (!soHoaDon) return "Vui lòng nhập số hóa đơn!";
+        if (soHoaDon.length < 3) return "Số hóa đơn phải có ít nhất 3 ký tự!";
 
         // 3. Kiểm tra đi tỉnh hay đi nội thành
         const isDiTinhChecked = isDiTinh && isDiTinh.checked;
@@ -973,7 +1043,7 @@
                 return "Quãng đường nhập vào quá lớn (vượt quá 1000 KM). Vui lòng kiểm tra lại!";
             }
 
-            // Kiểm tra máy móc khi đi nội thành
+            // Kiểm tra thiết bị khi đi nội thành
             const mayLon = parseInt(document.getElementById('combo_may_lon')?.value) || 0;
             const mayNho = parseInt(document.getElementById('combo_may_nho')?.value) || 0;
             const mayEp = parseInt(document.getElementById('combo_may_ep')?.value) || 0;
@@ -982,7 +1052,7 @@
             }
         }
 
-        // 4. Kiểm tra trường thợ phụ nếu bật checkbox
+        // 4. Kiểm tra thợ phụ
         if (isHotro && isHotro.checked) {
             const soNguoi = parseInt(document.getElementById('so_nguoi_di_cung')?.value) || 0;
             if (soNguoi <= 0) {
@@ -990,20 +1060,16 @@
             }
         }
 
-        // 5. Kiểm tra nội dung
+        // 5. Kiểm tra nội dung / địa chỉ
         const noiDungEl = document.querySelector('textarea[name="noi_dung"]');
         const noiDung = noiDungEl ? noiDungEl.value.trim() : "";
-        if (!noiDung) {
-            return "Vui lòng nhập địa chỉ giao hàng hoặc ghi chú nội dung công việc!";
-        }
-        if (noiDung.length < 8) {
-            return "Nội dung / Địa chỉ ghi chú quá ngắn (ít nhất 8 ký tự)!";
-        }
+        if (!noiDung) return "Vui lòng nhập địa chỉ giao hàng hoặc ghi chú nội dung công việc!";
+        if (noiDung.length < 8) return "Nội dung / Địa chỉ ghi chú quá ngắn (ít nhất 8 ký tự)!";
 
-        return null; // Không có lỗi
+        return null;
     }
 
-    // --- GỬI ĐƠN CHẤM CÔNG ---
+    // --- GỬI ĐƠN CHẤM CÔNG HỆ THỐNG ---
     const chamCongForm = document.getElementById('chamCongForm');
     if (chamCongForm) {
         chamCongForm.addEventListener('submit', async function(e) {
@@ -1015,10 +1081,10 @@
             const errorMsg = validateForm();
             if (errorMsg) {
                 if (alertMsg) {
-                    alertMsg.classList.remove('hidden', 'alert-success');
+                    alertMsg.classList.remove('d-none', 'hidden', 'alert-success');
                     alertMsg.classList.add('alert-danger', 'bg-danger', 'bg-opacity-10', 'text-danger');
                     alertMsg.innerHTML = `<i class="fa-solid fa-triangle-exclamation me-2"></i> ${errorMsg}`;
-                    if (!document.getElementById('imageErrorMessage') || document.getElementById('imageErrorMessage').classList.contains('hidden')) {
+                    if (!imgErrorMsg || imgErrorMsg.classList.contains('d-none') || imgErrorMsg.classList.contains('hidden')) {
                         alertMsg.scrollIntoView({ behavior: 'smooth', block: 'center' });
                     }
                 }
@@ -1028,16 +1094,23 @@
             const btnSubmit = document.getElementById('btnSubmit');
             if (btnSubmit) {
                 btnSubmit.disabled = true;
-                btnSubmit.innerHTML = '<i class="fa-solid fa-spinner fa-spin me-2"></i> ĐANG XỬ LÝ & TẢI ẢNH...';
+                btnSubmit.innerHTML = '<i class="fa-solid fa-spinner fa-spin me-2"></i> ĐANG NÉN & TẢI ẢNH...';
             }
             
             const formData = new FormData(this);
 
-            // Nén ảnh tải lên nếu có chọn tệp mới
-            const selectedFile = fileInput ? fileInput.files[0] : null;
-            if (selectedFile) {
-                const compressedFile = await compressImageFile(selectedFile);
-                formData.set('file', compressedFile);
+            // Nén song song toàn bộ ảnh mới được chọn
+            formData.delete('files');
+            formData.delete('files[]');
+
+            const filesToUpload = Array.from(dtContainer.files);
+            if (filesToUpload.length > 0) {
+                const compressedFiles = await Promise.all(
+                    filesToUpload.map(file => compressImageFile(file))
+                );
+                compressedFiles.forEach(file => {
+                    formData.append('files', file);
+                });
             }
 
             try {
@@ -1047,7 +1120,7 @@
                 });
 
                 const result = await response.json();
-                if (alertMsg) alertMsg.classList.remove('hidden', 'alert-danger', 'alert-success');
+                if (alertMsg) alertMsg.classList.remove('d-none', 'hidden', 'alert-danger', 'alert-success');
                 
                 if (response.ok && result.success) {
                     if (alertMsg) {
@@ -1069,7 +1142,7 @@
                 }
             } catch (error) {
                 if (alertMsg) {
-                    alertMsg.classList.remove('hidden', 'alert-success');
+                    alertMsg.classList.remove('d-none', 'hidden', 'alert-success');
                     alertMsg.classList.add('alert-danger', 'bg-danger', 'bg-opacity-10', 'text-danger');
                     alertMsg.innerHTML = '<i class="fa-solid fa-triangle-exclamation me-2"></i> Lỗi kết nối tới máy chủ!';
                 }

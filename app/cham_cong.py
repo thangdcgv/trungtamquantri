@@ -4,7 +4,7 @@ import re
 import uuid
 from datetime import datetime, timezone, timedelta
 from pathlib import Path
-from typing import Optional, Tuple, Dict, Any
+from typing import Optional, Tuple, Dict, Any, List
 from zoneinfo import ZoneInfo
 
 from PIL import Image, ImageOps
@@ -553,7 +553,7 @@ async def submit_cham_cong(
     target_username: Optional[str] = Form(None),
     edit_id: Optional[str] = Form(None),
     existing_image_url: Optional[str] = Form(None),
-    file: Optional[UploadFile] = File(None)
+    files: Optional[List[UploadFile]] = File(None)  # 🟢 ĐÃ NÂNG CẤP THÀNH DANH SÁCH NHIỀU FILE
 ):
     try:
         # 1. VALIDATION CÁC TRƯỜNG ĐẦU VÀO
@@ -612,8 +612,7 @@ async def submit_cham_cong(
         # 2. KIỂM TRA QUYỀN CHỈNH SỬA
         existing_record = None
         if parsed_edit_id:
-            # Thêm cột 'ten' vào select để lấy tên hiển thị gốc của KTV
-            existing_res = supabase.table("cham_cong").select("username, ten, hinh_anh,trang_thai").eq("id", parsed_edit_id).execute()
+            existing_res = supabase.table("cham_cong").select("username, ten, hinh_anh, trang_thai").eq("id", parsed_edit_id).execute()
             if not existing_res.data:
                 return JSONResponse(
                     status_code=status.HTTP_404_NOT_FOUND,
@@ -648,7 +647,6 @@ async def submit_cham_cong(
                 target_user = session_user
                 ho_ten_target = session_fullname
         elif parsed_edit_id and existing_record:
-            # Nếu đang sửa đơn và không chọn target_username mới, giữ nguyên KTV sở hữu đơn gốc
             target_user = existing_record.get("username")
             ho_ten_target = existing_record.get("ten") or target_user
         else:
@@ -663,37 +661,53 @@ async def submit_cham_cong(
                 content={"success": False, "message": f"❌ Số hóa đơn {final_hd} đã tồn tại!"}
             )
 
-        # 5. XỬ LÝ ẢNH CHỨNG TỪ
-        final_image_url = existing_image_url
-        if file and file.filename:
-            if not file.content_type.startswith("image/"):
-                return JSONResponse(
-                    status_code=status.HTTP_400_BAD_REQUEST,
-                    content={"success": False, "message": "❌ Định dạng tệp đính kèm không hợp lệ! Chỉ chấp nhận file ảnh."}
-                )
+        # 5. XỬ LÝ NHIỀU ẢNH CHỨNG TỪ (NÂNG CẤP XỬ LÝ BẮT FILE HÀNG LOẠT)
+        url_list = []
 
-            file_bytes = await file.read()
-            if len(file_bytes) > 15 * 1024 * 1024:
-                return JSONResponse(
-                    status_code=status.HTTP_400_BAD_REQUEST,
-                    content={"success": False, "message": "❌ Dung lượng ảnh quá lớn (vượt quá 15MB)!"}
-                )
+        # Giữ lại danh sách ảnh cũ (nếu có khi sửa đơn)
+        if existing_image_url and existing_image_url.strip():
+            url_list = [u.strip() for u in existing_image_url.split(",") if u.strip()]
 
-            processed_bytes = process_image(file_bytes, image_rotation)
-            cloud_url = upload_image_to_supabase(processed_bytes, file.filename)
-            if cloud_url:
-                final_image_url = cloud_url
-            else:
-                return JSONResponse(
-                    status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
-                    content={"success": False, "message": "❌ Lỗi upload ảnh lên Cloud Storage!"}
-                )
+        # Xử lý toàn bộ danh sách tệp mới tải lên
+        if files:
+            for file_item in files:
+                if file_item and file_item.filename:
+                    # Kiểm tra định dạng ảnh
+                    if not file_item.content_type.startswith("image/"):
+                        return JSONResponse(
+                            status_code=status.HTTP_400_BAD_REQUEST,
+                            content={"success": False, "message": f"❌ Tệp '{file_item.filename}' không đúng định dạng ảnh!"}
+                        )
 
-        if not final_image_url:
+                    # Đọc và kiểm tra dung lượng
+                    file_bytes = await file_item.read()
+                    if len(file_bytes) > 15 * 1024 * 1024:
+                        return JSONResponse(
+                            status_code=status.HTTP_400_BAD_REQUEST,
+                            content={"success": False, "message": f"❌ Tệp '{file_item.filename}' vượt quá dung lượng 15MB!"}
+                        )
+
+                    # Xoay ảnh (nếu cần) & Upload lên Storage
+                    processed_bytes = process_image(file_bytes, image_rotation)
+                    cloud_url = upload_image_to_supabase(processed_bytes, file_item.filename)
+                    
+                    if cloud_url:
+                        url_list.append(cloud_url)
+                    else:
+                        return JSONResponse(
+                            status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
+                            content={"success": False, "message": f"❌ Lỗi upload tệp '{file_item.filename}' lên Storage!"}
+                        )
+
+        # Kiểm tra bắt buộc phải có ít nhất 1 ảnh chứng từ
+        if not url_list:
             return JSONResponse(
                 status_code=status.HTTP_400_BAD_REQUEST,
-                content={"success": False, "message": "❌ Yêu cầu ảnh đính kèm chứng từ!"}
+                content={"success": False, "message": "❌ Vui lòng đính kèm ít nhất 1 ảnh hóa đơn chứng từ!"}
             )
+
+        # Chuỗi URL cuối cùng lưu CSDL (phân cách bởi dấu phẩy)
+        final_image_url = ",".join(url_list)
 
         # 6. CHUẨN HÓA THÔNG TIN ĐẦU VÀO
         actual_so_nguoi_di_cung = so_nguoi_di_cung if is_hotro_khac else 0
@@ -756,10 +770,10 @@ async def submit_cham_cong(
         # 10. LƯU VÀO DB SUPABASE
         if parsed_edit_id:
             supabase.table("cham_cong").update(data_payload).eq("id", parsed_edit_id).execute()
-            msg = f"✏️ Đã cập nhật hóa đơn {final_hd}!"
+            msg = f"✏️ Đã cập nhật hóa đơn {final_hd} ({len(url_list)} ảnh)!"
         else:
             supabase.table("cham_cong").insert(data_payload).execute()
-            msg = f"🎉 Đã gửi phiếu {final_hd} chờ duyệt!"
+            msg = f"🎉 Đã gửi phiếu {final_hd} chờ duyệt ({len(url_list)} ảnh)!"
 
         return JSONResponse(status_code=status.HTTP_200_OK, content={"success": True, "message": msg})
 
