@@ -675,10 +675,6 @@ function setBusy(btn, busy) {
 // =========================================================
 // 2. DỮ LIỆU MÁY IN
 // =========================================================
-function renderPrinterDatalist() {
-    document.getElementById('printerList')?.remove();
-    if (suggestInput) renderSuggest();
-}
 
 function loadPrintersForInline(force = false) {
     if (force) printersPromise = null;
@@ -691,7 +687,6 @@ function loadPrintersForInline(force = false) {
             const json = await res.json();
             allPrinters = json.raw_items || json.data || [];
             isPrintersLoaded = true;
-            renderPrinterDatalist();
         } catch (err) {
             console.error('Lỗi tải danh mục máy in:', err);
             printersPromise = null;
@@ -877,9 +872,6 @@ function renderSuggest() {
 
         const text = query.trim();
         const hasExact = items.length && items[0].s === searchNorm(query);
-        if (text && !hasExact) {
-            html += `<div class="ms-add" data-action="add-new">+ Thêm "<b>${escHtml(text)}</b>" vào danh mục</div>`;
-        }
     }
 
     panel.innerHTML = html;
@@ -993,7 +985,11 @@ document.addEventListener('keydown', e => {
             closeSuggest();
             break;
         case 'Tab':
-            closeSuggest();
+            if (isOpen && n && suggestActive >= 0) {
+                pickSuggest(suggestActive);
+            } else {
+                closeSuggest();
+            }
             break;
     }
 });
@@ -1084,7 +1080,7 @@ function onInlineConditionChange(selectEl) {
     const tr = selectEl.closest('tr');
     if (!tr) return;
 
-    selectEl.classList.remove('text-amber-400', 'text-emerald-400', 'text-purple-400');
+    selectEl.classList.remove('text-amber-400', 'text-emerald-400');
     if (selectEl.value === 'Đã qua sử dụng') {
         selectEl.classList.add('text-amber-400');
     } else {
@@ -1126,15 +1122,34 @@ function buildPolicyOption(p) {
     return opt;
 }
 
-function ensurePolicyOption(select, policyIdOrName) {
+function ensurePolicyOption(select, policyIdOrName, originalOptMeta = null) {
     if (!select || !policyIdOrName) return;
-    if (Array.from(select.options).some(o => o.value === policyIdOrName || o.getAttribute('data-id') === policyIdOrName)) return;
     
-    const p = allPolicies.find(x => x.id === policyIdOrName || x.policy_name === policyIdOrName);
+    const existingOpt = Array.from(select.options).find(o => 
+        String(o.value) === String(policyIdOrName) || 
+        String(o.getAttribute('data-id')) === String(policyIdOrName)
+    );
+    if (existingOpt) return existingOpt;
+
+    const p = allPolicies.find(x => 
+        String(x.id) === String(policyIdOrName) || 
+        x.policy_name === policyIdOrName
+    );
+
     if (p) {
-        select.appendChild(buildPolicyOption(p));
+        const newOpt = buildPolicyOption(p);
+        select.appendChild(newOpt);
+        return newOpt;
     } else {
-        select.appendChild(new Option(policyIdOrName, policyIdOrName));
+        const fallbackOpt = document.createElement('option');
+        fallbackOpt.value = policyIdOrName;
+        fallbackOpt.textContent = `📌 ${policyIdOrName}`;
+        if (originalOptMeta) {
+            fallbackOpt.setAttribute('data-has-page', originalOptMeta.hasPage ? 'true' : 'false');
+            fallbackOpt.setAttribute('data-has-meter', originalOptMeta.hasMeter ? 'true' : 'false');
+        }
+        select.appendChild(fallbackOpt);
+        return fallbackOpt;
     }
 }
 
@@ -1207,7 +1222,7 @@ function filterInlinePolicies(tr) {
         policySelect.innerHTML = '<option value="NULL">-- Không có gói phù hợp --</option>';
     } else {
         matchedPolicies.forEach(p => policySelect.appendChild(buildPolicyOption(p)));
-        if (savedPolicyVal && Array.from(policySelect.options).some(o => o.value === savedPolicyVal)) {
+        if (savedPolicyVal && Array.from(policySelect.options).some(o => String(o.value) === String(savedPolicyVal))) {
             policySelect.value = savedPolicyVal;
         }
     }
@@ -1223,6 +1238,7 @@ function onInlinePolicyChange(selectEl) {
     if (!tr) return;
     const counterInput = tr.querySelector('.row-counter');
     const unitLabel = tr.querySelector('.row-counter-unit');
+    const counterWrapper = tr.querySelector('.counter-wrapper');
     if (!counterInput || !unitLabel) return;
 
     const opt = selectEl.options[selectEl.selectedIndex];
@@ -1231,6 +1247,10 @@ function onInlinePolicyChange(selectEl) {
         counterInput.disabled = true;
         unitLabel.textContent = '#';
         unitLabel.className = 'row-counter-unit text-[11px] text-slate-500 font-bold shrink-0 mr-1 select-none';
+        counterInput.className = 'row-counter min-w-0 w-full bg-transparent border-0 p-0 text-slate-500 font-mono font-bold text-[11px] text-right outline-none';
+        if (counterWrapper) {
+            counterWrapper.className = 'counter-wrapper flex items-center justify-between h-7 min-w-0 bg-slate-950 border border-slate-700 px-2 rounded-md w-full transition';
+        }
         return;
     }
 
@@ -1241,14 +1261,26 @@ function onInlinePolicyChange(selectEl) {
         counterInput.disabled = false;
         unitLabel.textContent = 'm';
         unitLabel.className = 'row-counter-unit text-[11px] text-amber-400 font-bold shrink-0 mr-1 select-none';
+        counterInput.className = 'row-counter min-w-0 w-full bg-transparent border-0 p-0 text-amber-300 font-mono font-bold text-[11px] text-right outline-none focus:ring-0';
+        if (counterWrapper) {
+            counterWrapper.className = 'counter-wrapper flex items-center justify-between h-7 min-w-0 bg-amber-500/10 border border-amber-500/50 px-2 rounded-md w-full transition';
+        }
     } else if (hasPage) {
         counterInput.disabled = false;
         unitLabel.textContent = '#';
         unitLabel.className = 'row-counter-unit text-[11px] text-sky-400 font-bold shrink-0 mr-1 select-none';
+        counterInput.className = 'row-counter min-w-0 w-full bg-transparent border-0 p-0 text-sky-300 font-mono font-bold text-[11px] text-right outline-none focus:ring-0';
+        if (counterWrapper) {
+            counterWrapper.className = 'counter-wrapper flex items-center justify-between h-7 min-w-0 bg-sky-500/10 border border-sky-500/50 px-2 rounded-md w-full transition';
+        }
     } else {
         counterInput.disabled = true;
         unitLabel.textContent = '-';
         unitLabel.className = 'row-counter-unit text-[11px] text-slate-500 font-bold shrink-0 mr-1 select-none';
+        counterInput.className = 'row-counter min-w-0 w-full bg-transparent border-0 p-0 text-slate-500 font-mono font-bold text-[11px] text-right outline-none';
+        if (counterWrapper) {
+            counterWrapper.className = 'counter-wrapper flex items-center justify-between h-7 min-w-0 bg-slate-950 border border-slate-700 px-2 rounded-md w-full transition';
+        }
     }
 }
 
@@ -1794,7 +1826,6 @@ async function savePrinter(e) {
             const newPrinter = { ...payload, ...(saved && typeof saved === 'object' ? saved : {}) };
 
             allPrinters.push(newPrinter);
-            renderPrinterDatalist();
 
             fillModelInput(newPrinter);
             closePrinterModal();

@@ -27,8 +27,6 @@ from app.warranty.warranty_report import router as warranty_report_router
 from app.warranty.warranty_policy_routes import router as warranty_policy_router
 from app.inventory import router as inventory_router, api_router as inventory_api_router
 from app.warranty.list_printers import router as list_printers_router, api_router as list_printers_api_router
-from app.warranty.warranty_lookup import router as warranty_lookup_router
-
 from app.permissions import can_access, load_permissions_cache
 from app.templates_config import templates
 
@@ -160,8 +158,6 @@ app.include_router(warranty_report_router)
 app.include_router(warranty_policy_router)
 app.include_router(inventory_router)
 app.include_router(inventory_api_router)
-app.include_router(warranty_lookup_router)
-
 
 # === CHẠY SERVER ===
 if __name__ == "__main__":

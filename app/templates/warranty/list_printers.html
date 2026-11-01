@@ -6,7 +6,7 @@
 <main class="admin-page px-4 sm:px-6 lg:px-8 max-w-7xl mx-auto space-y-6">
     
     <!-- Kiểm tra quyền thao tác (Thêm, Sửa, Xóa) dựa trên page_permissions của trang list_printers -->
-    {% set can_manage_printer = can_access('list_printers', current_user) %}
+    {% set can_manage_printer = can_access('list_printer', current_user) %}
 
     <!-- HEADER HUB -->
     <header class="welcome-shell p-4 sm:p-5 rounded-xl bg-slate-900/80 border border-slate-800 backdrop-blur-md">

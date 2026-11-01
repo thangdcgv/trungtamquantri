@@ -60,8 +60,10 @@ def get_policies(active_only: bool = True):
     try:
         q = supabase.table("warranty_policy").select(
             "id, policy_name, category, brand_name, condition, warranty_months, "
-            "head_warranty_months, cartridge_warranty_months, page_limit_body, "
-            "page_limit_head, no_page_limit, is_active"
+            "head_warranty_months, cartridge_warranty_months, "
+            "page_limit_body, page_limit_head, no_page_limit, "
+            "meter_limit_body, meter_limit_head, no_meter_limit, "  # <--- BỔ SUNG 3 CỘT NÀY VÀO ĐÂY
+            "is_active"
         )
         if active_only:
             q = q.eq("is_active", True)
@@ -400,6 +402,9 @@ def batch_create_warranty_records(
         policy_by_id = {str(p.get('id')): p for p in active_policies if p.get('id')}
         
         staff_display = get_staff_display_name(current_user)
+        # <--- THÊM MỚI: Lấy thông tin phòng ban của người đang tạo phiếu
+        user_department = str(current_user.get("department") or "").strip() 
+        
         now_dt = datetime.now()
         now_str = now_dt.strftime("%H:%M %d/%m/%Y")
 
@@ -442,6 +447,7 @@ def batch_create_warranty_records(
                 "page_limit_head": p_head,
                 "no_page_limit": is_no_limit,
                 "staff_name": staff_display,
+                "department": user_department,  # <--- THÊM MỚI: Lưu phòng ban vào Database
                 "edit_log": log_entry,
                 "pages_updated_at": now_dt.isoformat()
             })
@@ -635,7 +641,6 @@ async def update_warranty_record(
             "page_limit_body": page_limit_body,
             "page_limit_head": page_limit_head,
             "no_page_limit": no_page_limit,
-            "staff_name": staff_display,
             "edit_log": full_log
         }
 

@@ -111,12 +111,33 @@ def parse_int(val, default_val: int = 0) -> int:
     except (ValueError, TypeError):
         return default_val
 
+def get_staff_department_map() -> dict:
+    """Lấy danh sách ánh xạ từ tên nhân viên/username sang phòng ban từ bảng quan_tri_vien."""
+    try:
+        res = supabase_admin.table("quan_tri_vien").select("ho_ten, username, department").execute()
+        mapping = {}
+        if res.data:
+            for row in res.data:
+                dept = str(row.get("department") or "").strip().lower()
+                ho_ten = str(row.get("ho_ten") or "").strip().lower()
+                username = str(row.get("username") or "").strip().lower()
+                
+                if ho_ten:
+                    mapping[ho_ten] = dept
+                if username:
+                    mapping[username] = dept
+        return mapping
+    except Exception as e:
+        logger.error(f"❌ Lỗi lấy mapping phòng ban nhân viên: {e}")
+        return {}
+
+
 def can_modify_warranty_record(user: dict, record: dict) -> bool:
     """
     Kiểm tra quyền Sửa/Xóa phiếu bảo hành:
     - Super Admin / System Admin: Toàn quyền.
-    - Tác giả tạo phiếu (username/staff_name): Được phép.
-    - Người cùng phòng ban với người tạo phiếu: Được phép.
+    - Tác giả tạo phiếu: Được phép.
+    - Người cùng phòng ban với tác giả: Được phép (Tra cứu tự động qua bảng quan_tri_vien).
     """
     if not user or not record:
         return False
@@ -126,15 +147,31 @@ def can_modify_warranty_record(user: dict, record: dict) -> bool:
         return True
 
     # 1. Kiểm tra chính chủ (Tác giả)
-    username = str(user.get("username") or "").strip().lower()
+    current_user_display = str(
+        user.get("ho_ten") or user.get("display_name") or user.get("username") or user.get("email") or ""
+    ).strip().lower()
+    
     creator = str(record.get("created_by") or record.get("staff_name") or "").strip().lower()
-    if username and creator and username == creator:
+    
+    if current_user_display and creator and current_user_display == creator:
         return True
 
-    # 2. Kiểm tra cùng phòng ban
+    # 2. Kiểm tra cùng phòng ban (Tra cứu tự động từ bảng quan_tri_vien dựa vào staff_name)
     user_dept = str(user.get("department") or "").strip().lower()
-    record_dept = str(record.get("department") or record.get("created_by_department") or "").strip().lower()
-    if user_dept and record_dept and user_dept == record_dept:
-        return True
+    
+    if not user_dept:
+        # Nếu user hiện tại không có department sẵn trong session, thử lấy từ metadata hoặc quan_tri_vien
+        meta = user.get("user_metadata", {})
+        user_dept = str(meta.get("department") or "").strip().lower()
+
+    if user_dept:
+        # Lấy bảng ánh xạ nhân viên -> phòng ban
+        staff_dept_map = get_staff_department_map()
+        
+        # Phòng ban của người tạo phiếu chính là phòng ban tra được từ staff_name của record
+        record_dept = staff_dept_map.get(creator, "")
+        
+        if record_dept and user_dept == record_dept:
+            return True
 
     return False
