@@ -447,7 +447,6 @@ def batch_create_warranty_records(
                 "page_limit_head": p_head,
                 "no_page_limit": is_no_limit,
                 "staff_name": staff_display,
-                "department": user_department,  # <--- THÊM MỚI: Lưu phòng ban vào Database
                 "edit_log": log_entry,
                 "pages_updated_at": now_dt.isoformat()
             })
