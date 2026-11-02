@@ -960,18 +960,18 @@ async def view_danh_sach_cham_cong(
         if isinstance(current_user, dict):
             raw_role = current_user.get("role") or "User"
             current_username = current_user.get("username") or ""
-            current_dept = str(current_user.get("department") or "KTSC").strip().upper()
+            current_dept = str(current_user.get("department") or "KT").strip().upper()
         else:
             raw_role = getattr(current_user, "role", "User")
             current_username = getattr(current_user, "username", "")
-            current_dept = str(getattr(current_user, "department", "KTSC")).strip().upper()
+            current_dept = str(getattr(current_user, "department", "KT")).strip().upper()
 
         user_role_clean = str(raw_role).strip().lower()
         user_level = ROLE_LEVELS.get(user_role_clean, 1)
 
         # Quyền Admin (Cấp >= 2) & Phạm vi xem toàn bộ công ty (System/Super Admin hoặc Department ALL)
         is_admin = user_level >= 2
-        has_full_scope = (user_role_clean in ["system admin", "super admin"]) or (current_dept == "ALL")
+        has_full_scope = (user_role_clean in ["system admin", "super admin"]) or (current_dept in ["ALL", "KT"])
 
         now = datetime.now()
         selected_month = now.month if thang is None else thang
