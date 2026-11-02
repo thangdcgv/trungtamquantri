@@ -95,32 +95,26 @@ async def refresh_supabase_token_if_needed(request: Request) -> Optional[str]:
     return await run_in_threadpool(_check_and_refresh)
 
 def extract_user_from_session(request: Request) -> Optional[Dict[str, Any]]:
-    user_id = request.session.get("user_id")
-    session_token = request.session.get("session_token")
-    if not user_id or not session_token:
+    """Trích xuất và chuẩn hóa thông tin user từ request.session."""
+    session = request.session
+    user_id = session.get("user_id")
+    
+    if not user_id:
         return None
 
-    ho_ten = request.session.get("ho_ten") or "Quản trị viên"
-    role = str(request.session.get("role") or "user").strip().lower()
-    dept = request.session.get("department")
-    if role in SUPER_ADMIN_ROLES:
-        dept = "ALL"
-    else:
-        dept = dept or "KTSC"
-
+    # Trả về Dict thống nhất cho toàn bộ hệ thống
     return {
-        "auth_id": str(user_id),
-        "id": str(user_id),
-        "email": request.session.get("user_email") or "",
-        "username": request.session.get("username") or "",
-        "ho_ten": ho_ten,
-        "name": ho_ten,
-        "role": role,
-        "department": dept,
-        "access_token": request.session.get("access_token"),
-        "refresh_token": request.session.get("refresh_token"), # 👈 Thêm vào dictionary trả về
-        "session_token": session_token,
-        "device_type": request.session.get("device_type"),
+        "auth_id": user_id,           # Map user_id sang auth_id để khớp với require_login & verify_active_session
+        "user_id": user_id,
+        "session_token": session.get("session_token"),
+        "user_email": session.get("user_email"),
+        "username": session.get("username"),
+        "ho_ten": session.get("ho_ten"),
+        "role": session.get("role"),
+        "department": session.get("department"),  # 👈 Đã được móc nối chính xác với /login
+        "device_type": session.get("device_type"),
+        "access_token": session.get("access_token"),
+        "refresh_token": session.get("refresh_token"),
     }
 
 
